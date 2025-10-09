@@ -19,11 +19,7 @@ const modernInput = {
   boxShadow: "0 2px 4px rgba(59, 130, 246, 0.1)"
 };
 
-const modernInputFocus = {
-  borderColor: "rgba(59, 130, 246, 0.6)",
-  boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
-  outline: "none"
-};
+// modernInputFocus removed because it was unused
 
 const modernCheckbox = {
   width: "18px",
