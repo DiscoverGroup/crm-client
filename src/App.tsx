@@ -1,16 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
-import LoginForm from "./components/LoginForm";
-import RegisterForm from "./components/RegisterForm";
+import AuthContainer from "./components/AuthContainer";
 import MainPage from "./components/MainPage";
 
-type Page = "login" | "register" | "main";
-
 const App: React.FC = () => {
-  const [page, setPage] = useState<Page>("login");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check for existing authentication on app load
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('crm_auth');
+    if (savedAuth) {
+      try {
+        const authData = JSON.parse(savedAuth);
+        const now = Date.now();
+        const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        // Check if session is still valid (within 24 hours)
+        if (authData.isLoggedIn && authData.currentUser && authData.timestamp && (now - authData.timestamp < sessionDuration)) {
+          setIsLoggedIn(true);
+          setCurrentUser(authData.currentUser);
+        } else {
+          // Session expired, clear stored data
+          localStorage.removeItem('crm_auth');
+        }
+      } catch (error) {
+        console.error('Error parsing saved auth data:', error);
+        localStorage.removeItem('crm_auth');
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  // Save authentication state to localStorage
+  const saveAuthState = (loggedIn: boolean, user: string | null) => {
+    const authData = {
+      isLoggedIn: loggedIn,
+      currentUser: user,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('crm_auth', JSON.stringify(authData));
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    localStorage.removeItem('crm_auth');
+  };
 
   // These handlers should call your backend API
   const handleLogin = (username: string, password: string) => {
@@ -20,7 +59,7 @@ const App: React.FC = () => {
     // store the current user so `username` is used
     setCurrentUser(username);
     setIsLoggedIn(true);
-    setPage("main");
+    saveAuthState(true, username);
   };
 
   const handleRegister = (form: { username: string; email: string; password: string; fullName: string }) => {
@@ -28,42 +67,45 @@ const App: React.FC = () => {
     // use the form parameter (kept for API call) to avoid unused variable errors
     void form;
     alert("Registration successful!");
-    setPage("login");
+    // Automatically log in after successful registration
+    setCurrentUser(form.username);
+    setIsLoggedIn(true);
+    saveAuthState(true, form.username);
   };
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      }}>
+        <div style={{
+          color: "white",
+          fontSize: "18px",
+          fontWeight: "500"
+        }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <Navbar />
+      <Navbar 
+        isLoggedIn={isLoggedIn}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+      />
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
-          <>
-            <div style={{ textAlign: "center", marginTop: 16 }}>Welcome, {currentUser ?? "User"}!</div>
-            <MainPage />
-          </>
+          <MainPage />
         ) : (
-          <>
-            {page === "login" ? (
-              <>
-                <LoginForm onLogin={handleLogin} />
-                <p style={{ textAlign: "center" }}>
-                  No account?{" "}
-                  <button style={{ color: "#1976d2", background: "none", border: "none", cursor: "pointer" }} onClick={() => setPage("register")}>
-                    Register here
-                  </button>
-                </p>
-              </>
-            ) : (
-              <>
-                <RegisterForm onRegister={handleRegister} />
-                <p style={{ textAlign: "center" }}>
-                  Already have an account?{" "}
-                  <button style={{ color: "#1976d2", background: "none", border: "none", cursor: "pointer" }} onClick={() => setPage("login")}>
-                    Login here
-                  </button>
-                </p>
-              </>
-            )}
-          </>
+          <AuthContainer onLogin={handleLogin} onRegister={handleRegister} />
         )}
       </div>
       <Footer />

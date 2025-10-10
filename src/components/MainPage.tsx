@@ -3,7 +3,10 @@ import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
 import type { PaymentDetail } from "../types/payment";
 import { FileService, type FileAttachment } from '../services/fileService';
+import { useFieldTracking } from '../hooks/useFieldTracking';
+import { useSectionTracking } from '../hooks/useSectionTracking';
 import FileAttachmentList from './FileAttachmentList';
+import LogNoteComponent from './LogNoteComponent';
 import Sidebar from "./Sidebar";
 
 // Utility for modern UI
@@ -135,6 +138,86 @@ const ClientRecords: React.FC<{
   // Generate temporary client ID for new clients
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
   const [packageLink, setPackageLink] = useState("");
+  
+  // Log refresh state
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  
+  // Field tracking setup
+  const currentClientId = clientId || tempClientId;
+  const currentUserId = "user_1"; // In a real app, get from auth context
+  const currentUserName = "Current User"; // In a real app, get from auth context
+  
+  // Field tracking setup (kept for companion management only)
+  const { logAction } = useFieldTracking({
+    clientId: currentClientId,
+    userId: currentUserId,
+    userName: currentUserName,
+    onLogAdded: () => setLogRefreshKey(prev => prev + 1)
+  });
+
+  // Section tracking setup
+  const { trackSectionField, saveSection, logAttachment, logSectionAction } = useSectionTracking({
+    clientId: currentClientId,
+    userId: currentUserId,
+    userName: currentUserName,
+    onLogAdded: () => setLogRefreshKey(prev => prev + 1)
+  });
+
+  // Enhanced setters with section tracking
+  const setClientNoTracked = (value: string) => {
+    trackSectionField('client-information', 'clientNo', value, 'Client Number');
+    setClientNo(value);
+  };
+  
+  const setStatusTracked = (value: string) => {
+    trackSectionField('client-information', 'status', value, 'Status');
+    setStatus(value);
+  };
+  
+  const setAgentTracked = (value: string) => {
+    trackSectionField('client-information', 'agent', value, 'Agent');
+    setAgent(value);
+  };
+  
+  const setContactNoTracked = (value: string) => {
+    trackSectionField('client-information', 'contactNo', value, 'Contact Number');
+    setContactNo(value);
+  };
+  
+  const setContactNameTracked = (value: string) => {
+    trackSectionField('client-information', 'contactName', value, 'Contact Name');
+    setContactName(value);
+  };
+  
+  const setEmailTracked = (value: string) => {
+    trackSectionField('client-information', 'email', value, 'Email');
+    setEmail(value);
+  };
+  
+  const setDateOfBirthTracked = (value: string) => {
+    trackSectionField('client-information', 'dateOfBirth', value, 'Date of Birth');
+    setDateOfBirth(value);
+  };
+  
+  const setPackageNameTracked = (value: string) => {
+    trackSectionField('package-information', 'packageName', value, 'Package Name');
+    setPackageName(value);
+  };
+  
+  const setTravelDateTracked = (value: string) => {
+    trackSectionField('package-information', 'travelDate', value, 'Travel Date');
+    setTravelDate(value);
+  };
+  
+  const setNumberOfPaxTracked = (value: number) => {
+    trackSectionField('package-information', 'numberOfPax', value, 'Number of Passengers');
+    setNumberOfPax(value);
+  };
+  
+  const setBookingConfirmationTracked = (value: string) => {
+    trackSectionField('package-information', 'bookingConfirmation', value, 'Booking Confirmation');
+    setBookingConfirmation(value);
+  };
 
   // Payment state
   const [paymentTerm, setPaymentTerm] = useState(paymentOptions[0].value);
@@ -201,6 +284,7 @@ const ClientRecords: React.FC<{
   const [visaResult, setVisaResult] = useState("");
   const [advisoryDate, setAdvisoryDate] = useState("");
   const [isSavingVisa, setIsSavingVisa] = useState(false);
+  const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
 
   // Visa payment state
   type VisaPayment = {
@@ -218,6 +302,26 @@ const ClientRecords: React.FC<{
   ]);
   const [etaPayments, setEtaPayments] = useState<VisaPayment[]>([
     { date: "", depositSlip: null, receipt: null }
+  ]);
+
+  // Booking/Voucher section states
+  const [intlFlight, setIntlFlight] = useState<File | null>(null);
+  const [localFlight1, setLocalFlight1] = useState<File | null>(null);
+  const [localFlight2, setLocalFlight2] = useState<File | null>(null);
+  const [localFlight3, setLocalFlight3] = useState<File | null>(null);
+  const [localFlight4, setLocalFlight4] = useState<File | null>(null);
+  const [hotelVoucher, setHotelVoucher] = useState<File | null>(null);
+  const [otherFiles, setOtherFiles] = useState<File | null>(null);
+
+  // Important Notes/Requests section states
+  type RequestNote = {
+    department: string;
+    request: string;
+    date: string;
+    agent: string;
+  };
+  const [requestNotes, setRequestNotes] = useState<RequestNote[]>([
+    { department: "", request: "", date: "", agent: "" }
   ]);
 
   // File attachment state
@@ -291,6 +395,14 @@ const ClientRecords: React.FC<{
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
         await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms");
         
+        // Log the file attachment
+        logAttachment(
+          'payment-terms-schedule',
+          'uploaded',
+          file.name,
+          field === "depositSlip" ? "deposit slip" : "receipt"
+        );
+        
         // Update local state
         setPaymentDetails(pd =>
           pd.map((row, i) => {
@@ -355,12 +467,26 @@ const ClientRecords: React.FC<{
 
       const success = await PaymentService.savePaymentData(paymentData);
       if (success) {
+        // Save section changes to log
+        saveSection('payment-terms-schedule', 'Payment Terms & Schedule');
         alert('Payment details saved successfully!');
       } else {
+        logSectionAction(
+          'payment-terms-schedule',
+          'Save Failed',
+          'Failed to save payment details',
+          'pending'
+        );
         alert('Failed to save payment details. Please try again.');
       }
     } catch (error) {
       console.error('Error saving payment details:', error);
+      logSectionAction(
+        'payment-terms-schedule',
+        'Save Error',
+        'An error occurred while saving payment details',
+        'pending'
+      );
       alert('An error occurred while saving payment details.');
     } finally {
       setIsSaving(false);
@@ -390,6 +516,9 @@ const ClientRecords: React.FC<{
       // Create new client
       await ClientService.saveClient(clientData);
       
+      // Save section changes to log
+      saveSection('client-information', 'Client Information');
+      
       // If this is a new client (no existing clientId), update file associations
       if (!clientId && tempClientId !== generatedClientNo) {
         FileService.updateClientIdForTempFiles(tempClientId, generatedClientNo);
@@ -404,6 +533,12 @@ const ClientRecords: React.FC<{
       window.dispatchEvent(new Event('clientDataUpdated'));
     } catch (error) {
       console.error('Error saving client info:', error);
+      logSectionAction(
+        'client-information',
+        'Save Failed',
+        'Failed to save client information',
+        'pending'
+      );
       alert('An error occurred while saving client information.');
     } finally {
       setIsSavingClient(false);
@@ -415,9 +550,19 @@ const ClientRecords: React.FC<{
     try {
       // Simulate saving package & companions info
       await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Save section changes to log
+      saveSection('package-information', 'Package & Companions');
+      
       alert('Package & companions information saved successfully!');
     } catch (error) {
       console.error('Error saving package info:', error);
+      logSectionAction(
+        'package-information',
+        'Save Failed',
+        'Failed to save package information',
+        'pending'
+      );
       alert('An error occurred while saving package information.');
     } finally {
       setIsSavingPackage(false);
@@ -435,6 +580,30 @@ const ClientRecords: React.FC<{
       alert('An error occurred while saving visa information.');
     } finally {
       setIsSavingVisa(false);
+    }
+  };
+
+  const handleSaveEmbassyInfo = async () => {
+    setIsSavingEmbassy(true);
+    try {
+      // Simulate saving embassy information
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Save section changes to log
+      saveSection('embassy-information', 'Embassy Information');
+      
+      alert('Embassy information saved successfully!');
+    } catch (error) {
+      console.error('Error saving embassy info:', error);
+      logSectionAction(
+        'embassy-information',
+        'Save Failed',
+        'Failed to save embassy information',
+        'pending'
+      );
+      alert('An error occurred while saving embassy information.');
+    } finally {
+      setIsSavingEmbassy(false);
     }
   };
 
@@ -463,6 +632,14 @@ const ClientRecords: React.FC<{
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
         await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "visa-service");
+        
+        // Log the file attachment
+        logAttachment(
+          'visa-service',
+          'uploaded',
+          file.name,
+          field === "depositSlip" ? "visa deposit slip" : "visa receipt"
+        );
         
         // Update local state
         setVisaPayments(prev =>
@@ -528,6 +705,14 @@ const ClientRecords: React.FC<{
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
         await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "insurance-service");
         
+        // Log the file attachment
+        logAttachment(
+          'insurance-service',
+          'uploaded',
+          file.name,
+          field === "depositSlip" ? "insurance deposit slip" : "insurance receipt"
+        );
+        
         setInsurancePayments(prev =>
           prev.map((row, i) => {
             if (i !== idx) return row;
@@ -587,6 +772,14 @@ const ClientRecords: React.FC<{
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
         await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "eta-service");
         
+        // Log the file attachment
+        logAttachment(
+          'eta-service',
+          'uploaded',
+          file.name,
+          field === "depositSlip" ? "ETA deposit slip" : "ETA receipt"
+        );
+        
         setEtaPayments(prev =>
           prev.map((row, i) => {
             if (i !== idx) return row;
@@ -621,6 +814,25 @@ const ClientRecords: React.FC<{
     }
   };
 
+  // Request Notes handlers
+  const handleRequestNoteChange = (idx: number, field: keyof RequestNote, value: string) => {
+    setRequestNotes(prev => 
+      prev.map((note, i) => 
+        i === idx ? { ...note, [field]: value } : note
+      )
+    );
+  };
+
+  const handleAddRequestNote = () => {
+    setRequestNotes(prev => [...prev, { department: "", request: "", date: "", agent: "" }]);
+  };
+
+  const handleRemoveRequestNote = (idx: number) => {
+    if (requestNotes.length > 1) {
+      setRequestNotes(prev => prev.filter((_, i) => i !== idx));
+    }
+  };
+
   // Handlers
   function handleCompanionFieldChange(field: keyof Companion, value: string) {
     setNewCompanion({ ...newCompanion, [field]: value });
@@ -629,22 +841,36 @@ const ClientRecords: React.FC<{
   function handleAddCompanion() {
     if (newCompanion.name.trim()) {
       setCompanions([...companions, newCompanion]);
+      logAction(
+        'Companion Added',
+        `Added companion: ${newCompanion.name}`,
+        'done'
+      );
       setNewCompanion({ name: "", dob: "", address: "", occupation: "" });
     }
   }
 
   function handleRemoveCompanion(idx: number) {
+    const removedCompanion = companions[idx];
     setCompanions(companions.filter((_, i) => i !== idx));
+    logAction(
+      'Companion Removed',
+      `Removed companion: ${removedCompanion.name}`,
+      'done'
+    );
   }
 
   function handlePaymentTermChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const selected = e.target.value;
+    trackSectionField('payment-terms-schedule', 'paymentTerm', selected, 'Payment Terms');
     setPaymentTerm(selected);
     const opt = paymentOptions.find(o => o.value === selected)!;
     if (selected === "installment" || selected === "travel_funds") {
       setTermCount(2); // default for these types
+      trackSectionField('payment-terms-schedule', 'termCount', 2, 'Number of Terms');
     } else {
       setTermCount(opt.terms);
+      trackSectionField('payment-terms-schedule', 'termCount', opt.terms, 'Number of Terms');
     }
     setSelectedPaymentBox(null);
   }
@@ -656,15 +882,22 @@ const ClientRecords: React.FC<{
       background: "linear-gradient(135deg, #e1f4fd 0%, #cde9fb 50%, #b8ddf9 100%)"
     }}>
       <div style={{
-        maxWidth: 960,
+        maxWidth: 1400,
         margin: "40px auto",
-        padding: 0,
-        background: "rgba(255, 255, 255, 0.95)",
-        borderRadius: 16,
-        boxShadow: "0 4px 32px 0 rgba(59, 130, 246, 0.15)",
-        backdropFilter: "blur(10px)"
+        padding: "0 20px",
+        display: 'flex',
+        gap: '24px',
+        alignItems: 'flex-start'
       }}>
-        <form style={{ padding: 24 }} autoComplete="off">
+        {/* Main Content - Left Side */}
+        <div style={{
+          flex: 1,
+          background: "rgba(255, 255, 255, 0.95)",
+          borderRadius: 16,
+          boxShadow: "0 4px 32px 0 rgba(59, 130, 246, 0.15)",
+          backdropFilter: "blur(10px)"
+        }}>
+          <form style={{ padding: 24 }} autoComplete="off">
           {/* Header */}
           <div style={{ 
             background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
@@ -751,7 +984,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Auto-generated or enter client number"
                   value={clientNo}
-                  onChange={e => setClientNo(e.target.value)}
+                  onChange={e => setClientNoTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -759,7 +992,7 @@ const ClientRecords: React.FC<{
                 <select 
                   style={modernInput}
                   value={status}
-                  onChange={e => setStatus(e.target.value)}
+                  onChange={e => setStatusTracked(e.target.value)}
                 >
                   <option>Active</option>
                   <option>Float</option>
@@ -775,7 +1008,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Agent name"
                   value={agent}
-                  onChange={e => setAgent(e.target.value)}
+                  onChange={e => setAgentTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -785,7 +1018,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Contact number"
                   value={contactNo}
-                  onChange={e => setContactNo(e.target.value)}
+                  onChange={e => setContactNoTracked(e.target.value)}
                 />
               </div>
             </div>
@@ -797,7 +1030,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Full name"
                   value={contactName}
-                  onChange={e => setContactName(e.target.value)}
+                  onChange={e => setContactNameTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -807,7 +1040,7 @@ const ClientRecords: React.FC<{
                   type="email" 
                   placeholder="Email address"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  onChange={e => setEmailTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -816,7 +1049,7 @@ const ClientRecords: React.FC<{
                   style={modernInput} 
                   type="date"
                   value={dateOfBirth}
-                  onChange={e => setDateOfBirth(e.target.value)}
+                  onChange={e => setDateOfBirthTracked(e.target.value)}
                 />
               </div>
             </div>
@@ -856,7 +1089,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Package name"
                   value={packageName}
-                  onChange={e => setPackageName(e.target.value)}
+                  onChange={e => setPackageNameTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -865,7 +1098,7 @@ const ClientRecords: React.FC<{
                   style={modernInput} 
                   type="date"
                   value={travelDate}
-                  onChange={e => setTravelDate(e.target.value)}
+                  onChange={e => setTravelDateTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -875,7 +1108,7 @@ const ClientRecords: React.FC<{
                   type="number" 
                   min={1}
                   value={numberOfPax}
-                  onChange={e => setNumberOfPax(parseInt(e.target.value) || 1)}
+                  onChange={e => setNumberOfPaxTracked(parseInt(e.target.value) || 1)}
                 />
               </div>
             </div>
@@ -887,7 +1120,7 @@ const ClientRecords: React.FC<{
                   type="text" 
                   placeholder="Booking reference"
                   value={bookingConfirmation}
-                  onChange={e => setBookingConfirmation(e.target.value)}
+                  onChange={e => setBookingConfirmationTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 2 }}>
@@ -1411,6 +1644,269 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
+            {/* Booking/Tour Voucher Section */}
+            <div style={{
+              ...sectionStyle,
+              marginTop: "24px",
+              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+              border: "2px solid rgba(147, 197, 253, 0.3)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
+            }}>
+              {/* Section Header */}
+              <div style={sectionHeader}>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎫</span>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#1e293b", 
+                  fontSize: "20px", 
+                  fontWeight: 700,
+                  letterSpacing: "-0.025em"
+                }}>
+                  Booking/Tour Voucher
+                </h2>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
+                {/* International Flight */}
+                <div>
+                  <label style={label}>✈️ International Flight</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setIntlFlight(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {intlFlight && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {intlFlight.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Local Flight 1 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 1</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setLocalFlight1(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {localFlight1 && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {localFlight1.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Local Flight 2 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 2</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setLocalFlight2(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {localFlight2 && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {localFlight2.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Local Flight 3 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 3</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setLocalFlight3(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {localFlight3 && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {localFlight3.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Local Flight 4 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 4</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setLocalFlight4(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {localFlight4 && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {localFlight4.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hotel Voucher */}
+                <div>
+                  <label style={label}>🏨 Hotel Voucher</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setHotelVoucher(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {hotelVoucher && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {hotelVoucher.name}
+                    </div>
+                  )}
+                </div>
+
+                {/* Other Files */}
+                <div>
+                  <label style={label}>📄 Other Files</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => setOtherFiles(e.target.files?.[0] || null)}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {otherFiles && (
+                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
+                      ✓ {otherFiles.name}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Important Notes/Requests Section */}
+            <div style={{
+              ...sectionStyle,
+              marginTop: "24px",
+              background: "linear-gradient(145deg, rgba(255, 248, 220, 0.95) 0%, rgba(254, 249, 195, 0.9) 100%)",
+              border: "2px solid rgba(251, 191, 36, 0.3)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(251, 191, 36, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
+            }}>
+              {/* Section Header */}
+              <div style={sectionHeader}>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>📝</span>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#92400e", 
+                  fontSize: "20px", 
+                  fontWeight: 700,
+                  letterSpacing: "-0.025em"
+                }}>
+                  Important Notes/Requests
+                </h2>
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                {requestNotes.map((note, idx) => (
+                  <div key={idx} style={{ 
+                    marginBottom: 16, 
+                    padding: 16, 
+                    backgroundColor: "rgba(255, 255, 255, 0.8)", 
+                    borderRadius: 12,
+                    border: "1px solid rgba(251, 191, 36, 0.2)",
+                    boxShadow: "0 2px 8px rgba(251, 191, 36, 0.1)"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <h5 style={{ margin: 0, color: "#92400e", fontSize: "14px", fontWeight: "600" }}>
+                        Request Note {idx + 1}
+                      </h5>
+                      {requestNotes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRequestNote(idx)}
+                          style={{
+                            background: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                      <div>
+                        <label style={label}>Department</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter department"
+                          value={note.department}
+                          onChange={e => handleRequestNoteChange(idx, "department", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Request</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter request details"
+                          value={note.request}
+                          onChange={e => handleRequestNoteChange(idx, "request", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Date</label>
+                        <input
+                          style={modernInput}
+                          type="date"
+                          value={note.date}
+                          onChange={e => handleRequestNoteChange(idx, "date", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Agent</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter agent name"
+                          value={note.agent}
+                          onChange={e => handleRequestNoteChange(idx, "agent", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={handleAddRequestNote}
+                  style={{
+                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    transition: "transform 0.2s",
+                    boxShadow: "0 4px 12px rgba(251, 191, 36, 0.3)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  ➕ Add a Line!
+                </button>
+              </div>
+            </div>
+
             {/* Insurance Service Payment Form (shown when Insurance Service is checked) */}
             {insuranceService && (
               <div style={{ marginTop: 20, marginBottom: 20 }}>
@@ -1772,7 +2268,10 @@ const ClientRecords: React.FC<{
                   style={modernInput}
                   type="date"
                   value={embassyAppointmentDate}
-                  onChange={e => setEmbassyAppointmentDate(e.target.value)}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'embassyAppointmentDate', e.target.value, 'Appointment Date');
+                    setEmbassyAppointmentDate(e.target.value);
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1781,7 +2280,10 @@ const ClientRecords: React.FC<{
                   style={modernInput}
                   type="date"
                   value={visaReleaseDate}
-                  onChange={e => setVisaReleaseDate(e.target.value)}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'visaReleaseDate', e.target.value, 'Visa Release Date');
+                    setVisaReleaseDate(e.target.value);
+                  }}
                 />
               </div>
             </div>
@@ -1793,7 +2295,10 @@ const ClientRecords: React.FC<{
                   type="text"
                   placeholder="Visa result status"
                   value={visaResult}
-                  onChange={e => setVisaResult(e.target.value)}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'visaResult', e.target.value, 'Visa Result');
+                    setVisaResult(e.target.value);
+                  }}
                 />
               </div>
               <div style={{ flex: 1 }}>
@@ -1802,9 +2307,24 @@ const ClientRecords: React.FC<{
                   style={modernInput}
                   type="date"
                   value={advisoryDate}
-                  onChange={e => setAdvisoryDate(e.target.value)}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'advisoryDate', e.target.value, 'Advisory Date');
+                    setAdvisoryDate(e.target.value);
+                  }}
                 />
               </div>
+            </div>
+
+            {/* Embassy Save Button */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSaveEmbassyInfo}
+                disabled={isSavingEmbassy}
+                style={saveButtonStyle(isSavingEmbassy)}
+              >
+                {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
+              </button>
             </div>
 
             {/* Save Button */}
@@ -1820,6 +2340,8 @@ const ClientRecords: React.FC<{
             </div>
           </div>
 
+          {/* Activity Log Section - Moved to Right Sidebar */}
+          
           {/* File Attachments Section */}
           <div style={{ ...sectionStyle, marginTop: "24px" }}>
             {/* Section Header */}
@@ -1852,6 +2374,53 @@ const ClientRecords: React.FC<{
             />
           </div>
         </form>
+      </div>
+
+      {/* Right Sidebar - Activity Log */}
+      <div style={{
+        width: '400px',
+        flexShrink: 0,
+        position: 'sticky',
+        top: '20px',
+        height: 'fit-content',
+        maxHeight: 'calc(100vh - 80px)',
+        overflowY: 'auto'
+      }}>
+        {currentClientId ? (
+          <LogNoteComponent
+            key={logRefreshKey}
+            clientId={currentClientId}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        ) : (
+          <div style={{
+            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
+            borderRadius: '16px',
+            padding: '20px',
+            boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)',
+            border: '1px solid rgba(147, 197, 253, 0.3)',
+            height: 'fit-content'
+          }}>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              color: '#1e293b',
+              fontSize: '1.25rem',
+              fontWeight: '600'
+            }}>
+              Activity Log
+            </h3>
+            <p style={{
+              color: '#64748b',
+              fontSize: '13px',
+              textAlign: 'center',
+              padding: '24px 16px'
+            }}>
+              Activity log will appear when a client is selected.
+            </p>
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );
