@@ -8,6 +8,10 @@ import { useSectionTracking } from '../hooks/useSectionTracking';
 import FileAttachmentList from './FileAttachmentList';
 import LogNoteComponent from './LogNoteComponent';
 import Sidebar from "./Sidebar";
+import UserProfile from './UserProfile';
+import DeletedClients from './DeletedClients';
+import ActivityLogViewer from './ActivityLogViewer';
+import { ActivityLogService } from '../services/activityLogService';
 
 // Utility for modern UI
 const modernInput = {
@@ -121,7 +125,8 @@ const ClientRecords: React.FC<{
   onClientSelect?: () => void;
   onNavigateBack?: () => void;
   clientId?: string;
-}> = ({ onNavigateBack, clientId }) => {
+  currentUser?: string;
+}> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser }) => {
   // Client form state
   const [clientNo, setClientNo] = useState("");
   const [status, setStatus] = useState("Active");
@@ -145,7 +150,7 @@ const ClientRecords: React.FC<{
   // Field tracking setup
   const currentClientId = clientId || tempClientId;
   const currentUserId = "user_1"; // In a real app, get from auth context
-  const currentUserName = "Current User"; // In a real app, get from auth context
+  const currentUserName = propsCurrentUser || "Current User"; // Use prop or fallback
   
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
@@ -513,8 +518,29 @@ const ClientRecords: React.FC<{
         companions: companions
       };
 
-      // Create new client
-      await ClientService.saveClient(clientData);
+      // Save client and check if it's new or updated
+      const { clientId: savedClientId, isNewClient } = await ClientService.saveClient(clientData);
+      
+      // Log activity
+      if (isNewClient) {
+        ActivityLogService.addLog({
+          clientId: savedClientId,
+          clientName: contactName || 'Unknown',
+          action: 'created',
+          performedBy: currentUserName,
+          performedByUser: currentUserName,
+          details: `New client created`
+        });
+      } else {
+        ActivityLogService.addLog({
+          clientId: savedClientId,
+          clientName: contactName || 'Unknown',
+          action: 'edited',
+          performedBy: currentUserName,
+          performedByUser: currentUserName,
+          details: `Client information updated`
+        });
+      }
       
       // Save section changes to log
       saveSection('client-information', 'Client Information');
@@ -2426,7 +2452,12 @@ const ClientRecords: React.FC<{
   );
 };
 
-const MainPage: React.FC = () => {
+interface MainPageProps {
+  currentUser: string;
+  onUpdateUser?: (fullName: string) => void;
+}
+
+const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -2435,6 +2466,9 @@ const MainPage: React.FC = () => {
   
   // Navigation state for form view
   const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string} | null>(null);
+  const [viewProfile, setViewProfile] = useState(false);
+  const [viewDeleted, setViewDeleted] = useState(false);
+  const [viewActivityLog, setViewActivityLog] = useState(false);
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -2504,18 +2538,117 @@ const MainPage: React.FC = () => {
           onClientSelect={() => {}}
           onNavigateBack={() => setViewingForm(null)}
           clientId={viewingForm.clientId}
+          currentUser={currentUser}
         />
-      ) : (
+      ) : viewProfile ? (
         <div style={{ display: 'flex' }}>
           <Sidebar 
-            onNavigateToClientRecords={handleNavigateToClientRecords}
+            onNavigateToClientRecords={() => setViewProfile(false)}
+            onNavigateToProfile={() => setViewProfile(true)}
+            onNavigateToDeleted={() => {
+              setViewProfile(false);
+              setViewDeleted(true);
+            }}
+            onNavigateToActivityLog={() => {
+              setViewProfile(false);
+              setViewActivityLog(true);
+            }}
+          />
+          <div style={{
+            marginLeft: '300px',
+            width: 'calc(100% - 300px)',
+            minHeight: '100vh',
+            backgroundColor: '#f5f5f5'
+          }}>
+            <UserProfile
+              currentUser={currentUser}
+              onBack={() => setViewProfile(false)}
+              onUpdateUser={(userData) => {
+                if (onUpdateUser) {
+                  onUpdateUser(userData.fullName);
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : viewDeleted ? (
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={() => {
+              setViewDeleted(false);
+              loadClients();
+            }}
+            onNavigateToProfile={() => {
+              setViewDeleted(false);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => setViewDeleted(true)}
+            onNavigateToActivityLog={() => {
+              setViewDeleted(false);
+              setViewActivityLog(true);
+            }}
           />
           <div style={{
             marginLeft: '300px',
             padding: '20px',
-            maxWidth: '1200px',
-            margin: '0 auto 0 300px',
+            width: 'calc(100% - 300px)',
+            minHeight: '100vh',
             backgroundColor: '#f5f5f5'
+          }}>
+            <DeletedClients
+              currentUser={currentUser}
+              onBack={() => {
+                setViewDeleted(false);
+                loadClients();
+              }}
+            />
+          </div>
+        </div>
+      ) : viewActivityLog ? (
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={() => {
+              setViewActivityLog(false);
+              loadClients();
+            }}
+            onNavigateToProfile={() => {
+              setViewActivityLog(false);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => {
+              setViewActivityLog(false);
+              setViewDeleted(true);
+            }}
+            onNavigateToActivityLog={() => setViewActivityLog(true)}
+          />
+          <div style={{
+            marginLeft: '300px',
+            padding: '20px',
+            width: 'calc(100% - 300px)',
+            minHeight: '100vh',
+            backgroundColor: '#f5f5f5'
+          }}>
+            <ActivityLogViewer
+              onBack={() => setViewActivityLog(false)}
+            />
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={handleNavigateToClientRecords}
+            onNavigateToProfile={() => setViewProfile(true)}
+            onNavigateToDeleted={() => setViewDeleted(true)}
+            onNavigateToActivityLog={() => setViewActivityLog(true)}
+          />
+          <div style={{
+            marginLeft: '300px',
+            padding: '20px',
+            width: 'calc(100% - 300px)',
+            minHeight: '100vh',
+            backgroundColor: '#f5f5f5',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
         {/* Header */}
         <div style={{
@@ -2789,7 +2922,11 @@ const MainPage: React.FC = () => {
             backgroundColor: 'white',
             borderRadius: '10px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            minHeight: 0
           }}>
             <div style={{
               padding: '20px',
@@ -2800,87 +2937,228 @@ const MainPage: React.FC = () => {
                 Client List ({clients.length} {clients.length === 1 ? 'client' : 'clients'})
               </h3>
             </div>
-            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              {clients.map((client, index) => (
-                <div
-                  key={client.id}
-                  style={{
-                    padding: '20px',
-                    borderBottom: index < clients.length - 1 ? '1px solid #e9ecef' : 'none',
-                    transition: 'background-color 0.2s ease',
-                    cursor: 'pointer'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                  onClick={() => handleClientEdit(client)}
-                >
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto auto',
-                    gap: '20px',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '8px'
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+              <table style={{
+                width: '100%',
+                borderCollapse: 'collapse'
+              }}>
+                <thead style={{
+                  backgroundColor: '#f8f9fa',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 1
+                }}>
+                  <tr>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Client Name
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Status
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Email
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Phone
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Client No.
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'left',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Agent
+                    </th>
+                    <th style={{
+                      padding: '12px 20px',
+                      textAlign: 'center',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#6c757d',
+                      borderBottom: '2px solid #dee2e6',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((client, index) => (
+                    <tr
+                      key={client.id}
+                      style={{
+                        borderBottom: index < clients.length - 1 ? '1px solid #e9ecef' : 'none',
+                        transition: 'background-color 0.2s ease',
+                        cursor: 'pointer'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      onClick={() => handleClientEdit(client)}
+                    >
+                      <td style={{
+                        padding: '16px 20px',
+                        color: '#2c3e50',
+                        fontSize: '14px',
+                        fontWeight: '500'
                       }}>
-                        <h4 style={{
-                          margin: 0,
-                          color: '#2c3e50',
-                          fontSize: '16px'
-                        }}>
-                          {client.contactName}
-                        </h4>
+                        {client.contactName}
+                      </td>
+                      <td style={{
+                        padding: '16px 20px'
+                      }}>
                         <span style={{
-                          padding: '2px 8px',
+                          padding: '4px 12px',
                           backgroundColor: getStatusColor(client.status || 'unknown'),
                           color: 'white',
                           borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: '500'
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          display: 'inline-block'
                         }}>
                           {client.status}
                         </span>
-                      </div>
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '8px',
-                        fontSize: '13px',
-                        color: '#6c757d'
+                      </td>
+                      <td style={{
+                        padding: '16px 20px',
+                        color: '#6c757d',
+                        fontSize: '13px'
                       }}>
-                        <div>📧 {client.email || 'No email'}</div>
-                        <div>📞 {client.contactNo || 'No phone'}</div>
-                        <div>🆔 {client.clientNo || 'No client number'}</div>
-                        <div>👤 Agent: {client.agent || 'Unassigned'}</div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleClientEdit(client);
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#28a745',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s ease'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
-                    >
-                      ✏️ Edit
-                    </button>
-                  </div>
-                </div>
-              ))}
+                        📧 {client.email || 'No email'}
+                      </td>
+                      <td style={{
+                        padding: '16px 20px',
+                        color: '#6c757d',
+                        fontSize: '13px'
+                      }}>
+                        📞 {client.contactNo || 'No phone'}
+                      </td>
+                      <td style={{
+                        padding: '16px 20px',
+                        color: '#6c757d',
+                        fontSize: '13px'
+                      }}>
+                        {client.clientNo || 'N/A'}
+                      </td>
+                      <td style={{
+                        padding: '16px 20px',
+                        color: '#6c757d',
+                        fontSize: '13px'
+                      }}>
+                        {client.agent || 'Unassigned'}
+                      </td>
+                      <td style={{
+                        padding: '16px 20px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClientEdit(client);
+                            }}
+                            style={{
+                              padding: '6px 16px',
+                              backgroundColor: '#28a745',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                              fontWeight: '500'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`)) {
+                                const success = ClientService.deleteClient(client.id, currentUser);
+                                if (success) {
+                                  ActivityLogService.addLog({
+                                    clientId: client.id,
+                                    clientName: client.contactName || 'Unknown',
+                                    action: 'deleted',
+                                    performedBy: currentUser,
+                                    performedByUser: currentUser,
+                                    details: `Client moved to trash`
+                                  });
+                                  alert('Client moved to trash. You can recover it from Deleted Clients page.');
+                                }
+                                loadClients();
+                              }
+                            }}
+                            style={{
+                              padding: '6px 16px',
+                              backgroundColor: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                              fontWeight: '500'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c82333'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

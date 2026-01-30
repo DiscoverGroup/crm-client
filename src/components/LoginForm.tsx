@@ -8,15 +8,11 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin(email, password);
-  };
-
-  const handleSocialLogin = (provider: string) => {
-    console.log(`Login with ${provider}`);
-    // Implement social login logic here
   };
 
   return (
@@ -25,129 +21,36 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'column',
-      padding: '0 20px',
+      padding: '48px 40px',
       height: '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
-      width: '100%'
+      width: '100%',
+      borderRadius: '20px 0 0 20px',
+      boxShadow: '-5px 0 15px rgba(0,0,0,0.05)'
     }}>
-      <h1 style={{
-        fontSize: '1.8rem',
-        fontWeight: 'bold',
-        marginBottom: '1rem',
-        color: '#333',
-        margin: 0
-      }}>
-        Sign In
-      </h1>
-
-      {/* Social Login Buttons */}
-      <div style={{
-        display: 'flex',
-        gap: '0.8rem',
-        marginBottom: '1.2rem',
-        marginTop: '1.2rem',
-        justifyContent: 'center'
-      }}>
-        <button
-          onClick={() => handleSocialLogin('facebook')}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            border: '1px solid #ddd',
-            backgroundColor: 'transparent',
-            color: '#333',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.2rem',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#1877f2';
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.borderColor = '#1877f2';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#333';
-            e.currentTarget.style.borderColor = '#ddd';
-          }}
-        >
-          f
-        </button>
-        <button
-          onClick={() => handleSocialLogin('google')}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            border: '1px solid #ddd',
-            backgroundColor: 'transparent',
-            color: '#333',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.2rem',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#db4437';
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.borderColor = '#db4437';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#333';
-            e.currentTarget.style.borderColor = '#ddd';
-          }}
-        >
-          G
-        </button>
-        <button
-          onClick={() => handleSocialLogin('github')}
-          style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            border: '1px solid #ddd',
-            backgroundColor: 'transparent',
-            color: '#333',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.2rem',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#333';
-            e.currentTarget.style.color = 'white';
-            e.currentTarget.style.borderColor = '#333';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#333';
-            e.currentTarget.style.borderColor = '#ddd';
-          }}
-        >
-          @
-        </button>
+      <div style={{ marginBottom: '40px' }}>
+        <h1 style={{
+          fontSize: '32px',
+          fontWeight: '700',
+          marginBottom: '12px',
+          color: '#0d47a1',
+          margin: 0,
+          letterSpacing: '-0.5px'
+        }}>
+          Welcome Back
+        </h1>
+        <p style={{
+          fontSize: '15px',
+          color: '#6b7280',
+          margin: '8px 0 0 0'
+        }}>
+          Sign in to DG-CRM
+        </p>
       </div>
 
-      <p style={{
-        color: '#666',
-        marginBottom: '1.5rem',
-        fontSize: '0.9rem'
-      }}>
-        or use your email account
-      </p>
-
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '300px' }}>
-        <div style={{ marginBottom: '1rem' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '360px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <input
             type="email"
             placeholder="Email"
@@ -156,45 +59,67 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             onChange={e => setEmail(e.target.value)}
             style={{
               width: '100%',
-              padding: '12px 15px',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              backgroundColor: '#eee',
+              padding: '14px 16px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: '15px',
+              backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
-              outline: 'none'
+              outline: 'none',
+              transition: 'all 0.2s ease',
+              color: '#1f2937'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#1e7bb8';
+              e.currentTarget.style.backgroundColor = 'white';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.backgroundColor = '#f9fafb';
             }}
           />
         </div>
         
-        <div style={{ marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '16px', position: 'relative' }}>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
             value={password}
             required
             onChange={e => setPassword(e.target.value)}
             style={{
               width: '100%',
-              padding: '12px 15px',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              backgroundColor: '#eee',
+              padding: '14px 16px',
+              paddingRight: '48px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: '15px',
+              backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
-              outline: 'none'
+              outline: 'none',
+              transition: 'all 0.2s ease',
+              color: '#1f2937'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#1e7bb8';
+              e.currentTarget.style.backgroundColor = 'white';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.backgroundColor = '#f9fafb';
             }}
           />
         </div>
 
         <div style={{
-          textAlign: 'center',
-          marginBottom: '1.5rem'
+          textAlign: 'right',
+          marginBottom: '24px'
         }}>
           <a href="#" style={{
-            color: '#666',
+            color: '#1e7bb8',
             textDecoration: 'none',
-            fontSize: '0.9rem'
+            fontSize: '14px',
+            fontWeight: '500'
           }}>
             Forgot password?
           </a>
@@ -204,20 +129,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           type="submit"
           style={{
             width: '100%',
-            padding: '12px',
-            backgroundColor: '#6f42c1',
+            padding: '14px',
+            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
             color: 'white',
             border: 'none',
-            borderRadius: '20px',
-            fontSize: '12px',
-            fontWeight: 'bold',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '600',
             cursor: 'pointer',
-            transition: 'background-color 0.3s ease',
+            transition: 'all 0.2s ease',
             textTransform: 'uppercase',
-            letterSpacing: '1px'
+            letterSpacing: '0.5px',
+            boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)'
           }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a359a'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6f42c1'}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(13, 71, 161, 0.4)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(13, 71, 161, 0.3)';
+          }}
         >
           Sign In
         </button>

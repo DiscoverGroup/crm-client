@@ -34,7 +34,22 @@ Cloudflare R2 is an object storage solution that's compatible with the S3 API. I
 4. Keep defaults for other settings
 5. Click **Create bucket**
 
-### 4. Configure Environment Variables
+### 4. Enable Public Access (Important!)
+After creating the bucket, you need to enable public access for file viewing:
+
+1. Go to your bucket's **Settings** tab
+2. Scroll down to **Public Access**
+3. Click **Allow Access** or **Connect Domain**
+4. Enable **R2.dev subdomain** (easiest for development)
+   - This creates a public URL like: `https://pub-<hash>.r2.dev`
+   - Files will be accessible at: `https://pub-<hash>.r2.dev/your-file.jpg`
+
+**Alternative:** Set up a custom domain for production use
+- Go to **Custom Domains** section
+- Add your domain (requires DNS configuration)
+- Use your custom domain in `.env.local` as `VITE_R2_PUBLIC_URL`
+
+### 5. Configure Environment Variables
 1. Copy `.env.r2.example` to `.env.local`:
    ```bash
    cp .env.r2.example .env.local

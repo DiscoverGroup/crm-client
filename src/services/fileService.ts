@@ -1,10 +1,14 @@
+import { uploadFileToR2, deleteFileFromR2 } from './r2UploadService';
+
 export interface StoredFile {
   name: string;
   type: string;
   size: number;
-  data: string; // Base64 encoded file data
+  data: string; // R2 URL or Base64 for backward compatibility
   uploadDate: string;
   id: string;
+  r2Path?: string; // R2 file path for deletion
+  isR2?: boolean; // Flag to identify R2 files
 }
 
 export interface FileAttachment {
@@ -18,9 +22,39 @@ export interface FileAttachment {
 
 export class FileService {
   private static STORAGE_KEY = 'crm_file_attachments';
+  private static R2_BUCKET = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
 
-  // Convert File to StoredFile with base64 data
-  static async fileToStoredFile(file: File): Promise<StoredFile> {
+  // Convert File to StoredFile with R2 upload
+  static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
+    try {
+      // Upload to R2
+      const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
+      
+      if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
+        throw new Error(uploadResult.error || 'Failed to upload to R2');
+      }
+
+      const storedFile: StoredFile = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        data: uploadResult.url, // Store R2 URL instead of base64
+        uploadDate: new Date().toISOString(),
+        id: this.generateFileId(),
+        r2Path: uploadResult.path,
+        isR2: true
+      };
+      
+      return storedFile;
+    } catch (error) {
+      console.error('Error uploading file to R2:', error);
+      // Fallback to base64 if R2 fails
+      return this.fileToBase64StoredFile(file);
+    }
+  }
+
+  // Fallback method for base64 storage (if R2 fails)
+  private static async fileToBase64StoredFile(file: File): Promise<StoredFile> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -28,9 +62,10 @@ export class FileService {
           name: file.name,
           type: file.type,
           size: file.size,
-          data: reader.result as string, // This will be base64
+          data: reader.result as string,
           uploadDate: new Date().toISOString(),
-          id: this.generateFileId()
+          id: this.generateFileId(),
+          isR2: false
         };
         resolve(storedFile);
       };
@@ -39,7 +74,7 @@ export class FileService {
     });
   }
 
-  // Save file attachment
+  // Save file attachment with R2 support
   static async saveFileAttachment(
     file: File, 
     category: FileAttachment['category'], 
@@ -49,7 +84,10 @@ export class FileService {
     source?: FileAttachment['source']
   ): Promise<string> {
     try {
-      const storedFile = await this.fileToStoredFile(file);
+      // Determine folder based on category
+      const folder = this.getFolderByCategory(category, source);
+      
+      const storedFile = await this.fileToStoredFile(file, folder);
       const attachment: FileAttachment = {
         file: storedFile,
         category,
@@ -68,6 +106,26 @@ export class FileService {
       console.error('Error saving file attachment:', error);
       throw error;
     }
+  }
+
+  // Get folder path based on category and source
+  private static getFolderByCategory(
+    category: FileAttachment['category'],
+    source?: FileAttachment['source']
+  ): string {
+    const folders: Record<string, string> = {
+      'deposit-slip': 'deposit-slips',
+      'receipt': 'receipts',
+      'other': 'other-files'
+    };
+
+    let folder = folders[category] || 'general';
+    
+    if (source) {
+      folder = `${folder}/${source}`;
+    }
+    
+    return folder;
   }
 
   // Get all file attachments
@@ -104,10 +162,22 @@ export class FileService {
     return attachments.filter(att => att.clientId === clientId);
   }
 
-  // Delete file by ID
-  static deleteFile(fileId: string): boolean {
+  // Delete file by ID with R2 cleanup
+  static async deleteFile(fileId: string): Promise<boolean> {
     try {
       const attachments = this.getAllFileAttachments();
+      const attachment = attachments.find(att => att.file.id === fileId);
+      
+      // If it's an R2 file, delete from R2 first
+      if (attachment && attachment.file.isR2 && attachment.file.r2Path) {
+        try {
+          await deleteFileFromR2(this.R2_BUCKET, attachment.file.r2Path);
+        } catch (error) {
+          console.error('Error deleting file from R2:', error);
+          // Continue to remove from localStorage anyway
+        }
+      }
+      
       const filteredAttachments = attachments.filter(att => att.file.id !== fileId);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
       return true;

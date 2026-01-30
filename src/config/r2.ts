@@ -17,4 +17,3 @@ export const r2Client = new S3Client({
   },
 });
 
-export const r2PublicUrl = `https://${import.meta.env.VITE_R2_BUCKET_NAME || 'your-bucket'}.${accountId}.r2.cloudflarestorage.com`;

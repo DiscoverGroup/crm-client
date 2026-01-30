@@ -1,11 +1,23 @@
 import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { r2Client, r2PublicUrl } from '../config/r2';
+import { r2Client } from '../config/r2';
 
 interface UploadResponse {
   success: boolean;
   path?: string;
   url?: string;
   error?: string;
+}
+
+// Get R2 public URL from environment or construct it
+function getR2PublicUrl(): string {
+  const customUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+  if (customUrl) return customUrl;
+
+  const accountId = import.meta.env.VITE_R2_ACCOUNT_ID;
+  
+  // Use R2.dev subdomain (you need to enable this in bucket settings)
+  // Format: https://pub-<hash>.r2.dev (the actual hash is shown in your bucket settings)
+  return `https://pub-${accountId}.r2.dev`;
 }
 
 /**
@@ -30,18 +42,22 @@ export async function uploadFileToR2(
     const fileName = `${timestamp}-${file.name}`;
     const filePath = folder ? `${folder}/${fileName}` : fileName;
 
-    // Upload the file (File objects can be used directly as Body)
+    // Convert File to ArrayBuffer for browser compatibility
+    const arrayBuffer = await file.arrayBuffer();
+
+    // Upload the file
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: filePath,
-      Body: file as any,
+      Body: new Uint8Array(arrayBuffer),
       ContentType: file.type,
     });
 
     await r2Client.send(command);
 
     // Construct the public URL
-    const publicUrl = `${r2PublicUrl}/${filePath}`;
+    const publicBaseUrl = getR2PublicUrl();
+    const publicUrl = `${publicBaseUrl}/${filePath}`;
 
     return {
       success: true,
@@ -85,5 +101,6 @@ export async function deleteFileFromR2(
  * @returns The public URL
  */
 export function getR2FileUrl(filePath: string): string {
-  return `${r2PublicUrl}/${filePath}`;
+  const publicBaseUrl = getR2PublicUrl();
+  return `${publicBaseUrl}/${filePath}`;
 }

@@ -2,47 +2,80 @@ import React from 'react';
 
 interface SidebarProps {
   onNavigateToClientRecords: () => void;
+  onNavigateToProfile: () => void;
+  onNavigateToDeleted: () => void;
+  onNavigateToActivityLog: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigateToProfile, onNavigateToDeleted, onNavigateToActivityLog }) => {
   return (
     <div style={{
-      width: '300px',
-      background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)',
+      width: '280px',
+      background: 'linear-gradient(180deg, #0d47a1 0%, #083d63 50%, #062e4a 100%)',
       color: 'white',
-      padding: '20px',
+      padding: '24px',
       height: '100vh',
-      boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
+      boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
       position: 'fixed',
       left: 0,
       top: 0,
-      zIndex: 1000
+      zIndex: 1000,
+      overflowY: 'auto',
+      borderRight: '2px solid rgba(251, 191, 36, 0.2)'
     }}>
       {/* Header */}
-      <div style={{ marginBottom: '30px' }}>
-        <h2 style={{ 
-          margin: '0 0 10px 0',
-          fontSize: '24px',
-          fontWeight: '600'
+      <div style={{ marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '8px'
         }}>
-          CRM Dashboard
-        </h2>
-        <p style={{ 
-          margin: 0,
-          opacity: 0.8,
-          fontSize: '14px'
-        }}>
-          Client Management System
-        </p>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            fontWeight: '700',
+            color: '#0d47a1',
+            boxShadow: '0 4px 6px -1px rgba(251, 191, 36, 0.4)'
+          }}>
+            DG
+          </div>
+          <div>
+            <h2 style={{ 
+              margin: '0 0 4px 0',
+              fontSize: '20px',
+              fontWeight: '600',
+              letterSpacing: '0.5px'
+            }}>
+              DG-CRM
+            </h2>
+            <p style={{ 
+              margin: 0,
+              opacity: 0.8,
+              fontSize: '12px',
+              fontWeight: '400'
+            }}>
+              Discover Group
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Navigation Menu */}
-      <div style={{ marginBottom: '30px' }}>
+      <div style={{ marginBottom: '24px' }}>
         <h3 style={{
-          margin: '0 0 15px 0',
-          fontSize: '16px',
-          fontWeight: '500',
-          opacity: 0.9
+          margin: '0 0 16px 0',
+          fontSize: '13px',
+          fontWeight: '600',
+          opacity: 0.7,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
         }}>
           Navigation
         </h3>
@@ -52,55 +85,177 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords }) => {
           onClick={onNavigateToClientRecords}
           style={{
             width: '100%',
-            padding: '15px',
-            backgroundColor: '#3498db',
+            padding: '14px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
             color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '15px',
             fontWeight: '500',
             cursor: 'pointer',
-            marginBottom: '10px',
-            transition: 'all 0.3s ease',
+            marginBottom: '8px',
+            transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
+            gap: '12px',
+            backdropFilter: 'blur(10px)'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#2980b9';
-            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = '#3498db';
-            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
           }}
         >
-          <span style={{ fontSize: '18px' }}>📋</span>
-          Client Dashboard
+          <span style={{ fontSize: '20px' }}>📋</span>
+          <span>Client Dashboard</span>
+        </button>
+
+        {/* User Profile Button */}
+        <button
+          onClick={onNavigateToProfile}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '8px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>👤</span>
+          <span>My Profile</span>
+        </button>
+
+        {/* Deleted Clients Button */}
+        <button
+          onClick={onNavigateToDeleted}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '8px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>🗑️</span>
+          <span>Deleted Clients</span>
+        </button>
+
+        {/* Activity Log Button */}
+        <button
+          onClick={onNavigateToActivityLog}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '8px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>📋</span>
+          <span>Activity Log</span>
         </button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Actions */}
       <div style={{
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.08)',
         padding: '20px',
-        borderRadius: '10px',
-        marginBottom: '20px'
+        borderRadius: '12px',
+        marginBottom: '24px',
+        border: '1px solid rgba(255,255,255,0.1)'
       }}>
         <h4 style={{
-          margin: '0 0 15px 0',
-          fontSize: '14px',
-          fontWeight: '500',
-          opacity: 0.9
+          margin: '0 0 16px 0',
+          fontSize: '13px',
+          fontWeight: '600',
+          opacity: 0.9,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
         }}>
           Quick Actions
         </h4>
-        <div style={{ fontSize: '14px', opacity: 0.8, lineHeight: '1.6' }}>
-          <div style={{ marginBottom: '8px' }}>✓ Create new client forms</div>
-          <div style={{ marginBottom: '8px' }}>✓ View all client records</div>
-          <div style={{ marginBottom: '8px' }}>✓ Search and filter clients</div>
-          <div>✓ Manage client documents</div>
+        <div style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.8' }}>
+          <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>Create new clients</span>
+          </div>
+          <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>View client records</span>
+          </div>
+          <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>Search & filter</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: '#10b981' }}>✓</span>
+            <span>Manage documents</span>
+          </div>
         </div>
       </div>
 
@@ -108,13 +263,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords }) => {
       <div style={{
         position: 'absolute',
         bottom: '20px',
-        left: '20px',
-        right: '20px',
+        left: '24px',
+        right: '24px',
         textAlign: 'center',
-        fontSize: '12px',
-        opacity: 0.6
+        fontSize: '11px',
+        opacity: 0.5,
+        padding: '16px',
+        borderTop: '1px solid rgba(255,255,255,0.1)'
       }}>
-        CRM System v1.0
+        <div>DG-CRM System v1.0</div>
+        <div style={{ marginTop: '4px', fontSize: '10px' }}>© 2026 Discover Group</div>
       </div>
     </div>
   );

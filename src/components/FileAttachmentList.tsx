@@ -18,15 +18,27 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
   onFileDeleted
 }) => {
   const [selectedFile, setSelectedFile] = useState<StoredFile | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
   const handleFileClick = (file: StoredFile) => {
     setSelectedFile(file);
   };
 
-  const handleFileDelete = (fileId: string) => {
+  const handleFileDelete = async (fileId: string) => {
     if (window.confirm('Are you sure you want to delete this file?')) {
-      if (FileService.deleteFile(fileId)) {
-        onFileDeleted?.(fileId);
+      setDeletingFileId(fileId);
+      try {
+        const success = await FileService.deleteFile(fileId);
+        if (success) {
+          onFileDeleted?.(fileId);
+        } else {
+          alert('Failed to delete file. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Error deleting file. Please try again.');
+      } finally {
+        setDeletingFileId(null);
       }
     }
   };
@@ -215,26 +227,28 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
                   e.stopPropagation();
                   handleFileDelete(attachment.file.id);
                 }}
+                disabled={deletingFileId === attachment.file.id}
                 style={{
                   position: 'absolute',
                   top: '8px',
                   left: '8px',
                   padding: '4px',
-                  backgroundColor: '#dc3545',
+                  backgroundColor: deletingFileId === attachment.file.id ? '#6c757d' : '#dc3545',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer',
+                  cursor: deletingFileId === attachment.file.id ? 'not-allowed' : 'pointer',
                   fontSize: '12px',
                   width: '20px',
                   height: '20px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'center',
+                  opacity: deletingFileId === attachment.file.id ? 0.6 : 1
                 }}
-                title="Delete file"
+                title={deletingFileId === attachment.file.id ? 'Deleting...' : 'Delete file'}
               >
-                ×
+                {deletingFileId === attachment.file.id ? '⏳' : '×'}
               </button>
             )}
           </div>

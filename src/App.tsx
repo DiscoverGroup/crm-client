@@ -51,26 +51,102 @@ const App: React.FC = () => {
     localStorage.removeItem('crm_auth');
   };
 
-  // These handlers should call your backend API
+  // Handle user login with validation
   const handleLogin = (username: string, password: string) => {
-    // TODO: API call here
-    // use the password parameter (kept for API call) to avoid unused variable errors
-    void password;
-    // store the current user so `username` is used
-    setCurrentUser(username);
-    setIsLoggedIn(true);
-    saveAuthState(true, username);
+    // Validate input fields
+    if (!username.trim() || !password.trim()) {
+      alert("Please enter both username and password");
+      return;
+    }
+
+    // Get registered users from localStorage
+    const registeredUsers = localStorage.getItem('crm_users');
+    
+    if (!registeredUsers) {
+      alert("No registered users found. Please sign up first.");
+      return;
+    }
+
+    try {
+      const users = JSON.parse(registeredUsers);
+      
+      // Find user by email (username field contains email from login form)
+      const user = users.find((u: any) => 
+        (u.email === username || u.username === username) && u.password === password
+      );
+
+      if (user) {
+        // Login successful
+        setCurrentUser(user.fullName || user.username);
+        setIsLoggedIn(true);
+        saveAuthState(true, user.fullName || user.username);
+      } else {
+        alert("Invalid email/username or password. Please try again or sign up.");
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+      alert("An error occurred. Please try again.");
+    }
   };
 
-  const handleRegister = (form: { username: string; email: string; password: string; fullName: string }) => {
-    // TODO: API call here
-    // use the form parameter (kept for API call) to avoid unused variable errors
-    void form;
-    alert("Registration successful!");
-    // Automatically log in after successful registration
-    setCurrentUser(form.username);
-    setIsLoggedIn(true);
-    saveAuthState(true, form.username);
+  const handleRegister = (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => {
+    // Validate all required fields
+    if (!form.fullName.trim() || !form.username.trim() || !form.email.trim() || !form.password.trim() || !form.department.trim() || !form.position.trim()) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
+    // Get existing users from localStorage
+    const existingUsers = localStorage.getItem('crm_users');
+    let users = [];
+    
+    if (existingUsers) {
+      try {
+        users = JSON.parse(existingUsers);
+      } catch (error) {
+        console.error('Error parsing existing users:', error);
+      }
+    }
+
+    // Check if email or username already exists
+    const emailExists = users.some((u: any) => u.email === form.email);
+    const usernameExists = users.some((u: any) => u.username === form.username);
+
+    if (emailExists) {
+      alert("This email is already registered. Please login or use a different email.");
+      return;
+    }
+
+    if (usernameExists) {
+      alert("This username is already taken. Please choose a different username.");
+      return;
+    }
+
+    // Add new user
+    const newUser = {
+      fullName: form.fullName,
+      username: form.username,
+      email: form.email,
+      password: form.password, // In production, this should be hashed!
+      department: form.department,
+      position: form.position,
+      registeredAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    localStorage.setItem('crm_users', JSON.stringify(users));
+
+    alert("Registration successful! Please login with your credentials.");
+    
+    // Return true to indicate successful registration
+    return true;
   };
 
   // Show loading spinner while checking authentication
@@ -103,7 +179,13 @@ const App: React.FC = () => {
       />
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
-          <MainPage />
+          <MainPage 
+            currentUser={currentUser || ''}
+            onUpdateUser={(newFullName) => {
+              setCurrentUser(newFullName);
+              saveAuthState(true, newFullName);
+            }}
+          />
         ) : (
           <AuthContainer onLogin={handleLogin} onRegister={handleRegister} />
         )}

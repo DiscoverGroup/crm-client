@@ -8,20 +8,35 @@ interface FileViewerProps {
 
 const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
   const handleDownload = () => {
-    const downloadUrl = FileService.createDownloadUrl(file);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = file.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // For R2 files, the data is already a URL
+    if (file.isR2) {
+      const link = document.createElement('a');
+      link.href = file.data;
+      link.download = file.name;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // For base64 files, use the old method
+      const downloadUrl = FileService.createDownloadUrl(file);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const renderFilePreview = () => {
+    const fileUrl = file.isR2 ? file.data : file.data;
+    
     if (file.type.startsWith('image/')) {
       return (
         <img
-          src={file.data}
+          src={fileUrl}
           alt={file.name}
           style={{
             maxWidth: '100%',
@@ -35,7 +50,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
     } else if (file.type === 'application/pdf') {
       return (
         <iframe
-          src={file.data}
+          src={fileUrl}
           style={{
             width: '100%',
             height: '60vh',
@@ -74,6 +89,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
             fontSize: '14px'
           }}>
             Preview not available for this file type
+            {file.isR2 && <span style={{ display: 'block', marginTop: '8px' }}>📦 Stored in R2</span>}
           </p>
           <button
             onClick={handleDownload}
@@ -144,6 +160,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
               <span>Size: {FileService.formatFileSize(file.size)}</span>
               <span>Type: {file.type}</span>
               <span>Uploaded: {new Date(file.uploadDate).toLocaleDateString()}</span>
+              {file.isR2 && <span style={{ color: '#28a745', fontWeight: '500' }}>📦 R2 Storage</span>}
             </div>
           </div>
           <button
