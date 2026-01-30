@@ -156,7 +156,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
             zIndex: 2
           }}>
             <img 
-              src="/logo.png" 
+              src="/DG.jpg" 
               alt="Discover Group Logo" 
               style={{
                 width: '55px',

@@ -21,7 +21,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout }) =>
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
       <img 
-        src="/logo.png" 
+        src="/DG.jpg" 
         alt="Discover Group Logo" 
         style={{
           width: "45px",

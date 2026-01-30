@@ -32,7 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
           marginBottom: '8px'
         }}>
           <img 
-            src="/logo.png" 
+            src="/DG.jpg" 
             alt="Discover Group Logo" 
             style={{
               width: '50px',
