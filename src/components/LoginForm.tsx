@@ -18,16 +18,35 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     onLogin(email, password);
   };
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) {
       alert('Please enter your email address');
       return;
     }
-    // In a real app, this would send a password reset email
-    alert(`Password reset link has been sent to ${resetEmail}\n\nNote: This is a demo app. In production, this would send an actual email.`);
-    setShowForgotPassword(false);
-    setResetEmail('');
+
+    try {
+      const response = await fetch('/.netlify/functions/send-reset-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: resetEmail })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`Password reset email sent to ${resetEmail}!\n\nPlease check your inbox and follow the instructions.`);
+        setShowForgotPassword(false);
+        setResetEmail('');
+      } else {
+        alert('Failed to send reset email. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending reset email:', error);
+      alert('An error occurred. Please try again later.');
+    }
   };
 
   return (
