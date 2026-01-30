@@ -137,6 +137,7 @@ const App: React.FC = () => {
       password: form.password, // In production, this should be hashed!
       department: form.department,
       position: form.position,
+      profileImage: form.profileImage || '',
       registeredAt: new Date().toISOString()
     };
 

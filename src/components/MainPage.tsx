@@ -603,13 +603,56 @@ const ClientRecords: React.FC<{
   const handleSavePackageInfo = async () => {
     setIsSavingPackage(true);
     try {
-      // Simulate saving package & companions info
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Ensure we have a clientNo (required for saving)
+      if (!clientNo) {
+        alert('Please save client information first before saving package details.');
+        return;
+      }
+
+      // Ensure we have a clientId
+      if (!clientId) {
+        alert('Client ID not found. Please save client information first.');
+        return;
+      }
+
+      // Get the existing client data
+      const existingClient = ClientService.getClientById(clientId);
+      if (!existingClient) {
+        alert('Client not found. Please save client information first.');
+        return;
+      }
+
+      // Update client with package information
+      const clientData = {
+        ...existingClient,
+        packageName,
+        travelDate,
+        numberOfPax,
+        bookingConfirmation,
+        packageLink,
+        companions: companions
+      };
+
+      // Save to ClientService
+      await ClientService.saveClient(clientData);
+
+      // Log activity
+      ActivityLogService.addLog({
+        clientId: clientId || currentClientId,
+        clientName: contactName || 'Unknown',
+        action: 'edited',
+        performedBy: currentUserName,
+        performedByUser: currentUserName,
+        details: `Package & travel information updated`
+      });
       
       // Save section changes to log
       saveSection('package-information', 'Package & Companions');
       
       alert('Package & companions information saved successfully!');
+      
+      // Trigger client list refresh
+      window.dispatchEvent(new Event('clientDataUpdated'));
     } catch (error) {
       console.error('Error saving package info:', error);
       logSectionAction(

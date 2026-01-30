@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { uploadFileToR2 } from '../services/r2UploadService';
 
 interface UserProfileProps {
   currentUser: string;
@@ -13,6 +14,7 @@ interface UserData {
   department: string;
   position: string;
   password?: string;
+  profileImage?: string;
 }
 
 const departmentPositions: Record<string, string[]> = {
@@ -75,19 +77,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     username: '',
     email: '',
     department: '',
-    position: ''
+    position: '',
+    profileImage: ''
   });
   const [originalData, setOriginalData] = useState<UserData>({
     fullName: '',
     username: '',
     email: '',
     department: '',
-    position: ''
+    position: '',
+    profileImage: ''
   });
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     // Load user data from localStorage
@@ -101,7 +106,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           username: user.username,
           email: user.email,
           department: user.department || '',
-          position: user.position || ''
+          position: user.position || '',
+          profileImage: user.profileImage || ''
         };
         setUserData(data);
         setOriginalData(data);
@@ -116,6 +122,32 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
       department: newDept,
       position: '' // Reset position when department changes
     }));
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+      const result = await uploadFileToR2(file, bucket, 'profile-images');
+      
+      if (result.success && result.url) {
+        setUserData(prev => ({
+          ...prev,
+          profileImage: result.url
+        }));
+        alert('Profile image uploaded successfully!');
+      } else {
+        alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      alert('Error uploading profile image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = () => {
@@ -145,6 +177,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           email: userData.email,
           department: userData.department,
           position: userData.position,
+          profileImage: userData.profileImage,
           ...(newPassword && { password: newPassword })
         };
 
@@ -255,21 +288,36 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           paddingBottom: '30px',
           borderBottom: '2px solid #e9ecef'
         }}>
-          <div style={{
-            width: '100px',
-            height: '100px',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '48px',
-            fontWeight: '700',
-            color: '#0d47a1',
-            boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)'
-          }}>
-            {userData.fullName.charAt(0).toUpperCase()}
-          </div>
+          {userData.profileImage ? (
+            <img 
+              src={userData.profileImage}
+              alt={userData.fullName}
+              style={{
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                boxShadow: '0 4px 12px rgba(13, 71, 161, 0.4)',
+                border: '4px solid #fbbf24'
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '100px',
+              height: '100px',
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '48px',
+              fontWeight: '700',
+              color: '#0d47a1',
+              boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)'
+            }}>
+              {userData.fullName.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div>
             <h2 style={{ margin: '0 0 5px 0', color: '#2c3e50', fontSize: '24px' }}>
               {userData.fullName}
@@ -280,6 +328,30 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
             <p style={{ margin: 0, color: '#6c757d', fontSize: '14px' }}>
               📧 {userData.email}
             </p>
+            {isEditing && (
+              <div style={{ marginTop: '12px' }}>
+                <label style={{
+                  display: 'inline-block',
+                  padding: '8px 16px',
+                  background: '#0d47a1',
+                  color: 'white',
+                  borderRadius: '6px',
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  opacity: uploading ? 0.6 : 1
+                }}>
+                  {uploading ? 'Uploading...' : '📷 Change Profile Image'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfileImageUpload}
+                    disabled={uploading || !isEditing}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

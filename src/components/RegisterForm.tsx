@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { uploadFileToR2 } from '../services/r2UploadService';
 
 interface RegisterFormProps {
   onRegister: (form: { 
@@ -8,6 +9,7 @@ interface RegisterFormProps {
     fullName: string;
     department: string;
     position: string;
+    profileImage?: string;
   }) => void;
   onSignIn?: () => void;
 }
@@ -76,11 +78,36 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
   const [position, setPosition] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [profileImage, setProfileImage] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedDept = e.target.value;
     setDepartment(selectedDept);
     setPosition(""); // Reset position when department changes
+  };
+
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+      const result = await uploadFileToR2(file, bucket, 'profile-images');
+      
+      if (result.success && result.url) {
+        setProfileImage(result.url);
+        alert('Profile image uploaded successfully!');
+      } else {
+        alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      alert('Error uploading profile image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,7 +124,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       alert("Please select a position.");
       return;
     }
-    onRegister({ username, email, password, fullName, department, position });
+    onRegister({ username, email, password, fullName, department, position, profileImage });
   };
 
   return (
@@ -367,7 +394,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
           </select>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '12px' }}>
           <select
             value={position}
             required
@@ -404,6 +431,57 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
               <option key={pos} value={pos}>{pos}</option>
             ))}
           </select>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151'
+          }}>
+            Profile Image (Optional)
+          </label>
+          {profileImage && (
+            <div style={{ marginBottom: '12px', textAlign: 'center' }}>
+              <img 
+                src={profileImage} 
+                alt="Profile Preview" 
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '3px solid #1e7bb8'
+                }}
+              />
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleProfileImageUpload}
+            disabled={uploading}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              border: '2px solid #e5e7eb',
+              borderRadius: '10px',
+              fontSize: '14px',
+              backgroundColor: '#f9fafb',
+              boxSizing: 'border-box',
+              outline: 'none',
+              transition: 'all 0.2s ease',
+              color: '#1f2937',
+              cursor: uploading ? 'not-allowed' : 'pointer'
+            }}
+          />
+          {uploading && (
+            <p style={{ fontSize: '12px', color: '#1e7bb8', marginTop: '8px' }}>
+              Uploading image...
+            </p>
+          )}
         </div>
 
         <button 
