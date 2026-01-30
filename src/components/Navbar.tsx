@@ -20,21 +20,15 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout }) =>
     zIndex: 999
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-      <div style={{
-        width: "40px",
-        height: "40px",
-        background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-        borderRadius: "10px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "20px",
-        fontWeight: "700",
-        color: "#0d47a1",
-        boxShadow: "0 4px 6px -1px rgba(251, 191, 36, 0.4)"
-      }}>
-        DG
-      </div>
+      <img 
+        src="/logo.png" 
+        alt="Discover Group Logo" 
+        style={{
+          width: "45px",
+          height: "45px",
+          objectFit: "contain"
+        }}
+      />
       <div>
         <h1 style={{ 
           margin: 0,

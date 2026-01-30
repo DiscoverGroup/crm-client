@@ -31,21 +31,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
           gap: '12px',
           marginBottom: '8px'
         }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            fontWeight: '700',
-            color: '#0d47a1',
-            boxShadow: '0 4px 6px -1px rgba(251, 191, 36, 0.4)'
-          }}>
-            DG
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="Discover Group Logo" 
+            style={{
+              width: '50px',
+              height: '50px',
+              objectFit: 'contain'
+            }}
+          />
           <div>
             <h2 style={{ 
               margin: '0 0 4px 0',

@@ -8,11 +8,25 @@ interface LoginFormProps {
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin(email, password);
+  };
+
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      alert('Please enter your email address');
+      return;
+    }
+    // In a real app, this would send a password reset email
+    alert(`Password reset link has been sent to ${resetEmail}\n\nNote: This is a demo app. In production, this would send an actual email.`);
+    setShowForgotPassword(false);
+    setResetEmail('');
   };
 
   return (
@@ -109,20 +123,46 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               e.currentTarget.style.backgroundColor = '#f9fafb';
             }}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            style={{
+              position: 'absolute',
+              right: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '20px',
+              padding: '4px 8px',
+              color: '#6b7280'
+            }}
+          >
+            {showPassword ? '👁️' : '👁️‍🗨️'}
+          </button>
         </div>
 
         <div style={{
           textAlign: 'right',
           marginBottom: '24px'
         }}>
-          <a href="#" style={{
-            color: '#1e7bb8',
-            textDecoration: 'none',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
+          <button
+            type="button"
+            onClick={() => setShowForgotPassword(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#1e7bb8',
+              textDecoration: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              padding: 0
+            }}
+          >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         <button 
@@ -154,6 +194,108 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           Sign In
         </button>
       </form>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '420px',
+            width: '90%',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h2 style={{
+              margin: '0 0 12px 0',
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#0d47a1'
+            }}>
+              Reset Password
+            </h2>
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '14px',
+              color: '#6b7280'
+            }}>
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            <form onSubmit={handleForgotPassword}>
+              <input
+                type="email"
+                placeholder="Email Address"
+                value={resetEmail}
+                required
+                onChange={e => setResetEmail(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '10px',
+                  fontSize: '15px',
+                  backgroundColor: '#f9fafb',
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  marginBottom: '20px',
+                  color: '#1f2937'
+                }}
+              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmail('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Send Link
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
