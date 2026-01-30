@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogNoteService } from '../services/logNoteService';
+import { ActivityLogService } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
 
 interface LogNoteComponentProps {
@@ -59,6 +60,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     const notes = LogNoteService.getLogNotes(clientId);
     setLogNotes(notes);
   }, [clientId]);
+
+  // Get activity logs for this client
+  const activityLogs = ActivityLogService.getLogsByClient(clientId);
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;
@@ -282,7 +286,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             fontSize: '11px',
             fontWeight: '500'
           }}>
-            {logNotes.length}
+            {logNotes.length + activityLogs.length}
           </span>
         </div>
         
@@ -303,7 +307,75 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
       {/* Log Notes List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {logNotes.length === 0 ? (
+        {/* Activity Logs (automatic) */}
+        {activityLogs.map((log) => (
+          <div key={log.id} style={{
+            background: '#f8fafc',
+            borderRadius: '8px',
+            padding: '12px',
+            border: '1px solid #e2e8f0',
+            borderLeft: '3px solid #3b82f6'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px'
+            }}>
+              <div style={{
+                fontSize: '18px',
+                marginTop: '2px'
+              }}>
+                {log.action === 'created' && '✨'}
+                {log.action === 'edited' && '✏️'}
+                {log.action === 'deleted' && '🗑️'}
+                {log.action === 'recovered' && '♻️'}
+                {log.action === 'permanently_deleted' && '⚠️'}
+                {log.action === 'file_uploaded' && '📎'}
+                {log.action === 'file_deleted' && '🗑️'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '4px'
+                }}>
+                  <span style={{
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    color: '#1e293b',
+                    textTransform: 'capitalize'
+                  }}>
+                    {log.action.replace('_', ' ')}
+                  </span>
+                  <span style={{
+                    fontSize: '11px',
+                    color: '#64748b'
+                  }}>
+                    {formatTimestamp(new Date(log.timestamp))}
+                  </span>
+                </div>
+                <p style={{
+                  fontSize: '12px',
+                  color: '#475569',
+                  margin: '4px 0',
+                  lineHeight: '1.4'
+                }}>
+                  {log.details}
+                </p>
+                <div style={{
+                  fontSize: '11px',
+                  color: '#64748b'
+                }}>
+                  by {log.performedByUser}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Manual Comments */}
+        {logNotes.length === 0 && activityLogs.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '24px 16px',
