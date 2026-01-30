@@ -225,15 +225,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999
+          zIndex: 9999,
+          padding: '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '16px',
             padding: '32px',
-            maxWidth: '420px',
-            width: '90%',
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+            maxWidth: '400px',
+            width: '100%',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            maxHeight: '90vh',
+            overflow: 'auto'
           }}>
             <h2 style={{
               margin: '0 0 12px 0',
