@@ -144,9 +144,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </div>
 
         <div style={{
-          textAlign: 'right',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: '24px'
         }}>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            fontSize: '14px',
+            color: '#6b7280',
+            cursor: 'pointer'
+          }}>
+            <input
+              type="checkbox"
+              style={{
+                marginRight: '8px',
+                cursor: 'pointer'
+              }}
+            />
+            Remember me
+          </label>
           <button
             type="button"
             onClick={() => setShowForgotPassword(true)}
