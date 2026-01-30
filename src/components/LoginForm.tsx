@@ -221,13 +221,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 99999,
           padding: '20px'
-        }}>
+        }} onClick={() => setShowForgotPassword(false)}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '16px',
@@ -237,7 +237,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
             maxHeight: '90vh',
             overflow: 'auto'
-          }}>
+          }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{
               margin: '0 0 12px 0',
               fontSize: '24px',
