@@ -1444,11 +1444,40 @@ const ClientRecords: React.FC<{
                             onChange={e => handlePaymentDetailChange(idx, "depositSlip", e)}
                             style={{ fontSize: "14px" }}
                           />
-                          {detail.depositSlip && (
-                            <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                              ✓ {detail.depositSlip.name}
-                            </div>
-                          )}
+                          {(() => {
+                            const uploadedFile = attachments.find(att => 
+                              att.category === 'deposit-slip' && 
+                              att.paymentIndex === idx && 
+                              att.source === 'payment-terms'
+                            );
+                            if (uploadedFile) {
+                              return (
+                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: "12px", color: "#059669" }}>
+                                    ✓ {uploadedFile.file.name}
+                                  </span>
+                                  <a
+                                    href={uploadedFile.file.data}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download={uploadedFile.file.name}
+                                    style={{
+                                      fontSize: "12px",
+                                      color: "#3b82f6",
+                                      textDecoration: "none",
+                                      padding: "4px 8px",
+                                      border: "1px solid #3b82f6",
+                                      borderRadius: "4px",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    Download
+                                  </a>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
                           <input
@@ -1457,11 +1486,40 @@ const ClientRecords: React.FC<{
                             onChange={e => handlePaymentDetailChange(idx, "receipt", e)}
                             style={{ fontSize: "14px" }}
                           />
-                          {detail.receipt && (
-                            <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                              ✓ {detail.receipt.name}
-                            </div>
-                          )}
+                          {(() => {
+                            const uploadedFile = attachments.find(att => 
+                              att.category === 'receipt' && 
+                              att.paymentIndex === idx && 
+                              att.source === 'payment-terms'
+                            );
+                            if (uploadedFile) {
+                              return (
+                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: "12px", color: "#059669" }}>
+                                    ✓ {uploadedFile.file.name}
+                                  </span>
+                                  <a
+                                    href={uploadedFile.file.data}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    download={uploadedFile.file.name}
+                                    style={{
+                                      fontSize: "12px",
+                                      color: "#3b82f6",
+                                      textDecoration: "none",
+                                      padding: "4px 8px",
+                                      border: "1px solid #3b82f6",
+                                      borderRadius: "4px",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    Download
+                                  </a>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </td>
                       </tr>
                     ))}
