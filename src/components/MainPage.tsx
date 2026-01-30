@@ -168,6 +168,30 @@ const ClientRecords: React.FC<{
     onLogAdded: () => setLogRefreshKey(prev => prev + 1)
   });
 
+  // Load existing client data if clientId is provided
+  useEffect(() => {
+    if (clientId) {
+      const existingClient = ClientService.getClientById(clientId);
+      if (existingClient) {
+        setClientNo(existingClient.clientNo || '');
+        setStatus(existingClient.status || 'Active');
+        setAgent(existingClient.agent || '');
+        setContactNo(existingClient.contactNo || '');
+        setContactName(existingClient.contactName || '');
+        setEmail(existingClient.email || '');
+        setDateOfBirth(existingClient.dateOfBirth || '');
+        setPackageName(existingClient.packageName || '');
+        setTravelDate(existingClient.travelDate || '');
+        setNumberOfPax(existingClient.numberOfPax || 1);
+        setBookingConfirmation(existingClient.bookingConfirmation || '');
+        setPackageLink(existingClient.packageLink || '');
+        if (existingClient.companions) {
+          setCompanions(existingClient.companions);
+        }
+      }
+    }
+  }, [clientId]);
+
   // Enhanced setters with section tracking
   const setClientNoTracked = (value: string) => {
     trackSectionField('client-information', 'clientNo', value, 'Client Number');
