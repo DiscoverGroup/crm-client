@@ -398,7 +398,7 @@ const ClientRecords: React.FC<{
         // Save file to FileService with client ID (real or temporary)
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms");
+        await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms", currentUserName);
         
         // Log the file attachment
         logAttachment(
@@ -657,7 +657,7 @@ const ClientRecords: React.FC<{
         // Save file to FileService with client ID for visa payments
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "visa-service");
+        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "visa-service", currentUserName);
         
         // Log the file attachment
         logAttachment(
@@ -729,7 +729,7 @@ const ClientRecords: React.FC<{
       try {
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "insurance-service");
+        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "insurance-service", currentUserName);
         
         // Log the file attachment
         logAttachment(
@@ -796,7 +796,7 @@ const ClientRecords: React.FC<{
       try {
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "eta-service");
+        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "eta-service", currentUserName);
         
         // Log the file attachment
         logAttachment(

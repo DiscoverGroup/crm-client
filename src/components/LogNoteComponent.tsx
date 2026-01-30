@@ -57,37 +57,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   // Load log notes
   useEffect(() => {
     const notes = LogNoteService.getLogNotes(clientId);
-    
-    // Add some sample log notes for testing if none exist
-    if (notes.length === 0 && clientId && clientId !== '') {
-      // Add a sample log note to test the dropdown
-      LogNoteService.addLogNote(
-        clientId,
-        currentUserId,
-        currentUserName,
-        'manual',
-        'Sample Comment',
-        'This is a sample comment to test the status dropdown functionality.',
-        'pending'
-      );
-      
-      LogNoteService.addLogNote(
-        clientId,
-        currentUserId,
-        currentUserName,
-        'auto',
-        'Status Update',
-        'Automatically generated status update.',
-        'done'
-      );
-      
-      // Reload notes after adding samples
-      const updatedNotes = LogNoteService.getLogNotes(clientId);
-      setLogNotes(updatedNotes);
-    } else {
-      setLogNotes(notes);
-    }
-  }, [clientId, currentUserId, currentUserName]);
+    setLogNotes(notes);
+  }, [clientId]);
 
   const handleAddComment = () => {
     if (!newComment.trim()) return;

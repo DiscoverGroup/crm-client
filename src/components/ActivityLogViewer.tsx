@@ -41,6 +41,8 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
       case 'deleted': return '#dc3545';
       case 'recovered': return '#17a2b8';
       case 'permanently_deleted': return '#6c757d';
+      case 'file_uploaded': return '#007bff';
+      case 'file_deleted': return '#fd7e14';
       default: return '#6c757d';
     }
   };
@@ -52,6 +54,8 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
       case 'deleted': return '🗑️';
       case 'recovered': return '♻️';
       case 'permanently_deleted': return '⚠️';
+      case 'file_uploaded': return '📎';
+      case 'file_deleted': return '🗑️';
       default: return '📝';
     }
   };
@@ -124,6 +128,8 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             <option value="deleted">Deleted</option>
             <option value="recovered">Recovered</option>
             <option value="permanently_deleted">Permanently Deleted</option>
+            <option value="file_uploaded">File Uploaded</option>
+            <option value="file_deleted">File Deleted</option>
           </select>
         </div>
       </div>

@@ -4,7 +4,7 @@ export interface ActivityLog {
   id: string;
   clientId: string;
   clientName: string;
-  action: 'created' | 'edited' | 'deleted' | 'recovered' | 'permanently_deleted';
+  action: 'created' | 'edited' | 'deleted' | 'recovered' | 'permanently_deleted' | 'file_uploaded' | 'file_deleted';
   performedBy: string;
   performedByUser: string; // Full name
   timestamp: string;

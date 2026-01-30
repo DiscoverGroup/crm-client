@@ -1,4 +1,6 @@
 import { uploadFileToR2, deleteFileFromR2 } from './r2UploadService';
+import { ActivityLogService } from './activityLogService';
+import { ClientService } from './clientService';
 
 export interface StoredFile {
   name: string;
@@ -81,7 +83,8 @@ export class FileService {
     clientId?: string,
     paymentIndex?: number, 
     paymentType?: FileAttachment['paymentType'],
-    source?: FileAttachment['source']
+    source?: FileAttachment['source'],
+    currentUser?: string
   ): Promise<string> {
     try {
       // Determine folder based on category
@@ -101,6 +104,20 @@ export class FileService {
       existingAttachments.push(attachment);
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
+      
+      // Log file upload activity if clientId exists
+      if (clientId && currentUser) {
+        const client = ClientService.getClientById(clientId);
+        ActivityLogService.addLog({
+          clientId,
+          clientName: client?.contactName || 'Unknown',
+          action: 'file_uploaded',
+          performedBy: currentUser,
+          performedByUser: currentUser,
+          details: `Uploaded file: ${file.name} (${category}${source ? ' - ' + source : ''})`
+        });
+      }
+      
       return storedFile.id;
     } catch (error) {
       console.error('Error saving file attachment:', error);
@@ -163,7 +180,7 @@ export class FileService {
   }
 
   // Delete file by ID with R2 cleanup
-  static async deleteFile(fileId: string): Promise<boolean> {
+  static async deleteFile(fileId: string, currentUser?: string): Promise<boolean> {
     try {
       const attachments = this.getAllFileAttachments();
       const attachment = attachments.find(att => att.file.id === fileId);
@@ -180,6 +197,20 @@ export class FileService {
       
       const filteredAttachments = attachments.filter(att => att.file.id !== fileId);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
+      
+      // Log file deletion activity if clientId exists
+      if (attachment && attachment.clientId && currentUser) {
+        const client = ClientService.getClientById(attachment.clientId);
+        ActivityLogService.addLog({
+          clientId: attachment.clientId,
+          clientName: client?.contactName || 'Unknown',
+          action: 'file_deleted',
+          performedBy: currentUser,
+          performedByUser: currentUser,
+          details: `Deleted file: ${attachment.file.name}`
+        });
+      }
+      
       return true;
     } catch (error) {
       console.error('Error deleting file:', error);
