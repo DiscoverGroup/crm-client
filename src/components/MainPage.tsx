@@ -557,6 +557,11 @@ const ClientRecords: React.FC<{
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
+      
+      // Navigate back to client list after saving
+      if (onNavigateBack) {
+        setTimeout(() => onNavigateBack(), 500);
+      }
     } catch (error) {
       console.error('Error saving client info:', error);
       logSectionAction(
@@ -2486,6 +2491,17 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
 
   useEffect(() => {
     loadClients();
+    
+    // Listen for client data updates
+    const handleClientUpdate = () => {
+      loadClients();
+    };
+    
+    window.addEventListener('clientDataUpdated', handleClientUpdate);
+    
+    return () => {
+      window.removeEventListener('clientDataUpdated', handleClientUpdate);
+    };
   }, [loadClients]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
