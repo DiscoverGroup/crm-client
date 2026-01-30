@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 
 interface LoginFormProps {
   onLogin: (username: string, password: string) => void;
@@ -213,8 +214,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </button>
       </form>
 
-      {/* Forgot Password Modal */}
-      {showForgotPassword && (
+      {/* Forgot Password Modal - Rendered using Portal */}
+      {showForgotPassword && createPortal(
         <div style={{
           position: 'fixed',
           top: 0,
@@ -315,7 +316,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
