@@ -243,11 +243,11 @@ const MainPage: React.FC = () => {
         alert('Client information updated successfully!');
       } else {
         // Create new client
-        const clientId = await ClientService.saveClient(clientData);
+        const { clientId: savedClientId } = await ClientService.saveClient(clientData);
         alert('Client information saved successfully!');
         
         // Load the newly created client
-        const newClient = ClientService.getClientById(clientId);
+        const newClient = ClientService.getClientById(savedClientId);
         if (newClient) {
           setSelectedClient(newClient);
           setIsNewClient(false);
@@ -362,6 +362,9 @@ const MainPage: React.FC = () => {
       {/* Sidebar */}
       <Sidebar
         onNavigateToClientRecords={handleNavigateToClientRecords}
+        onNavigateToProfile={() => {}}
+        onNavigateToDeleted={() => {}}
+        onNavigateToActivityLog={() => {}}
       />
       
       {/* Main Content */}

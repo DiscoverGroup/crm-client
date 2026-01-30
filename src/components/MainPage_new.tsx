@@ -129,6 +129,9 @@ const MainPage: React.FC = () => {
         <div style={{ display: 'flex' }}>
           <Sidebar
             onNavigateToClientRecords={handleNavigateToClientRecords}
+            onNavigateToProfile={() => {}}
+            onNavigateToDeleted={() => {}}
+            onNavigateToActivityLog={() => {}}
           />
           <div style={{
             marginLeft: '300px',
