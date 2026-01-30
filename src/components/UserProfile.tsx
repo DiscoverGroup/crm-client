@@ -138,11 +138,29 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
       console.log('Upload result:', result);
       
       if (result.success && result.url) {
-        setUserData(prev => ({
-          ...prev,
+        const updatedUserData = {
+          ...userData,
           profileImage: result.url
-        }));
-        alert('Profile image uploaded successfully! URL: ' + result.url);
+        };
+        setUserData(updatedUserData);
+
+        // Automatically save to localStorage
+        const users = localStorage.getItem('crm_users');
+        if (users) {
+          const userList = JSON.parse(users);
+          const userIndex = userList.findIndex((u: any) => u.fullName === currentUser);
+          
+          if (userIndex !== -1) {
+            userList[userIndex] = {
+              ...userList[userIndex],
+              profileImage: result.url
+            };
+            localStorage.setItem('crm_users', JSON.stringify(userList));
+            setOriginalData(updatedUserData);
+          }
+        }
+        
+        alert('Profile image uploaded and saved successfully!');
       } else {
         console.error('Upload failed:', result.error);
         alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
