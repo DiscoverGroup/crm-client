@@ -128,23 +128,28 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     const file = e.target.files?.[0];
     if (!file) return;
 
+    console.log('Profile image selected:', file.name, file.type, file.size);
     setUploading(true);
     try {
       const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+      console.log('Uploading to bucket:', bucket, 'folder: profile-images');
       const result = await uploadFileToR2(file, bucket, 'profile-images');
+      
+      console.log('Upload result:', result);
       
       if (result.success && result.url) {
         setUserData(prev => ({
           ...prev,
           profileImage: result.url
         }));
-        alert('Profile image uploaded successfully!');
+        alert('Profile image uploaded successfully! URL: ' + result.url);
       } else {
+        console.error('Upload failed:', result.error);
         alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      alert('Error uploading profile image');
+      alert('Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setUploading(false);
     }
