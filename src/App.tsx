@@ -89,7 +89,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRegister = (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => {
+  const handleRegister = (form: { username: string; email: string; password: string; fullName: string; department: string; position: string; profileImage?: string }) => {
     // Validate all required fields
     if (!form.fullName.trim() || !form.username.trim() || !form.email.trim() || !form.password.trim() || !form.department.trim() || !form.position.trim()) {
       alert("Please fill in all fields");
