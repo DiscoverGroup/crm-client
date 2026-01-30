@@ -1109,14 +1109,17 @@ const ClientRecords: React.FC<{
               </div>
             </div>
             {/* Save Button */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: '500' }}>
+                ⚠️ Remember to save changes before leaving!
+              </span>
               <button
                 type="button"
                 onClick={handleSaveClientInfo}
                 disabled={isSavingClient}
                 style={saveButtonStyle(isSavingClient)}
               >
-                {isSavingClient ? "Saving..." : "Save Client Info"}
+                {isSavingClient ? "Saving..." : "💾 Save Client Info"}
               </button>
             </div>
           </div>
