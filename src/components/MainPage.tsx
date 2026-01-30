@@ -2462,7 +2462,6 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, active: 0, float: 0, refund: 0, travelFunds: 0, cancelled: 0 });
   
   // Navigation state for form view
   const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string} | null>(null);
@@ -2478,17 +2477,6 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
         status: statusFilter || undefined
       });
       setClients(allClients);
-      
-      const clientStats = await ClientService.getClientStats();
-      // Map the stats to the expected format
-      setStats({
-        total: clientStats.total,
-        active: clientStats.statusCounts['Active'] || 0,
-        float: clientStats.statusCounts['Float'] || 0,
-        refund: clientStats.statusCounts['Refund'] || 0,
-        travelFunds: clientStats.statusCounts['Travel Funds'] || 0,
-        cancelled: clientStats.statusCounts['Cancelled'] || 0
-      });
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
