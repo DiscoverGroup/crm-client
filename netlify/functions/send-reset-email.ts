@@ -1,12 +1,20 @@
 import type { Handler } from '@netlify/functions';
-import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 
-// Initialize SendGrid with environment variable
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
-const SENDGRID_TEMPLATE_ID = process.env.SENDGRID_TEMPLATE_ID || 'd-29e2da710fbf423b90cc3bb343edcfbe';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply.discovergrp@gmail.com';
+// Gmail SMTP Configuration
+const GMAIL_USER = process.env.GMAIL_USER || 'romanolantano.discovergrp@gmail.com';
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'romanolantano.discovergrp@gmail.com';
+const FROM_NAME = process.env.FROM_NAME || 'DG-CRM';
 
-sgMail.setApiKey(SENDGRID_API_KEY);
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_APP_PASSWORD
+  }
+});
 
 export const handler: Handler = async (event) => {
   // Only allow POST requests
@@ -54,19 +62,55 @@ export const handler: Handler = async (event) => {
     const resetUrl = `https://dg-crm-client.netlify.app/reset-password?token=${resetToken}`;
     const expirationTime = 30; // minutes
 
-    // Send email using SendGrid Dynamic Template
-    const msg = {
+    // Create email HTML
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #0d47a1 0%, #1e7bb8 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 12px 30px; background: #1e7bb8; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Password Reset Request</h1>
+          </div>
+          <div class="content">
+            <p>Hi ${user.fullName || user.username},</p>
+            <p>We received a request to reset your password for your DG-CRM account.</p>
+            <p>Click the button below to reset your password:</p>
+            <p style="text-align: center;">
+              <a href="${resetUrl}" class="button">Reset Password</a>
+            </p>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #1e7bb8;">${resetUrl}</p>
+            <p><strong>This link will expire in ${expirationTime} minutes.</strong></p>
+            <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
+            <div class="footer">
+              <p>© ${new Date().getFullYear()} Discover Group. All rights reserved.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Send email
+    const mailOptions = {
+      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
       to: email,
-      from: FROM_EMAIL,
-      templateId: SENDGRID_TEMPLATE_ID,
-      dynamicTemplateData: {
-        fullName: user.fullName || user.username,
-        resetUrl: resetUrl,
-        expirationTime: expirationTime
-      }
+      subject: 'Password Reset Request - DG-CRM',
+      html: emailHtml,
+      text: `Hi ${user.fullName || user.username},\n\nWe received a request to reset your password.\n\nReset your password here: ${resetUrl}\n\nThis link will expire in ${expirationTime} minutes.\n\nIf you didn't request this, please ignore this email.`
     };
 
-    await sgMail.send(msg);
+    await transporter.sendMail(mailOptions);
 
     return {
       statusCode: 200,
