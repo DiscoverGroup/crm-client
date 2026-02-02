@@ -12,6 +12,26 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [resetUserEmail, setResetUserEmail] = useState("");
+
+  // Check if URL has reset token
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('reset');
+    const emailParam = urlParams.get('email');
+    
+    if (token && emailParam) {
+      setResetToken(token);
+      setResetUserEmail(emailParam);
+      setShowResetPassword(true);
+      // Clean URL
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +77,56 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     } catch (error) {
       console.error('Error sending reset email:', error);
       alert('An error occurred. Please try again later.');
+    }
+  };
+
+  const handleResetPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newPassword.trim() || !confirmNewPassword.trim()) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      alert('Passwords do not match!');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long');
+      return;
+    }
+
+    // Get users from localStorage
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) {
+      alert('User not found');
+      return;
+    }
+
+    try {
+      const users = JSON.parse(usersData);
+      const userIndex = users.findIndex((u: any) => u.email === resetUserEmail);
+      
+      if (userIndex === -1) {
+        alert('User not found');
+        return;
+      }
+
+      // Update password
+      users[userIndex].password = newPassword;
+      localStorage.setItem('crm_users', JSON.stringify(users));
+
+      alert('Password reset successful! Please login with your new password.');
+      setShowResetPassword(false);
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setResetToken('');
+      setResetUserEmail('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert('An error occurred. Please try again.');
     }
   };
 
@@ -342,6 +412,138 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                   }}
                 >
                   Send Link
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPassword && createPortal(
+        <div onClick={() => {
+          setShowResetPassword(false);
+          setNewPassword('');
+          setConfirmNewPassword('');
+        }} style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '90%',
+            maxWidth: '420px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{
+              margin: '0 0 12px 0',
+              fontSize: '24px',
+              fontWeight: '700',
+              color: '#0d47a1'
+            }}>
+              Create New Password
+            </h2>
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '14px',
+              color: '#6b7280'
+            }}>
+              Enter your new password for {resetUserEmail}
+            </p>
+            <form onSubmit={handleResetPassword}>
+              <div style={{ marginBottom: '16px' }}>
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={newPassword}
+                  required
+                  onChange={e => setNewPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    backgroundColor: '#f9fafb',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={confirmNewPassword}
+                  required
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '10px',
+                    fontSize: '15px',
+                    backgroundColor: '#f9fafb',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: '#e5e7eb',
+                    color: '#1f2937',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  Reset Password
                 </button>
               </div>
             </form>

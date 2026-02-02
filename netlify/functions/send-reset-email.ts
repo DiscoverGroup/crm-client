@@ -59,7 +59,7 @@ export const handler: Handler = async (event) => {
 
     // Generate reset token
     const resetToken = generateResetToken();
-    const resetUrl = `https://dg-crm-client.netlify.app/reset-password?token=${resetToken}`;
+    const resetUrl = `https://dg-crm-client.netlify.app?reset=${resetToken}&email=${encodeURIComponent(email)}`;
     const expirationTime = 30; // minutes
 
     // Create email HTML
