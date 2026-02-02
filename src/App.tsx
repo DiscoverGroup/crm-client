@@ -9,6 +9,52 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialize default admin account
+  useEffect(() => {
+    const initializeAdminAccount = () => {
+      const usersData = localStorage.getItem('crm_users');
+      let users = [];
+      
+      if (usersData) {
+        try {
+          users = JSON.parse(usersData);
+        } catch (error) {
+          console.error('Error parsing users:', error);
+        }
+      }
+
+      // Check if admin account already exists
+      const adminExists = users.some((u: any) => u.email === 'admin@discovergrp.com');
+      
+      if (!adminExists) {
+        // Create default admin account
+        const adminAccount = {
+          fullName: 'System Administrator',
+          username: 'admin',
+          email: 'admin@discovergrp.com',
+          password: 'Admin@DG2026!', // Secured password
+          department: 'IT Department',
+          position: 'System Administrator',
+          profileImage: '',
+          registeredAt: new Date().toISOString(),
+          isVerified: true,
+          verificationToken: null,
+          verificationTokenExpiry: null,
+          verifiedAt: new Date().toISOString(),
+          role: 'admin'
+        };
+
+        users.push(adminAccount);
+        localStorage.setItem('crm_users', JSON.stringify(users));
+        console.log('Default admin account created');
+        console.log('Email: admin@discovergrp.com');
+        console.log('Password: Admin@DG2026!');
+      }
+    };
+
+    initializeAdminAccount();
+  }, []);
+
   // Check for existing authentication on app load
   useEffect(() => {
     const savedAuth = localStorage.getItem('crm_auth');
