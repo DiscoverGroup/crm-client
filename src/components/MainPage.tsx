@@ -495,7 +495,7 @@ const ClientRecords: React.FC<{
         },
       };
 
-      const success = await PaymentService.savePaymentData(paymentData);
+      const success = await PaymentService.savePaymentData(paymentData, clientId || currentClientId);
       if (success) {
         // Save section changes to log
         saveSection('payment-terms-schedule', 'Payment Terms & Schedule');

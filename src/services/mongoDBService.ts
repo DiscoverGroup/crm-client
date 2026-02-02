@@ -182,4 +182,31 @@ export class MongoDBService {
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
+  
+  // Save payment data to MongoDB
+  static async savePaymentData(clientId: string, paymentData: any): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'payments',
+          operation: 'updateOne',
+          filter: { clientId },
+          update: {
+            clientId,
+            ...paymentData,
+            updatedAt: new Date().toISOString()
+          },
+          upsert: true // Create if doesn't exist, update if exists
+        })
+      });
+
+      const result = await response.json();
+      return { success: result.success || response.ok, message: result.message };
+    } catch (error) {
+      console.error('Error saving payment data to MongoDB:', error);
+      return { success: false, message: 'Failed to sync with MongoDB' };
+    }
+  }
 }

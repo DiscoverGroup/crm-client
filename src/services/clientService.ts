@@ -20,6 +20,27 @@ export interface ClientData {
     address: string;
     occupation: string;
   }>;
+  // Visa & Additional Services
+  visaService?: boolean;
+  insuranceService?: boolean;
+  etaService?: boolean;
+  visaFiles?: string[]; // Array of file IDs
+  // Booking/Tour Voucher
+  bookingVoucher?: string;
+  // Important Notes/Requests
+  requestNotes?: Array<{
+    id: string;
+    note: string;
+    createdAt: string;
+  }>;
+  // Passport Information
+  passportInfo?: Array<{
+    id: string;
+    fullName: string;
+    passportNumber: string;
+    dateOfBirth: string;
+    expiryDate: string;
+  }>;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;

@@ -1,5 +1,6 @@
 // Local type definitions to avoid external dependency on ../types/payment
 import { FileService } from '../services/fileService';
+import { MongoDBService } from '../services/mongoDBService';
 
 type NamedFile = { name: string; id?: string } | null;
 
@@ -66,48 +67,64 @@ export interface SerializedPaymentData {
 export class PaymentService {
   private static STORAGE_KEY = 'crm_payment_data';
 
-  static async savePaymentData(data: PaymentData): Promise<boolean> {
+  static async savePaymentData(data: PaymentData, clientId?: string): Promise<boolean> {
     try {
       // Save files and get their IDs
       const serializedData: SerializedPaymentData = {
         ...data,
         paymentDetails: await Promise.all(data.paymentDetails.map(async (detail, index) => ({
           ...detail,
-          depositSlip: detail.depositSlip ? await this.saveFile(detail.depositSlip, 'deposit-slip', index, 'regular') : null,
-          receipt: detail.receipt ? await this.saveFile(detail.receipt, 'receipt', index, 'regular') : null,
+          depositSlip: detail.depositSlip ? await this.saveFile(detail.depositSlip, 'deposit-slip', index, 'regular', clientId) : null,
+          receipt: detail.receipt ? await this.saveFile(detail.receipt, 'receipt', index, 'regular', clientId) : null,
         }))),
         additionalPayments: {
           ...data.additionalPayments,
           firstPayment: {
             ...data.additionalPayments.firstPayment,
-            depositSlip: data.additionalPayments.firstPayment.depositSlip ? 
-              await this.saveFile(data.additionalPayments.firstPayment.depositSlip, 'deposit-slip', undefined, 'first') : null,
-            receipt: data.additionalPayments.firstPayment.receipt ? 
-              await this.saveFile(data.additionalPayments.firstPayment.receipt, 'receipt', undefined, 'first') : null,
+            depositSlip: data.additionalPayments.firstPayment.depositSlip ?
+              await this.saveFile(data.additionalPayments.firstPayment.depositSlip, 'deposit-slip', undefined, 'first', clientId) : null,
+            receipt: data.additionalPayments.firstPayment.receipt ?
+              await this.saveFile(data.additionalPayments.firstPayment.receipt, 'receipt', undefined, 'first', clientId) : null,
           },
           secondPayment: {
             ...data.additionalPayments.secondPayment,
-            depositSlip: data.additionalPayments.secondPayment.depositSlip ? 
-              await this.saveFile(data.additionalPayments.secondPayment.depositSlip, 'deposit-slip', undefined, 'second') : null,
-            receipt: data.additionalPayments.secondPayment.receipt ? 
-              await this.saveFile(data.additionalPayments.secondPayment.receipt, 'receipt', undefined, 'second') : null,
+            depositSlip: data.additionalPayments.secondPayment.depositSlip ?
+              await this.saveFile(data.additionalPayments.secondPayment.depositSlip, 'deposit-slip', undefined, 'second', clientId) : null,
+            receipt: data.additionalPayments.secondPayment.receipt ?
+              await this.saveFile(data.additionalPayments.secondPayment.receipt, 'receipt', undefined, 'second', clientId) : null,
           },
           thirdPayment: {
             ...data.additionalPayments.thirdPayment,
-            depositSlip: data.additionalPayments.thirdPayment.depositSlip ? 
-              await this.saveFile(data.additionalPayments.thirdPayment.depositSlip, 'deposit-slip', undefined, 'third') : null,
-            receipt: data.additionalPayments.thirdPayment.receipt ? 
-              await this.saveFile(data.additionalPayments.thirdPayment.receipt, 'receipt', undefined, 'third') : null,
+            depositSlip: data.additionalPayments.thirdPayment.depositSlip ?
+              await this.saveFile(data.additionalPayments.thirdPayment.depositSlip, 'deposit-slip', undefined, 'third', clientId) : null,
+            receipt: data.additionalPayments.thirdPayment.receipt ?
+              await this.saveFile(data.additionalPayments.thirdPayment.receipt, 'receipt', undefined, 'third', clientId) : null,
           },
           otherPayments: {
             ...data.additionalPayments.otherPayments,
             attachment: data.additionalPayments.otherPayments.attachment ? 
-              await this.saveFile(data.additionalPayments.otherPayments.attachment, 'other', undefined, 'other') : null,
+              await this.saveFile(data.additionalPayments.otherPayments.attachment, 'other', undefined, 'other', clientId) : null,
           },
         },
       };
 
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(serializedData));
+      // Store payment data with clientId if provided
+      const allPayments = this.getAllPaymentData();
+      if (clientId) {
+        allPayments[clientId] = serializedData;
+      } else {
+        // Fallback for backward compatibility
+        allPayments['default'] = serializedData;
+      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allPayments));
+      
+      // Sync to MongoDB if clientId is provided
+      if (clientId) {
+        MongoDBService.savePaymentData(clientId, serializedData).catch(err => {
+          console.error('MongoDB sync failed:', err);
+        });
+      }
+      
       return true;
     } catch (error) {
       console.error('Error saving payment data:', error);
@@ -115,14 +132,14 @@ export class PaymentService {
     }
   }
 
-  private static async saveFile(namedFile: NamedFile, category: 'deposit-slip' | 'receipt' | 'other', paymentIndex?: number, paymentType?: 'regular' | 'first' | 'second' | 'third' | 'other'): Promise<string | null> {
+  private static async saveFile(namedFile: NamedFile, category: 'deposit-slip' | 'receipt' | 'other', paymentIndex?: number, paymentType?: 'regular' | 'first' | 'second' | 'third' | 'other', clientId?: string): Promise<string | null> {
     if (!namedFile || !('size' in namedFile)) {
       return namedFile?.id || null; // Return existing ID if it's already stored
     }
     
     try {
       // If it's a File object, save it using FileService
-      const fileId = await FileService.saveFileAttachment(namedFile as File, category, undefined, paymentIndex, paymentType);
+      const fileId = await FileService.saveFileAttachment(namedFile as File, category, clientId, paymentIndex, paymentType);
       return fileId;
     } catch (error) {
       console.error('Error saving file:', error);
@@ -130,10 +147,27 @@ export class PaymentService {
     }
   }
 
-  static loadPaymentData(): SerializedPaymentData | null {
+  private static getAllPaymentData(): Record<string, SerializedPaymentData> {
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
+      if (!data) return {};
+      const parsed = JSON.parse(data);
+      // Handle old format (single payment object) vs new format (keyed by clientId)
+      if (parsed.paymentDetails) {
+        return { default: parsed };
+      }
+      return parsed;
+    } catch (error) {
+      console.error('Error loading payment data:', error);
+      return {};
+    }
+  }
+
+  static getPaymentData(clientId?: string): SerializedPaymentData | null {
+    try {
+      const allPayments = this.getAllPaymentData();
+      const key = clientId || 'default';
+      return allPayments[key] || null;
     } catch (error) {
       console.error('Error loading payment data:', error);
       return null;

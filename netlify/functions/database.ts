@@ -13,7 +13,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { collection, operation, data, filter, update } = JSON.parse(event.body || '{}');
+    const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
 
     const client = await MongoClient.connect(MONGODB_URI);
     const db = client.db(DB_NAME);
@@ -35,10 +35,10 @@ export const handler: Handler = async (event) => {
         result = await col.insertMany(data);
         break;
       case 'updateOne':
-        result = await col.updateOne(filter, { $set: update });
+        result = await col.updateOne(filter, { $set: update }, { upsert: upsert || false });
         break;
       case 'updateMany':
-        result = await col.updateMany(filter, { $set: update });
+        result = await col.updateMany(filter, { $set: update }, { upsert: upsert || false });
         break;
       case 'deleteOne':
         result = await col.deleteOne(filter);
