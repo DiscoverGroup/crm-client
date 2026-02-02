@@ -1,9 +1,66 @@
 import type { LogNote, LogReply } from '../types/logNote';
 
 export class LogNoteService {
-  private static logNotes: Map<string, LogNote[]> = new Map();
+  private static readonly STORAGE_KEY = 'crm_log_notes';
   private static logNoteCounter = 1;
   private static replyCounter = 1;
+
+  // Load from localStorage
+  private static loadFromStorage(): Map<string, LogNote[]> {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        // Convert dates back to Date objects
+        Object.keys(data).forEach(clientId => {
+          data[clientId] = data[clientId].map((log: any) => ({
+            ...log,
+            timestamp: new Date(log.timestamp),
+            replies: log.replies.map((reply: any) => ({
+              ...reply,
+              timestamp: new Date(reply.timestamp)
+            }))
+          }));
+        });
+        return new Map(Object.entries(data));
+      }
+    } catch (error) {
+      console.error('Error loading log notes from storage:', error);
+    }
+    return new Map();
+  }
+
+  // Save to localStorage
+  private static saveToStorage(logNotes: Map<string, LogNote[]>): void {
+    try {
+      const data = Object.fromEntries(logNotes);
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving log notes to storage:', error);
+    }
+  }
+
+  // Initialize counters based on existing data
+  private static initializeCounters(): void {
+    const logNotes = this.loadFromStorage();
+    let maxLogId = 0;
+    let maxReplyId = 0;
+    
+    logNotes.forEach(logs => {
+      logs.forEach(log => {
+        const logId = parseInt(log.id.replace('log_', ''));
+        if (logId > maxLogId) maxLogId = logId;
+        
+        log.replies.forEach(reply => {
+          const replyId = parseInt(reply.id.replace('reply_', ''));
+          if (replyId > maxReplyId) maxReplyId = replyId;
+        });
+      });
+    });
+    
+    this.logNoteCounter = maxLogId + 1;
+    this.replyCounter = maxReplyId + 1;
+  }
 
   static addLogNote(
     clientId: string,
@@ -17,6 +74,11 @@ export class LogNoteService {
     oldValue?: string,
     newValue?: string
   ): LogNote {
+    // Initialize counters on first use
+    if (this.logNoteCounter === 1) {
+      this.initializeCounters();
+    }
+
     const logNote: LogNote = {
       id: `log_${this.logNoteCounter++}`,
       clientId,
@@ -33,9 +95,11 @@ export class LogNoteService {
       replies: []
     };
 
-    const clientLogs = this.logNotes.get(clientId) || [];
+    const logNotes = this.loadFromStorage();
+    const clientLogs = logNotes.get(clientId) || [];
     clientLogs.unshift(logNote); // Add to beginning for newest first
-    this.logNotes.set(clientId, clientLogs);
+    logNotes.set(clientId, clientLogs);
+    this.saveToStorage(logNotes);
 
     return logNote;
   }
@@ -47,7 +111,8 @@ export class LogNoteService {
     userName: string,
     message: string
   ): LogReply | null {
-    const clientLogs = this.logNotes.get(clientId) || [];
+    const logNotes = this.loadFromStorage();
+    const clientLogs = logNotes.get(clientId) || [];
     const logNote = clientLogs.find(log => log.id === logNoteId);
     
     if (!logNote) return null;
@@ -62,7 +127,8 @@ export class LogNoteService {
     };
 
     logNote.replies.push(reply);
-    this.logNotes.set(clientId, clientLogs);
+    logNotes.set(clientId, clientLogs);
+    this.saveToStorage(logNotes);
 
     return reply;
   }
@@ -72,19 +138,22 @@ export class LogNoteService {
     clientId: string,
     status: 'pending' | 'done' | 'on hold'
   ): boolean {
-    const clientLogs = this.logNotes.get(clientId) || [];
+    const logNotes = this.loadFromStorage();
+    const clientLogs = logNotes.get(clientId) || [];
     const logNote = clientLogs.find(log => log.id === logNoteId);
     
     if (!logNote) return false;
 
     logNote.status = status;
-    this.logNotes.set(clientId, clientLogs);
+    logNotes.set(clientId, clientLogs);
+    this.saveToStorage(logNotes);
 
     return true;
   }
 
   static getLogNotes(clientId: string): LogNote[] {
-    return this.logNotes.get(clientId) || [];
+    const logNotes = this.loadFromStorage();
+    return logNotes.get(clientId) || [];
   }
 
   static logFieldChange(

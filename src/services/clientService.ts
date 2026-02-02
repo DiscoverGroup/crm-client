@@ -1,3 +1,5 @@
+import { MongoDBService } from './mongoDBService';
+
 export interface ClientData {
   id: string;
   clientNo?: string;
@@ -50,6 +52,13 @@ export class ClientService {
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+        
+        // Update in MongoDB
+        MongoDBService.updateClient(existingClient.id, {
+          ...clientData,
+          updatedAt: new Date().toISOString()
+        }).catch(err => console.error('MongoDB sync failed:', err));
+        
         return { clientId: existingClient.id, isNewClient: false };
       } else {
         // Create new client
@@ -65,6 +74,9 @@ export class ClientService {
 
         clients.push(newClient);
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+        
+        // Save to MongoDB
+        MongoDBService.saveClient(newClient).catch(err => console.error('MongoDB sync failed:', err));
         
         return { clientId, isNewClient: true };
       }
@@ -92,6 +104,12 @@ export class ClientService {
       };
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+      
+      // Update in MongoDB
+      MongoDBService.updateClient(clientId, {
+        ...clientData,
+        updatedAt: new Date().toISOString()
+      }).catch(err => console.error('MongoDB sync failed:', err));
       
       // Return old values for change tracking
       const oldValues: Record<string, any> = {};
@@ -195,6 +213,11 @@ export class ClientService {
       };
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+      
+      // Soft delete in MongoDB
+      MongoDBService.deleteClient(clientId, deletedBy || 'Unknown')
+        .catch(err => console.error('MongoDB sync failed:', err));
+      
       return true;
     } catch (error) {
       console.error('Error deleting client:', error);

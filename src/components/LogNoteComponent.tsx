@@ -20,6 +20,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [selectedNote, setSelectedNote] = useState<LogNote | null>(null);
 
   // Helper function to get user initials
   const getInitials = (name: string) => {
@@ -56,10 +57,14 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     }
   };
 
-  // Load log notes
+  // Load log notes on mount and when clientId changes
   useEffect(() => {
-    const notes = LogNoteService.getLogNotes(clientId);
-    setLogNotes(notes);
+    const loadNotes = () => {
+      const notes = LogNoteService.getLogNotes(clientId);
+      console.log('Loading notes for client:', clientId, notes);
+      setLogNotes(notes);
+    };
+    loadNotes();
   }, [clientId]);
 
   // Get activity logs for this client
@@ -401,13 +406,27 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           </div>
         ) : (
           logNotes.map((note) => (
-            <div key={note.id} style={{
-              background: 'white',
-              borderRadius: '8px',
-              padding: '12px',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-            }}>
+            <div 
+              key={note.id} 
+              onClick={() => setSelectedNote(note)}
+              style={{
+                background: 'white',
+                borderRadius: '8px',
+                padding: '12px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateX(4px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                e.currentTarget.style.transform = 'translateX(0)';
+              }}
+            >
               {/* Note Header with User Info and Timestamp */}
               <div style={{
                 display: 'flex',
@@ -501,13 +520,11 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 <select
                   value={note.status}
                   onChange={(e) => {
-                    e.preventDefault();
                     e.stopPropagation();
                     console.log('Dropdown changed to:', e.target.value);
                     handleStatusChange(note.id, e.target.value as 'pending' | 'done' | 'on hold');
                   }}
                   onClick={(e) => {
-                    e.preventDefault();
                     e.stopPropagation();
                     console.log('Dropdown clicked for note:', note.id);
                   }}
@@ -596,6 +613,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
                         placeholder="Write a reply..."
                         style={{
                           width: '100%',
@@ -663,11 +681,14 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
               {/* Replies */}
               {note.replies && note.replies.length > 0 && (
-                <div style={{
-                  marginTop: '8px',
-                  paddingLeft: '12px',
-                  borderLeft: '2px solid #e2e8f0'
-                }}>
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    marginTop: '8px',
+                    paddingLeft: '12px',
+                    borderLeft: '2px solid #e2e8f0'
+                  }}
+                >
                   {note.replies.map((reply) => (
                     <div key={reply.id} style={{
                       display: 'flex',
@@ -974,6 +995,252 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             {String(change.new) || '(empty)'}
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal for Manual Notes */}
+      {selectedNote && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(4px)'
+        }}
+        onClick={() => setSelectedNote(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              animation: 'modalSlideIn 0.3s ease-out'
+            }}>
+            <style>
+              {`
+                @keyframes modalSlideIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+              `}
+            </style>
+
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '24px',
+              paddingBottom: '16px',
+              borderBottom: '2px solid #e9ecef'
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    background: '#3b82f6',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: '600'
+                  }}>
+                    {getInitials(selectedNote.userName)}
+                  </div>
+                  <div>
+                    <h2 style={{
+                      margin: '0 0 4px 0',
+                      fontSize: '20px',
+                      fontWeight: '700',
+                      color: '#1f2937'
+                    }}>
+                      {selectedNote.userName}
+                    </h2>
+                    <p style={{
+                      margin: 0,
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {formatTimestamp(selectedNote.timestamp)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNote(null)}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  color: '#6b7280',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#e5e7eb';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              backgroundColor: '#f9fafb',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '8px'
+              }}>
+                {selectedNote.action}
+              </div>
+              {selectedNote.description && (
+                <div style={{
+                  fontSize: '14px',
+                  color: '#4b5563',
+                  lineHeight: '1.6',
+                  whiteSpace: 'pre-line'
+                }}>
+                  {selectedNote.description}
+                </div>
+              )}
+            </div>
+
+            {/* Status */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#1f2937'
+              }}>
+                Status:
+              </span>
+              <span style={{
+                padding: '6px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: '600',
+                backgroundColor: selectedNote.status === 'done' ? '#d1fae5' : 
+                               selectedNote.status === 'on hold' ? '#fed7aa' : '#dbeafe',
+                color: selectedNote.status === 'done' ? '#065f46' : 
+                       selectedNote.status === 'on hold' ? '#9a3412' : '#1e40af'
+              }}>
+                {selectedNote.status.toUpperCase()}
+              </span>
+            </div>
+
+            {/* Replies */}
+            {selectedNote.replies && selectedNote.replies.length > 0 && (
+              <div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '12px'
+                }}>
+                  Replies ({selectedNote.replies.length})
+                </div>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px'
+                }}>
+                  {selectedNote.replies.map((reply) => (
+                    <div key={reply.id} style={{
+                      backgroundColor: '#f9fafb',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          background: '#6b7280',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: '600'
+                        }}>
+                          {getInitials(reply.userName)}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>
+                            {reply.userName}
+                          </div>
+                          <div style={{
+                            fontSize: '11px',
+                            color: '#6b7280'
+                          }}>
+                            {formatTimestamp(reply.timestamp)}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: '13px',
+                        color: '#4b5563',
+                        lineHeight: '1.5'
+                      }}>
+                        {reply.message}
                       </div>
                     </div>
                   ))}

@@ -5,6 +5,7 @@ import AuthContainer from "./components/AuthContainer";
 import MainPage from "./components/MainPage";
 import Modal from "./components/Modal";
 import OTPVerification from "./components/OTPVerification";
+import { MongoDBService } from "./services/mongoDBService";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -286,6 +287,12 @@ const App: React.FC = () => {
     users.push(newUser);
     localStorage.setItem('crm_users', JSON.stringify(users));
 
+    // Save to MongoDB Atlas
+    MongoDBService.saveUser(newUser).catch(err => {
+      console.error('MongoDB sync failed:', err);
+      // Continue even if MongoDB sync fails - localStorage is the primary storage for now
+    });
+
     // Send verification email
     try {
       const response = await fetch('/.netlify/functions/send-verification-email', {
@@ -366,6 +373,16 @@ const App: React.FC = () => {
           verifiedAt: new Date().toISOString()
         };
         localStorage.setItem('crm_users', JSON.stringify(users));
+        
+        // Update user verification status in MongoDB
+        MongoDBService.updateUser(user.email, {
+          isVerified: true,
+          verificationCode: null,
+          verificationCodeExpiry: null,
+          verifiedAt: new Date().toISOString()
+        }).catch(err => {
+          console.error('MongoDB sync failed:', err);
+        });
         
         setShowOTPVerification(false);
         setModalConfig({
