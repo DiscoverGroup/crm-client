@@ -4,7 +4,7 @@ import sgMail from '@sendgrid/mail';
 // Initialize SendGrid with environment variable
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const SENDGRID_TEMPLATE_ID = process.env.SENDGRID_TEMPLATE_ID || 'd-29e2da710fbf423b90cc3bb343edcfbe';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@discovergrp.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply.discovergrp@gmail.com';
 
 sgMail.setApiKey(SENDGRID_API_KEY);
 
