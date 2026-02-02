@@ -208,11 +208,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
         localStorage.setItem('crm_users', JSON.stringify(userList));
 
         // Update auth if name changed
-        if (userData.fullName !== currentUser) {
+        if (userData.fullName !== currentUser.fullName) {
           const authData = localStorage.getItem('crm_auth');
           if (authData) {
             const auth = JSON.parse(authData);
-            auth.currentUser = userData.fullName;
+            auth.currentUser = { fullName: userData.fullName, username: userData.username };
             localStorage.setItem('crm_auth', JSON.stringify(auth));
           }
         }

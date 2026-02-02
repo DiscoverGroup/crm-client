@@ -485,10 +485,10 @@ const App: React.FC = () => {
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
           <MainPage 
-            currentUser={currentUser || ''}
-            onUpdateUser={(newFullName) => {
-              setCurrentUser(newFullName);
-              saveAuthState(true, newFullName);
+            currentUser={currentUser || { fullName: '', username: '' }}
+            onUpdateUser={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              saveAuthState(true, updatedUser);
             }}
           />
         ) : (

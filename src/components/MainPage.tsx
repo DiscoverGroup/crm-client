@@ -2588,7 +2588,7 @@ const ClientRecords: React.FC<{
 
 interface MainPageProps {
   currentUser: { fullName: string; username: string };
-  onUpdateUser?: (fullName: string) => void;
+  onUpdateUser?: (user: { fullName: string; username: string }) => void;
 }
 
 const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
@@ -2716,7 +2716,7 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
               onBack={() => setViewProfile(false)}
               onUpdateUser={(userData) => {
                 if (onUpdateUser) {
-                  onUpdateUser(userData.fullName);
+                  onUpdateUser({ fullName: userData.fullName, username: userData.username });
                 }
               }}
             />
@@ -2751,7 +2751,7 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
             backgroundColor: '#f5f5f5'
           }}>
             <DeletedClients
-              currentUser={currentUser}
+              currentUser={currentUser.fullName}
               onBack={() => {
                 setViewDeleted(false);
                 loadClients();
@@ -3214,14 +3214,14 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (window.confirm(`Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`)) {
-                                const success = ClientService.deleteClient(client.id, currentUser);
+                                const success = ClientService.deleteClient(client.id, currentUser.fullName);
                                 if (success) {
                                   ActivityLogService.addLog({
                                     clientId: client.id,
                                     clientName: client.contactName || 'Unknown',
                                     action: 'deleted',
-                                    performedBy: currentUser,
-                                    performedByUser: currentUser,
+                                    performedBy: currentUser.fullName,
+                                    performedByUser: currentUser.fullName,
                                     details: `Client moved to trash`
                                   });
                                   alert('Client moved to trash. You can recover it from Deleted Clients page.');

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
-import Modal from './Modal';
 
 interface ActivityLogViewerProps {
   clientId?: string;
