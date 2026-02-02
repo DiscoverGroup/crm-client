@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Migrate CRM Data to MongoDB</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .step {
+      background: #f9f9f9;
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid #4CAF50;
+      border-radius: 4px;
+    }
+    .data-preview {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 10px 5px 10px 0;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .success {
+      background: #d4edda;
+      border-left: 4px solid #28a745;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .error {
+      background: #f8d7da;
+      border-left: 4px solid #dc3545;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗄️ Migrate CRM Data to MongoDB</h1>
+    <p class="subtitle">Transfer your localStorage data to MongoDB Atlas</p>
+
+    <div class="step">
+      <strong>Step 1:</strong> Check what data exists in localStorage
+      <button onclick="checkLocalStorage()">Check LocalStorage</button>
+    </div>
+
+    <div id="dataPreview"></div>
+
+    <div class="step">
+      <strong>Step 2:</strong> Migrate all data to MongoDB
+      <button id="migrateBtn" onclick="migrateData()" disabled>Start Migration</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="warning">
+      <strong>⚠️ Important:</strong>
+      <ul>
+        <li>Make sure you're running your local dev server (npm run dev)</li>
+        <li>This will copy data from localStorage to MongoDB</li>
+        <li>Your localStorage data will remain unchanged</li>
+        <li>You can run this multiple times safely</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    let localData = {};
+
+    function checkLocalStorage() {
+      const collections = ['users', 'clients', 'activityLogs', 'fileMetadata', 'payments', 'logNotes'];
+      localData = {};
+      let totalRecords = 0;
+      
+      const previewDiv = document.getElementById('dataPreview');
+      let html = '<div class="data-preview"><strong>LocalStorage Data Found:</strong><br><br>';
+      
+      collections.forEach(collection => {
+        const data = localStorage.getItem(collection);
+        if (data) {
+          try {
+            const parsed = JSON.parse(data);
+            const count = Array.isArray(parsed) ? parsed.length : 0;
+            localData[collection] = parsed;
+            totalRecords += count;
+            html += `✅ <strong>${collection}</strong>: ${count} records<br>`;
+          } catch (e) {
+            html += `❌ <strong>${collection}</strong>: Invalid JSON<br>`;
+          }
+        } else {
+          html += `⚪ <strong>${collection}</strong>: No data<br>`;
+        }
+      });
+      
+      html += `<br><strong>Total Records:</strong> ${totalRecords}</div>`;
+      previewDiv.innerHTML = html;
+      
+      document.getElementById('migrateBtn').disabled = totalRecords === 0;
+      
+      if (totalRecords === 0) {
+        showStatus('No data found in localStorage. Nothing to migrate.', 'warning');
+      }
+    }
+
+    async function migrateData() {
+      const statusDiv = document.getElementById('status');
+      const migrateBtn = document.getElementById('migrateBtn');
+      
+      migrateBtn.disabled = true;
+      statusDiv.innerHTML = '<div class="status">🔄 Starting migration...</div>';
+      
+      try {
+        // Call the migration Netlify function
+        const response = await fetch('/.netlify/functions/migrate-to-mongodb', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(localData)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          let html = '<div class="success"><strong>✅ Migration Completed Successfully!</strong><br><br>';
+          
+          Object.entries(result.summary).forEach(([collection, info]) => {
+            html += `<strong>${collection}</strong>: ${info.inserted} inserted`;
+            if (info.errors > 0) {
+              html += ` (${info.errors} errors)`;
+            }
+            html += '<br>';
+          });
+          
+          html += `<br><strong>Total Inserted:</strong> ${result.totalInserted}<br>`;
+          html += `<strong>Total Errors:</strong> ${result.totalErrors}</div>`;
+          
+          statusDiv.innerHTML = html;
+        } else {
+          showStatus(`Migration failed: ${result.error}`, 'error');
+          migrateBtn.disabled = false;
+        }
+      } catch (error) {
+        showStatus(`Migration error: ${error.message}<br><br>Make sure your dev server is running (npm run dev)`, 'error');
+        migrateBtn.disabled = false;
+      }
+    }
+
+    function showStatus(message, type = 'success') {
+      const statusDiv = document.getElementById('status');
+      statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+    }
+
+    // Auto-check on load
+    window.addEventListener('load', () => {
+      setTimeout(checkLocalStorage, 500);
+    });
+  </script>
+</body>
+</html>
