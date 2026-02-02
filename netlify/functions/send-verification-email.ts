@@ -82,11 +82,6 @@ export const handler: Handler = async (event) => {
       subject: `Your DG-CRM Verification Code: ${verificationCode}`,
       html: emailHtml
     };
-      to: email,
-      subject: 'Verify Your Email - DG-CRM',
-      html: emailHtml,
-      text: `Hi ${fullName},\n\nWelcome to DG-CRM! Please verify your email address by clicking this link:\n\n${verificationUrl}\n\nThis link will expire in 24 hours.\n\nIf you didn't create an account, please ignore this email.`
-    };
 
     await transporter.sendMail(mailOptions);
 

@@ -1,5 +1,4 @@
-import React, { useState, useRef, KeyboardEvent } from 'react';
-import Modal from './Modal';
+import React, { useState, useRef, type KeyboardEvent } from 'react';
 
 interface OTPVerificationProps {
   email: string;
