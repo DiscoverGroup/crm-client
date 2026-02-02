@@ -9,6 +9,28 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check MongoDB connection status
+  useEffect(() => {
+    const checkMongoDB = async () => {
+      try {
+        const response = await fetch('/.netlify/functions/database', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
+        });
+        const result = await response.json();
+        if (result.success) {
+          console.log('✅ MongoDB Atlas: Connected');
+        } else {
+          console.warn('⚠️ MongoDB Atlas: Connection issue');
+        }
+      } catch (error) {
+        console.error('❌ MongoDB Atlas: Not connected');
+      }
+    };
+    checkMongoDB();
+  }, []);
+
   // Initialize default admin account
   useEffect(() => {
     const initializeAdminAccount = () => {
@@ -46,9 +68,6 @@ const App: React.FC = () => {
 
         users.push(adminAccount);
         localStorage.setItem('crm_users', JSON.stringify(users));
-        console.log('Default admin account created');
-        console.log('Email: admin@discovergrp.com');
-        console.log('Password: Admin@DG2026!');
       }
     };
 

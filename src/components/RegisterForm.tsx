@@ -136,7 +136,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       flexDirection: 'column',
       padding: '40px 32px',
       height: '100%',
@@ -144,7 +144,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       backgroundColor: '#ffffff',
       width: '100%',
       borderRadius: '0 20px 20px 0',
-      boxShadow: '5px 0 15px rgba(0,0,0,0.05)'
+      boxShadow: '5px 0 15px rgba(0,0,0,0.05)',
+      overflowY: 'auto'
     }}>
       <div style={{ marginBottom: '36px' }}>
         <h1 style={{
