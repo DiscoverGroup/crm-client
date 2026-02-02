@@ -1,8 +1,12 @@
 import type { Handler } from '@netlify/functions';
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// Initialize SendGrid with environment variable
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
+const SENDGRID_TEMPLATE_ID = process.env.SENDGRID_TEMPLATE_ID || 'd-29e2da710fbf423b90cc3bb343edcfbe';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@discovergrp.com';
+
+sgMail.setApiKey(SENDGRID_API_KEY);
 
 export const handler: Handler = async (event) => {
   // Only allow POST requests
@@ -14,7 +18,7 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { email } = JSON.parse(event.body || '{}');
+    const { email, users } = JSON.parse(event.body || '{}');
 
     if (!email) {
       return {
@@ -23,31 +27,40 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Find user by email (you'll need to adapt this to your storage)
-    // For now, we'll use localStorage structure, but in production you'd query a database
-    const users = JSON.parse(process.env.CRM_USERS || '[]');
-    const user = users.find((u: any) => u.email === email);
+    // Parse users array from the request (sent from frontend)
+    let userList = [];
+    try {
+      userList = users ? JSON.parse(users) : [];
+    } catch (e) {
+      console.error('Error parsing users:', e);
+    }
+
+    // Find user by email
+    const user = userList.find((u: any) => u.email === email);
 
     if (!user) {
       // Don't reveal if user exists or not for security
       return {
         statusCode: 200,
-        body: JSON.stringify({ message: 'If the email exists, a reset link has been sent' })
+        body: JSON.stringify({ 
+          message: 'If the email exists, a reset link has been sent',
+          success: true 
+        })
       };
     }
 
-    // Generate reset token (in production, save this to database with expiration)
+    // Generate reset token
     const resetToken = generateResetToken();
-    const resetUrl = `${process.env.URL}/reset-password?token=${resetToken}`;
+    const resetUrl = `https://dg-crm-client.netlify.app/reset-password?token=${resetToken}`;
     const expirationTime = 30; // minutes
 
     // Send email using SendGrid Dynamic Template
     const msg = {
       to: email,
-      from: process.env.SENDGRID_FROM_EMAIL || 'noreply@discovergrp.com',
-      templateId: process.env.SENDGRID_RESET_TEMPLATE_ID || '', // Your template ID
+      from: FROM_EMAIL,
+      templateId: SENDGRID_TEMPLATE_ID,
       dynamicTemplateData: {
-        fullName: user.fullName,
+        fullName: user.fullName || user.username,
         resetUrl: resetUrl,
         expirationTime: expirationTime
       }
@@ -63,12 +76,19 @@ export const handler: Handler = async (event) => {
       })
     };
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending reset email:', error);
+    
+    // Return more detailed error for debugging
+    const errorMessage = error?.response?.body?.errors 
+      ? JSON.stringify(error.response.body.errors)
+      : error?.message || 'Unknown error';
+    
     return {
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to send reset email',
+        details: errorMessage,
         success: false 
       })
     };

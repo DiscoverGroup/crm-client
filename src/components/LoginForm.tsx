@@ -26,12 +26,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     }
 
     try {
+      // Get users from localStorage to send to backend
+      const usersData = localStorage.getItem('crm_users') || '[]';
+      
       const response = await fetch('/.netlify/functions/send-reset-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email: resetEmail })
+        body: JSON.stringify({ 
+          email: resetEmail,
+          users: usersData
+        })
       });
 
       const data = await response.json();
@@ -41,7 +47,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         setShowForgotPassword(false);
         setResetEmail('');
       } else {
-        alert('Failed to send reset email. Please try again.');
+        alert(`Failed to send reset email. Please try again.\n\nError: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error sending reset email:', error);
