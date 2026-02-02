@@ -176,13 +176,13 @@ export class PaymentService {
 
   // Get all file attachments for payment data
   static getPaymentFileAttachments(): Array<{ fileId: string; category: string; paymentInfo: string }> {
-    const paymentData = this.loadPaymentData();
+    const paymentData = this.getPaymentData();
     if (!paymentData) return [];
 
     const fileAttachments: Array<{ fileId: string; category: string; paymentInfo: string }> = [];
 
     // Regular payment details
-    paymentData.paymentDetails.forEach((detail, index) => {
+    paymentData.paymentDetails.forEach((detail: SerializedPaymentDetail, index: number) => {
       if (detail.depositSlip) {
         fileAttachments.push({
           fileId: detail.depositSlip,
