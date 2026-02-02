@@ -41,13 +41,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       });
 
       const data = await response.json();
+      
+      console.log('Response status:', response.status);
+      console.log('Response data:', data);
 
       if (response.ok && data.success) {
         alert(`Password reset email sent to ${resetEmail}!\n\nPlease check your inbox and follow the instructions.`);
         setShowForgotPassword(false);
         setResetEmail('');
       } else {
-        alert(`Failed to send reset email. Please try again.\n\nError: ${data.error || 'Unknown error'}`);
+        const errorDetails = data.details ? `\n\nDetails: ${data.details}` : '';
+        console.error('Failed to send email:', data);
+        alert(`Failed to send reset email. Please try again.\n\nError: ${data.error || 'Unknown error'}${errorDetails}`);
       }
     } catch (error) {
       console.error('Error sending reset email:', error);
