@@ -2,7 +2,7 @@ import React from "react";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
-  currentUser?: string | null;
+  currentUser?: { fullName: string; username: string } | null;
   onLogout?: () => void;
 }
 
@@ -55,13 +55,22 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout }) =>
         alignItems: "center",
         gap: "16px"
       }}>
-        <span style={{
-          fontSize: "14px",
-          opacity: 0.95,
-          fontWeight: "500"
-        }}>
-          Welcome, {currentUser}
-        </span>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{
+            fontSize: "14px",
+            opacity: 0.95,
+            fontWeight: "500"
+          }}>
+            Welcome, {currentUser?.fullName}
+          </div>
+          <div style={{
+            fontSize: "12px",
+            opacity: 0.75,
+            fontWeight: "400"
+          }}>
+            @{currentUser?.username}
+          </div>
+        </div>
         <button
           onClick={onLogout}
           style={{

@@ -8,7 +8,7 @@ import OTPVerification from "./components/OTPVerification";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingUserEmail, setPendingUserEmail] = useState('');
@@ -111,7 +111,7 @@ const App: React.FC = () => {
   }, []);
 
   // Save authentication state to localStorage
-  const saveAuthState = (loggedIn: boolean, user: string | null) => {
+  const saveAuthState = (loggedIn: boolean, user: { fullName: string; username: string } | null) => {
     const authData = {
       isLoggedIn: loggedIn,
       currentUser: user,
@@ -180,9 +180,9 @@ const App: React.FC = () => {
           message: `Welcome back, ${user.fullName || user.username}!`,
           type: 'success',
           onConfirm: () => {
-            setCurrentUser(user.fullName || user.username);
+            setCurrentUser({ fullName: user.fullName || user.username, username: user.username });
             setIsLoggedIn(true);
-            saveAuthState(true, user.fullName || user.username);
+            saveAuthState(true, { fullName: user.fullName || user.username, username: user.username });
           }
         });
       } else {

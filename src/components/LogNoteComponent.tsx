@@ -259,7 +259,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         </div>
       </div>
 
-      {/* Comments Header */}
+      {/* Logs Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -276,7 +276,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             fontWeight: '600',
             color: '#1e293b'
           }}>
-            Comments
+            Logs
           </span>
           <span style={{
             background: '#f97316',
@@ -374,7 +374,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           </div>
         ))}
 
-        {/* Manual Comments */}
+        {/* Manual Logs */}
         {logNotes.length === 0 && activityLogs.length === 0 ? (
           <div style={{
             textAlign: 'center',

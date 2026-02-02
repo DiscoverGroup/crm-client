@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { uploadFileToR2 } from '../services/r2UploadService';
 
 interface UserProfileProps {
-  currentUser: string;
+  currentUser: { fullName: string; username: string };
   onBack: () => void;
   onUpdateUser: (updatedData: UserData) => void;
 }
@@ -99,7 +99,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     const users = localStorage.getItem('crm_users');
     if (users) {
       const userList = JSON.parse(users);
-      const user = userList.find((u: any) => u.fullName === currentUser);
+      const user = userList.find((u: any) => u.fullName === currentUser.fullName);
       if (user) {
         const data = {
           fullName: user.fullName,
@@ -345,7 +345,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
             <h2 style={{ margin: '0 0 5px 0', color: '#2c3e50', fontSize: '24px' }}>
               {userData.fullName}
             </h2>
-            <p style={{ margin: '0 0 5px 0', color: '#6c757d', fontSize: '14px' }}>
+            <p style={{ margin: '0 0 5px 0', color: '#1e7bb8', fontSize: '14px', fontWeight: '500' }}>
+              @{userData.username}
+            </p>
+            <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
               {userData.position} {userData.department && `• ${userData.department}`}
             </p>
             <p style={{ margin: 0, color: '#6c757d', fontSize: '14px' }}>

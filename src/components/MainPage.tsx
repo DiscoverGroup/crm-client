@@ -126,7 +126,7 @@ const ClientRecords: React.FC<{
   onClientSelect?: () => void;
   onNavigateBack?: () => void;
   clientId?: string;
-  currentUser?: string;
+  currentUser?: { fullName: string; username: string };
 }> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser }) => {
   // Client form state
   const [clientNo, setClientNo] = useState("");
@@ -151,7 +151,7 @@ const ClientRecords: React.FC<{
   // Field tracking setup
   const currentClientId = clientId || tempClientId;
   const currentUserId = "user_1"; // In a real app, get from auth context
-  const currentUserName = propsCurrentUser || "Current User"; // Use prop or fallback
+  const currentUserName = propsCurrentUser?.fullName || "Current User"; // Use prop or fallback
   
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
@@ -2587,7 +2587,7 @@ const ClientRecords: React.FC<{
 };
 
 interface MainPageProps {
-  currentUser: string;
+  currentUser: { fullName: string; username: string };
   onUpdateUser?: (fullName: string) => void;
 }
 
@@ -2610,7 +2610,7 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
     if (!usersData) return false;
     try {
       const users = JSON.parse(usersData);
-      const user = users.find((u: any) => u.fullName === currentUser);
+      const user = users.find((u: any) => u.fullName === currentUser.fullName);
       return user && user.role === 'admin';
     } catch {
       return false;
