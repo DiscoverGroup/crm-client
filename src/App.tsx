@@ -20,7 +20,7 @@ const App: React.FC = () => {
     onConfirm?: () => void;
   }>({ isOpen: false, title: '', message: '', type: 'info' });
 
-  // Check MongoDB connection status
+  // Check MongoDB connection status (only works in production with Netlify functions)
   useEffect(() => {
     const checkMongoDB = async () => {
       try {
@@ -33,10 +33,11 @@ const App: React.FC = () => {
         if (result.success) {
           console.log('✅ MongoDB Atlas: Connected');
         } else {
-          console.warn('⚠️ MongoDB Atlas: Connection issue');
+          console.log('⚠️ MongoDB Atlas: Using localStorage (development mode)');
         }
       } catch (error) {
-        console.error('❌ MongoDB Atlas: Not connected');
+        // Silent in development - Netlify functions only work in production
+        console.log('📦 Running in development mode - using localStorage');
       }
     };
     checkMongoDB();

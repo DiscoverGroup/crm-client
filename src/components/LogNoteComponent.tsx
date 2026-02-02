@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogNoteService } from '../services/logNoteService';
-import { ActivityLogService } from '../services/activityLogService';
+import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
 
 interface LogNoteComponentProps {
@@ -19,6 +19,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const [newCommentStatus, setNewCommentStatus] = useState<'pending' | 'done' | 'on hold'>('pending');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
 
   // Helper function to get user initials
   const getInitials = (name: string) => {
@@ -309,13 +310,27 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Activity Logs (automatic) */}
         {activityLogs.map((log) => (
-          <div key={log.id} style={{
-            background: '#f8fafc',
-            borderRadius: '8px',
-            padding: '12px',
-            border: '1px solid #e2e8f0',
-            borderLeft: '3px solid #3b82f6'
-          }}>
+          <div 
+            key={log.id} 
+            onClick={() => setSelectedLog(log)}
+            style={{
+              background: '#f8fafc',
+              borderRadius: '8px',
+              padding: '12px',
+              border: '1px solid #e2e8f0',
+              borderLeft: '3px solid #3b82f6',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#eff6ff';
+              e.currentTarget.style.transform = 'translateX(4px)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f8fafc';
+              e.currentTarget.style.transform = 'translateX(0)';
+            }}
+          >
             <div style={{
               display: 'flex',
               alignItems: 'flex-start',
@@ -714,6 +729,260 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           ))
         )}
       </div>
+
+      {/* Detail Modal for Activity Logs */}
+      {selectedLog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          backdropFilter: 'blur(4px)'
+        }}
+        onClick={() => setSelectedLog(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '32px',
+              maxWidth: '700px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              animation: 'modalSlideIn 0.3s ease-out'
+            }}>
+            <style>
+              {`
+                @keyframes modalSlideIn {
+                  from {
+                    opacity: 0;
+                    transform: translateY(-20px);
+                  }
+                  to {
+                    opacity: 1;
+                    transform: translateY(0);
+                  }
+                }
+              `}
+            </style>
+
+            {/* Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '24px',
+              paddingBottom: '16px',
+              borderBottom: '2px solid #e9ecef'
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '32px' }}>
+                    {selectedLog.action === 'created' && '✨'}
+                    {selectedLog.action === 'edited' && '✏️'}
+                    {selectedLog.action === 'deleted' && '🗑️'}
+                    {selectedLog.action === 'recovered' && '♻️'}
+                    {selectedLog.action === 'permanently_deleted' && '⚠️'}
+                    {selectedLog.action === 'file_uploaded' && '📎'}
+                    {selectedLog.action === 'file_deleted' && '🗑️'}
+                  </span>
+                  <span style={{
+                    display: 'inline-block',
+                    padding: '6px 16px',
+                    backgroundColor: selectedLog.action === 'created' ? '#10b981' : 
+                                   selectedLog.action === 'edited' ? '#3b82f6' :
+                                   selectedLog.action === 'deleted' ? '#ef4444' :
+                                   selectedLog.action === 'file_uploaded' ? '#8b5cf6' : '#6b7280',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase'
+                  }}>
+                    {selectedLog.action.replace('_', ' ')}
+                  </span>
+                </div>
+                <h2 style={{
+                  margin: '8px 0 4px 0',
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#1f2937'
+                }}>
+                  {selectedLog.clientName}
+                </h2>
+                <p style={{
+                  margin: 0,
+                  fontSize: '14px',
+                  color: '#6b7280'
+                }}>
+                  {formatTimestamp(new Date(selectedLog.timestamp))}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                style={{
+                  background: '#f3f4f6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  color: '#6b7280',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#e5e7eb';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Details */}
+            <div style={{
+              backgroundColor: '#f9fafb',
+              padding: '20px',
+              borderRadius: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '16px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                    Performed By
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937' }}>
+                    {selectedLog.performedByUser}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                    Log ID
+                  </div>
+                  <div style={{ fontSize: '14px', fontFamily: 'monospace', color: '#1f2937' }}>
+                    {selectedLog.id}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedLog.details && (
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px'
+                }}>
+                  Details
+                </div>
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#4b5563',
+                  lineHeight: '1.6'
+                }}>
+                  {selectedLog.details}
+                </div>
+              </div>
+            )}
+
+            {selectedLog.changes && Object.keys(selectedLog.changes).length > 0 && (
+              <div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '12px'
+                }}>
+                  Changes Made
+                </div>
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  padding: '16px'
+                }}>
+                  {Object.entries(selectedLog.changes).map(([field, change]) => (
+                    <div key={field} style={{
+                      padding: '12px',
+                      backgroundColor: 'white',
+                      borderRadius: '6px',
+                      marginBottom: '8px',
+                      border: '1px solid #e5e7eb'
+                    }}>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#6b7280',
+                        marginBottom: '8px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {field}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                            Previous
+                          </div>
+                          <div style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#fee2e2',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#991b1b',
+                            wordBreak: 'break-word'
+                          }}>
+                            {String(change.old) || '(empty)'}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '20px', color: '#9ca3af' }}>→</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>
+                            Updated
+                          </div>
+                          <div style={{
+                            padding: '8px 12px',
+                            backgroundColor: '#d1fae5',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#065f46',
+                            fontWeight: '500',
+                            wordBreak: 'break-word'
+                          }}>
+                            {String(change.new) || '(empty)'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
