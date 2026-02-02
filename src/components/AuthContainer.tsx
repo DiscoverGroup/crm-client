@@ -4,7 +4,7 @@ import RegisterForm from './RegisterForm';
 
 interface AuthContainerProps {
   onLogin: (username: string, password: string) => void;
-  onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => boolean | void;
+  onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => Promise<void> | void;
 }
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) => {
@@ -14,12 +14,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
     onLogin(email, password);
   };
 
-  const handleRegister = (userData: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => {
-    const success = onRegister(userData);
+  const handleRegister = async (userData: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => {
+    await onRegister(userData);
     // Switch back to login form after successful registration
-    if (success) {
-      setTimeout(() => setShowRegister(false), 300);
-    }
+    setTimeout(() => setShowRegister(false), 300);
   };
 
   return (
