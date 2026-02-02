@@ -229,9 +229,6 @@ const App: React.FC = () => {
       console.error('Error sending verification email:', error);
       alert("Registration successful, but failed to send verification email. Please contact support.");
     }
-    
-    // Return true to indicate successful registration
-    return true;
   };
 
   // Show loading spinner while checking authentication

@@ -1,7 +1,8 @@
 import { MongoClient, Db } from 'mongodb';
 
-// MongoDB connection string - using localhost for now
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+// MongoDB connection string
+// Note: This file is only used in Netlify Functions, not in the browser
+const MONGODB_URI = typeof process !== 'undefined' ? (process.env.MONGODB_URI || 'mongodb://localhost:27017') : 'mongodb://localhost:27017';
 const DB_NAME = 'dg_crm';
 
 let cachedClient: MongoClient | null = null;
