@@ -102,10 +102,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       
       if (result.success && result.url) {
         setProfileImage(result.url);
-        alert('Profile image uploaded successfully! URL: ' + result.url);
+        console.log('Profile image URL set:', result.url);
       } else {
         console.error('Upload failed:', result.error);
-        alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
+        alert('Failed to upload profile image. Make sure R2.dev subdomain is enabled in Cloudflare bucket settings.');
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
