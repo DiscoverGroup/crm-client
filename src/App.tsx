@@ -76,6 +76,12 @@ const App: React.FC = () => {
       );
 
       if (user) {
+        // Check if email is verified
+        if (user.isVerified === false) {
+          alert("Please verify your email address before logging in. Check your inbox for the verification link.");
+          return;
+        }
+
         // Login successful
         setCurrentUser(user.fullName || user.username);
         setIsLoggedIn(true);
@@ -89,7 +95,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRegister = (form: { username: string; email: string; password: string; fullName: string; department: string; position: string; profileImage?: string }) => {
+  const handleRegister = async (form: { username: string; email: string; password: string; fullName: string; department: string; position: string; profileImage?: string }) => {
     // Validate all required fields
     if (!form.fullName.trim() || !form.username.trim() || !form.email.trim() || !form.password.trim() || !form.department.trim() || !form.position.trim()) {
       alert("Please fill in all fields");
@@ -129,7 +135,12 @@ const App: React.FC = () => {
       return;
     }
 
-    // Add new user
+    // Generate verification token
+    const verificationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    // Add new user (unverified)
     const newUser = {
       fullName: form.fullName,
       username: form.username,
@@ -138,13 +149,40 @@ const App: React.FC = () => {
       department: form.department,
       position: form.position,
       profileImage: form.profileImage || '',
-      registeredAt: new Date().toISOString()
+      registeredAt: new Date().toISOString(),
+      isVerified: false,
+      verificationToken: verificationToken,
+      verificationTokenExpiry: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
     };
 
     users.push(newUser);
     localStorage.setItem('crm_users', JSON.stringify(users));
 
-    alert("Registration successful! Please login with your credentials.");
+    // Send verification email
+    try {
+      const response = await fetch('/.netlify/functions/send-verification-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: form.email,
+          fullName: form.fullName,
+          verificationToken: verificationToken
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert("Registration successful! Please check your email to verify your account before logging in.");
+      } else {
+        alert("Registration successful, but failed to send verification email. Please contact support.");
+      }
+    } catch (error) {
+      console.error('Error sending verification email:', error);
+      alert("Registration successful, but failed to send verification email. Please contact support.");
+    }
     
     // Return true to indicate successful registration
     return true;
