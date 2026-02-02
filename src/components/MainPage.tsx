@@ -11,6 +11,7 @@ import Sidebar from "./Sidebar";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
 import ActivityLogViewer from './ActivityLogViewer';
+import AdminPanel from './AdminPanel';
 import { ActivityLogService } from '../services/activityLogService';
 
 // Utility for modern UI
@@ -2601,6 +2602,20 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
   const [viewProfile, setViewProfile] = useState(false);
   const [viewDeleted, setViewDeleted] = useState(false);
   const [viewActivityLog, setViewActivityLog] = useState(false);
+  const [viewAdminPanel, setViewAdminPanel] = useState(false);
+
+  // Check if current user is admin
+  const isAdmin = () => {
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return false;
+    try {
+      const users = JSON.parse(usersData);
+      const user = users.find((u: any) => u.fullName === currentUser);
+      return user && user.role === 'admin';
+    } catch {
+      return false;
+    }
+  };
 
   const loadClients = useCallback(async () => {
     setLoading(true);
@@ -2685,6 +2700,10 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
               setViewProfile(false);
               setViewActivityLog(true);
             }}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewProfile(false);
+              setViewAdminPanel(true);
+            } : undefined}
           />
           <div style={{
             marginLeft: '300px',
@@ -2719,6 +2738,10 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
               setViewDeleted(false);
               setViewActivityLog(true);
             }}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewDeleted(false);
+              setViewAdminPanel(true);
+            } : undefined}
           />
           <div style={{
             marginLeft: '300px',
@@ -2752,6 +2775,10 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
               setViewDeleted(true);
             }}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewActivityLog(false);
+              setViewAdminPanel(true);
+            } : undefined}
           />
           <div style={{
             marginLeft: '300px',
@@ -2765,6 +2792,37 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
             />
           </div>
         </div>
+      ) : viewAdminPanel ? (
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={() => {
+              setViewAdminPanel(false);
+              loadClients();
+            }}
+            onNavigateToProfile={() => {
+              setViewAdminPanel(false);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => {
+              setViewAdminPanel(false);
+              setViewDeleted(true);
+            }}
+            onNavigateToActivityLog={() => {
+              setViewAdminPanel(false);
+              setViewActivityLog(true);
+            }}
+            onNavigateToAdminPanel={() => setViewAdminPanel(true)}
+          />
+          <div style={{
+            marginLeft: '300px',
+            width: 'calc(100% - 300px)',
+            minHeight: '100vh'
+          }}>
+            <AdminPanel
+              onBack={() => setViewAdminPanel(false)}
+            />
+          </div>
+        </div>
       ) : (
         <div style={{ display: 'flex' }}>
           <Sidebar 
@@ -2772,6 +2830,7 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
             onNavigateToProfile={() => setViewProfile(true)}
             onNavigateToDeleted={() => setViewDeleted(true)}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
+            onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
           />
           <div style={{
             marginLeft: '300px',

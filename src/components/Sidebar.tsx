@@ -5,9 +5,10 @@ interface SidebarProps {
   onNavigateToProfile: () => void;
   onNavigateToDeleted: () => void;
   onNavigateToActivityLog: () => void;
+  onNavigateToAdminPanel?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigateToProfile, onNavigateToDeleted, onNavigateToActivityLog }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigateToProfile, onNavigateToDeleted, onNavigateToActivityLog, onNavigateToAdminPanel }) => {
   return (
     <div style={{
       width: '280px',
@@ -252,6 +253,33 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
           </div>
         </div>
       </div>
+
+      {/* Admin Panel Button (conditionally rendered) */}
+      {onNavigateToAdminPanel && (
+        <button
+          onClick={onNavigateToAdminPanel}
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '10px',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: '600',
+            transition: 'all 0.3s ease',
+            marginTop: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 4px 8px rgba(245, 158, 11, 0.3)'
+          }}
+        >
+          <span style={{ fontSize: '18px' }}>👥</span>
+          <span>Admin Panel</span>
+        </button>
+      )}
 
       {/* Footer */}
       <div style={{
