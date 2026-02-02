@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { uploadFileToR2 } from '../services/r2UploadService';
+import Modal from './Modal';
 
 interface RegisterFormProps {
   onRegister: (form: { 
@@ -80,6 +81,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
 
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedDept = e.target.value;
@@ -105,11 +112,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         console.log('Profile image URL set:', result.url);
       } else {
         console.error('Upload failed:', result.error);
-        alert('Failed to upload profile image. Make sure R2.dev subdomain is enabled in Cloudflare bucket settings.');
+        setModalConfig({
+          isOpen: true,
+          title: 'Upload Failed',
+          message: 'Failed to upload profile image. Make sure R2.dev subdomain is enabled in Cloudflare bucket settings.',
+          type: 'error'
+        });
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      alert('Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)));
+      setModalConfig({
+        isOpen: true,
+        title: 'Upload Error',
+        message: 'Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)),
+        type: 'error'
+      });
     } finally {
       setUploading(false);
     }
@@ -118,15 +135,30 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
-      alert("Passwords do not match.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Password Mismatch',
+        message: 'Passwords do not match.',
+        type: 'error'
+      });
       return;
     }
     if (!department) {
-      alert("Please select a department.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Missing Department',
+        message: 'Please select a department.',
+        type: 'warning'
+      });
       return;
     }
     if (!position) {
-      alert("Please select a position.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Missing Position',
+        message: 'Please select a position.',
+        type: 'warning'
+      });
       return;
     }
     onRegister({ username, email, password, fullName, department, position, profileImage });
@@ -147,6 +179,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       boxShadow: '5px 0 15px rgba(0,0,0,0.05)',
       overflowY: 'auto'
     }}>
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+      />
       <div style={{ marginBottom: '36px' }}>
         <h1 style={{
           fontSize: '32px',

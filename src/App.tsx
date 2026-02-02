@@ -3,11 +3,19 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthContainer from "./components/AuthContainer";
 import MainPage from "./components/MainPage";
+import Modal from "./components/Modal";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+    onConfirm?: () => void;
+  }>({ isOpen: false, title: '', message: '', type: 'info' });
 
   // Check MongoDB connection status
   useEffect(() => {
@@ -120,7 +128,12 @@ const App: React.FC = () => {
   const handleLogin = (username: string, password: string) => {
     // Validate input fields
     if (!username.trim() || !password.trim()) {
-      alert("Please enter both username and password");
+      setModalConfig({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please enter both username and password',
+        type: 'warning'
+      });
       return;
     }
 
@@ -128,7 +141,12 @@ const App: React.FC = () => {
     const registeredUsers = localStorage.getItem('crm_users');
     
     if (!registeredUsers) {
-      alert("No registered users found. Please sign up first.");
+      setModalConfig({
+        isOpen: true,
+        title: 'No Users Found',
+        message: 'No registered users found. Please sign up first.',
+        type: 'info'
+      });
       return;
     }
 
@@ -143,34 +161,67 @@ const App: React.FC = () => {
       if (user) {
         // Check if email is verified
         if (user.isVerified === false) {
-          alert("Please verify your email address before logging in. Check your inbox for the verification link.");
+          setModalConfig({
+            isOpen: true,
+            title: 'Email Not Verified',
+            message: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+            type: 'warning'
+          });
           return;
         }
 
-        // Login successful
-        setCurrentUser(user.fullName || user.username);
-        setIsLoggedIn(true);
-        saveAuthState(true, user.fullName || user.username);
+        // Show success modal then login
+        setModalConfig({
+          isOpen: true,
+          title: 'Login Successful!',
+          message: `Welcome back, ${user.fullName || user.username}!`,
+          type: 'success',
+          onConfirm: () => {
+            setCurrentUser(user.fullName || user.username);
+            setIsLoggedIn(true);
+            saveAuthState(true, user.fullName || user.username);
+          }
+        });
       } else {
-        alert("Invalid email/username or password. Please try again or sign up.");
+        setModalConfig({
+          isOpen: true,
+          title: 'Login Failed',
+          message: 'Invalid email/username or password. Please try again or sign up.',
+          type: 'error'
+        });
       }
     } catch (error) {
       console.error('Error parsing user data:', error);
-      alert("An error occurred. Please try again.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'An error occurred. Please try again.',
+        type: 'error'
+      });
     }
   };
 
   const handleRegister = async (form: { username: string; email: string; password: string; fullName: string; department: string; position: string; profileImage?: string }) => {
     // Validate all required fields
     if (!form.fullName.trim() || !form.username.trim() || !form.email.trim() || !form.password.trim() || !form.department.trim() || !form.position.trim()) {
-      alert("Please fill in all fields");
+      setModalConfig({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Please fill in all fields',
+        type: 'warning'
+      });
       return;
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(form.email)) {
-      alert("Please enter a valid email address");
+      setModalConfig({
+        isOpen: true,
+        title: 'Invalid Email',
+        message: 'Please enter a valid email address',
+        type: 'error'
+      });
       return;
     }
 
@@ -191,12 +242,22 @@ const App: React.FC = () => {
     const usernameExists = users.some((u: any) => u.username === form.username);
 
     if (emailExists) {
-      alert("This email is already registered. Please login or use a different email.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Email Already Registered',
+        message: 'This email is already registered. Please login or use a different email.',
+        type: 'warning'
+      });
       return;
     }
 
     if (usernameExists) {
-      alert("This username is already taken. Please choose a different username.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Username Taken',
+        message: 'This username is already taken. Please choose a different username.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -240,13 +301,28 @@ const App: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert("Registration successful! Please check your email to verify your account before logging in.");
+        setModalConfig({
+          isOpen: true,
+          title: 'Registration Successful!',
+          message: 'Please check your email to verify your account before logging in.',
+          type: 'success'
+        });
       } else {
-        alert("Registration successful, but failed to send verification email. Please contact support.");
+        setModalConfig({
+          isOpen: true,
+          title: 'Registration Complete',
+          message: 'Registration successful, but failed to send verification email. Please contact support.',
+          type: 'warning'
+        });
       }
     } catch (error) {
       console.error('Error sending verification email:', error);
-      alert("Registration successful, but failed to send verification email. Please contact support.");
+      setModalConfig({
+        isOpen: true,
+        title: 'Registration Complete',
+        message: 'Registration successful, but failed to send verification email. Please contact support.',
+        type: 'warning'
+      });
     }
   };
 
@@ -273,6 +349,14 @@ const App: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        onConfirm={modalConfig.onConfirm}
+      />
       <Navbar 
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
