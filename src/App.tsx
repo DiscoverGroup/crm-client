@@ -4,11 +4,14 @@ import Footer from "./components/Footer";
 import AuthContainer from "./components/AuthContainer";
 import MainPage from "./components/MainPage";
 import Modal from "./components/Modal";
+import OTPVerification from "./components/OTPVerification";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [pendingUserEmail, setPendingUserEmail] = useState('');
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -261,10 +264,8 @@ const App: React.FC = () => {
       return;
     }
 
-    // Generate verification token
-    const verificationToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    // Generate 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Add new user (unverified)
     const newUser = {
@@ -277,8 +278,8 @@ const App: React.FC = () => {
       profileImage: form.profileImage || '',
       registeredAt: new Date().toISOString(),
       isVerified: false,
-      verificationToken: verificationToken,
-      verificationTokenExpiry: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+      verificationCode: verificationCode,
+      verificationCodeExpiry: Date.now() + (10 * 60 * 1000) // 10 minutes
     };
 
     users.push(newUser);
@@ -294,24 +295,20 @@ const App: React.FC = () => {
         body: JSON.stringify({
           email: form.email,
           fullName: form.fullName,
-          verificationToken: verificationToken
+          verificationCode: verificationCode
         })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setModalConfig({
-          isOpen: true,
-          title: 'Registration Successful!',
-          message: 'Please check your email to verify your account before logging in.',
-          type: 'success'
-        });
+        setPendingUserEmail(form.email);
+        setShowOTPVerification(true);
       } else {
         setModalConfig({
           isOpen: true,
           title: 'Registration Complete',
-          message: 'Registration successful, but failed to send verification email. Please contact support.',
+          message: 'Registration successful, but failed to send verification code. Please contact support.',
           type: 'warning'
         });
       }
@@ -320,8 +317,123 @@ const App: React.FC = () => {
       setModalConfig({
         isOpen: true,
         title: 'Registration Complete',
-        message: 'Registration successful, but failed to send verification email. Please contact support.',
+        message: 'Registration successful, but failed to send verification code. Please contact support.',
         type: 'warning'
+      });
+    }
+  };
+
+  const handleOTPVerify = (code: string) => {
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return;
+
+    try {
+      const users = JSON.parse(usersData);
+      const userIndex = users.findIndex((u: any) => u.email === pendingUserEmail);
+
+      if (userIndex === -1) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Error',
+          message: 'User not found',
+          type: 'error'
+        });
+        return;
+      }
+
+      const user = users[userIndex];
+
+      // Check if code is expired
+      if (Date.now() > user.verificationCodeExpiry) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Code Expired',
+          message: 'Verification code has expired. Please request a new one.',
+          type: 'error'
+        });
+        setShowOTPVerification(false);
+        return;
+      }
+
+      // Verify code
+      if (user.verificationCode === code) {
+        users[userIndex] = {
+          ...user,
+          isVerified: true,
+          verificationCode: null,
+          verificationCodeExpiry: null,
+          verifiedAt: new Date().toISOString()
+        };
+        localStorage.setItem('crm_users', JSON.stringify(users));
+        
+        setShowOTPVerification(false);
+        setModalConfig({
+          isOpen: true,
+          title: 'Email Verified!',
+          message: 'Your email has been verified successfully. You can now login to your account.',
+          type: 'success'
+        });
+      } else {
+        setModalConfig({
+          isOpen: true,
+          title: 'Invalid Code',
+          message: 'The verification code you entered is incorrect. Please try again.',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      setModalConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'An error occurred during verification',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleOTPResend = async () => {
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return;
+
+    try {
+      const users = JSON.parse(usersData);
+      const userIndex = users.findIndex((u: any) => u.email === pendingUserEmail);
+
+      if (userIndex === -1) return;
+
+      // Generate new code
+      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+      users[userIndex].verificationCode = newCode;
+      users[userIndex].verificationCodeExpiry = Date.now() + (10 * 60 * 1000);
+      localStorage.setItem('crm_users', JSON.stringify(users));
+
+      // Resend email
+      const response = await fetch('/.netlify/functions/send-verification-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: pendingUserEmail,
+          fullName: users[userIndex].fullName,
+          verificationCode: newCode
+        })
+      });
+
+      if (response.ok) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Code Resent',
+          message: 'A new verification code has been sent to your email.',
+          type: 'success'
+        });
+      }
+    } catch (error) {
+      console.error('Error resending code:', error);
+      setModalConfig({
+        isOpen: true,
+        title: 'Error',
+        message: 'Failed to resend verification code',
+        type: 'error'
       });
     }
   };
@@ -349,6 +461,14 @@ const App: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      {showOTPVerification && (
+        <OTPVerification
+          email={pendingUserEmail}
+          onVerify={handleOTPVerify}
+          onResend={handleOTPResend}
+          onCancel={() => setShowOTPVerification(false)}
+        />
+      )}
       <Modal
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
