@@ -6,6 +6,7 @@ import MainPage from "./components/MainPage";
 import Modal from "./components/Modal";
 import OTPVerification from "./components/OTPVerification";
 import { MongoDBService } from "./services/mongoDBService";
+import { FileService } from "./services/fileService";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,6 +24,9 @@ const App: React.FC = () => {
 
   // Check MongoDB connection status (only works in production with Netlify functions)
   useEffect(() => {
+    // Fix any R2 URLs that were stored with incorrect domain
+    FileService.fixR2URLs();
+    
     const checkMongoDB = async () => {
       try {
         const response = await fetch('/.netlify/functions/database', {

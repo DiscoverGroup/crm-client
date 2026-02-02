@@ -259,4 +259,41 @@ export class FileService {
   static isPreviewable(fileType: string): boolean {
     return fileType.startsWith('image/') || fileType === 'application/pdf';
   }
+
+  // Fix R2 URLs that were stored with incorrect domain
+  static fixR2URLs(): void {
+    try {
+      const attachments = this.getAllFileAttachments();
+      const correctUrl = 'https://pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev';
+      const incorrectPatterns = [
+        'pub-394006da7bb94c4fa451404e2759a6b8.r2.dev',
+        'pub-b825320c39dd07bb2ae33de95f61e4f4.r2.dev'
+      ];
+      
+      let fixed = 0;
+      const updatedAttachments = attachments.map(att => {
+        if (att.file.isR2 && att.file.data) {
+          for (const pattern of incorrectPatterns) {
+            if (att.file.data.includes(pattern)) {
+              // Extract the path after the domain
+              const pathMatch = att.file.data.match(/r2\.dev\/(.+)$/);
+              if (pathMatch) {
+                att.file.data = `${correctUrl}/${pathMatch[1]}`;
+                fixed++;
+                break;
+              }
+            }
+          }
+        }
+        return att;
+      });
+
+      if (fixed > 0) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+        console.log(`✅ Fixed ${fixed} R2 file URLs`);
+      }
+    } catch (error) {
+      console.error('Error fixing R2 URLs:', error);
+    }
+  }
 }

@@ -11,13 +11,14 @@ interface UploadResponse {
 // Get R2 public URL from environment or construct it
 function getR2PublicUrl(): string {
   const customUrl = import.meta.env.VITE_R2_PUBLIC_URL;
-  if (customUrl) return customUrl;
+  if (customUrl) {
+    // Ensure it doesn't end with a slash
+    return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
+  }
 
-  const accountId = import.meta.env.VITE_R2_ACCOUNT_ID;
-  
-  // Use R2.dev subdomain (you need to enable this in bucket settings)
-  // Format: https://pub-<hash>.r2.dev (the actual hash is shown in your bucket settings)
-  return `https://pub-${accountId}.r2.dev`;
+  // Fallback - but you should always set VITE_R2_PUBLIC_URL in .env
+  console.warn('VITE_R2_PUBLIC_URL not set, using fallback. This may not work correctly.');
+  return 'https://pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev';
 }
 
 /**
