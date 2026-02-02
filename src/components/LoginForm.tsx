@@ -15,7 +15,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [resetToken, setResetToken] = useState("");
   const [resetUserEmail, setResetUserEmail] = useState("");
 
   // Check if URL has reset token
@@ -25,7 +24,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     const emailParam = urlParams.get('email');
     
     if (token && emailParam) {
-      setResetToken(token);
       setResetUserEmail(emailParam);
       setShowResetPassword(true);
       // Clean URL
@@ -122,7 +120,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       setShowResetPassword(false);
       setNewPassword('');
       setConfirmNewPassword('');
-      setResetToken('');
       setResetUserEmail('');
     } catch (error) {
       console.error('Error resetting password:', error);
