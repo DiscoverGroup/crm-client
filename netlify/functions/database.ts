@@ -1,7 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
@@ -12,10 +12,25 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  // Check if MongoDB URI is configured
+  if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        success: false, 
+        error: 'MONGODB_URI environment variable is not configured in Netlify' 
+      })
+    };
+  }
+
   try {
     const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
 
-    const client = await MongoClient.connect(MONGODB_URI);
+    const client = await MongoClient.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000, // Fail fast after 5 seconds
+      connectTimeoutMS: 5000,
+    });
     const db = client.db(DB_NAME);
     const col = db.collection(collection);
 
@@ -67,9 +82,11 @@ export const handler: Handler = async (event) => {
     console.error('Database error:', error);
     return {
       statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Database operation failed' 
+        error: error.message || 'Database operation failed',
+        hint: 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0'
       })
     };
   }
