@@ -47,11 +47,19 @@ const App: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
         });
-        const result = await response.json();
-        if (result.success) {
-          console.log('✅ MongoDB Atlas: Connected');
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.log('❌ MongoDB Atlas: Function error');
+          console.log(`   • Status: ${response.status}`);
+          console.log(`   • Response: ${errorText.substring(0, 200)}`);
         } else {
-          console.log('❌ MongoDB Atlas: Connection issue -', result.error);
+          const result = await response.json();
+          if (result.success) {
+            console.log('✅ MongoDB Atlas: Connected');
+          } else {
+            console.log('❌ MongoDB Atlas: Connection issue -', result.error);
+          }
         }
       } catch (error) {
         console.error('❌ MongoDB Atlas: Connection failed -', error);
