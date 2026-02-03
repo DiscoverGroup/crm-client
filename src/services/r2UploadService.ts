@@ -10,8 +10,13 @@ interface UploadResponse {
 
 // Get R2 public URL from environment or construct it
 function getR2PublicUrl(): string {
-  const customUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+  let customUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+  
   if (customUrl) {
+    // Ensure it has https:// protocol
+    if (!customUrl.startsWith('http://') && !customUrl.startsWith('https://')) {
+      customUrl = `https://${customUrl}`;
+    }
     // Ensure it doesn't end with a slash
     return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
   }

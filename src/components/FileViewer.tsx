@@ -111,29 +111,35 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 10000,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '24px',
-        maxWidth: '90vw',
-        maxHeight: '90vh',
-        overflow: 'auto',
-        position: 'relative',
-        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-      }}>
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '20px'
+      }}
+      onClick={onClose}
+    >
+      <div 
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          maxWidth: '90vw',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          position: 'relative',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div style={{
           display: 'flex',

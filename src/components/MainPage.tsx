@@ -462,6 +462,52 @@ const ClientRecords: React.FC<{
     }
   };
 
+  const handleRemovePaymentAttachment = async (
+    fileId: string,
+    idx: number,
+    field: "depositSlip" | "receipt"
+  ) => {
+    if (!window.confirm('Are you sure you want to remove this file?')) {
+      return;
+    }
+
+    try {
+      // Delete file from FileService
+      const success = await FileService.deleteFile(fileId);
+      
+      if (success) {
+        // Clear from local state
+        setPaymentDetails(pd =>
+          pd.map((row, i) => {
+            if (i !== idx) return row;
+            return { ...row, [field]: null };
+          })
+        );
+        
+        // Refresh attachments
+        const currentClientId = clientId || tempClientId;
+        const clientAttachments = FileService.getFilesByClient(currentClientId);
+        setAttachments(clientAttachments);
+        
+        // Trigger file update event
+        window.dispatchEvent(new Event('fileAttachmentUpdated'));
+        
+        // Log the removal
+        logAttachment(
+          'payment-terms-schedule',
+          'deleted',
+          'File removed',
+          field === "depositSlip" ? "deposit slip" : "receipt"
+        );
+      } else {
+        alert('Failed to remove file. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error removing file:', error);
+      alert('Failed to remove file. Please try again.');
+    }
+  };
+
   const handleSavePaymentDetails = async () => {
     setIsSaving(true);
     try {
@@ -1520,6 +1566,24 @@ const ClientRecords: React.FC<{
                                   >
                                     Download
                                   </a>
+                                  <button
+                                    onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "depositSlip")}
+                                    style={{
+                                      fontSize: "14px",
+                                      color: "#ef4444",
+                                      background: "transparent",
+                                      border: "1px solid #ef4444",
+                                      borderRadius: "4px",
+                                      padding: "2px 6px",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                    title="Remove file"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                               );
                             }
@@ -1562,6 +1626,24 @@ const ClientRecords: React.FC<{
                                   >
                                     Download
                                   </a>
+                                  <button
+                                    onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "receipt")}
+                                    style={{
+                                      fontSize: "14px",
+                                      color: "#ef4444",
+                                      background: "transparent",
+                                      border: "1px solid #ef4444",
+                                      borderRadius: "4px",
+                                      padding: "2px 6px",
+                                      cursor: "pointer",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center"
+                                    }}
+                                    title="Remove file"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                               );
                             }
