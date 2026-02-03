@@ -30,12 +30,15 @@ export class FileService {
   static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
     try {
       // Upload to R2
+      console.log('🔄 Attempting R2 upload for:', file.name);
       const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
       
       if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
+        console.error('❌ R2 Upload Failed:', uploadResult.error || 'Unknown error');
         throw new Error(uploadResult.error || 'Failed to upload to R2');
       }
 
+      console.log('✅ R2 Upload Success:', uploadResult.url);
       const storedFile: StoredFile = {
         name: file.name,
         type: file.type,
@@ -49,7 +52,8 @@ export class FileService {
       
       return storedFile;
     } catch (error) {
-      console.error('Error uploading file to R2:', error);
+      console.error('❌ R2 Upload Error - Falling back to base64:', error);
+      console.warn('⚠️ File will be stored as base64 (not recommended for large files)');
       // Fallback to base64 if R2 fails
       return this.fileToBase64StoredFile(file);
     }
