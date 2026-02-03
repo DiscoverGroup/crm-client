@@ -80,13 +80,25 @@ export const handler: Handler = async (event) => {
     };
   } catch (error: any) {
     console.error('Database error:', error);
+    
+    let hint = 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0';
+    
+    // Provide specific hints based on error type
+    if (error.message?.includes('SSL') || error.message?.includes('TLS')) {
+      hint = 'SSL/TLS error - likely wrong password or special characters in password need URL encoding. Also verify database user permissions.';
+    } else if (error.message?.includes('authentication failed')) {
+      hint = 'Authentication failed - check username and password in MONGODB_URI';
+    } else if (error.message?.includes('ENOTFOUND') || error.message?.includes('ETIMEDOUT')) {
+      hint = 'Cannot reach MongoDB - check if IP whitelist includes 0.0.0.0/0 in Network Access';
+    }
+    
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         success: false, 
         error: error.message || 'Database operation failed',
-        hint: 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0'
+        hint: hint
       })
     };
   }
