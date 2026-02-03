@@ -264,8 +264,9 @@ export class FileService {
   static fixR2URLs(): void {
     try {
       const attachments = this.getAllFileAttachments();
-      const correctUrl = 'https://pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev';
+      const correctUrl = 'https://pub-39400cda7bb94c4fa451404e2759a6b8.r2.dev';
       const incorrectPatterns = [
+        'pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev',
         'pub-394006da7bb94c4fa451404e2759a6b8.r2.dev',
         'pub-b825320c39dd07bb2ae33de95f61e4f4.r2.dev'
       ];
@@ -291,6 +292,8 @@ export class FileService {
       if (fixed > 0) {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
         console.log(`✅ Fixed ${fixed} R2 file URLs`);
+      } else {
+        console.log('No R2 URLs needed fixing');
       }
     } catch (error) {
       console.error('Error fixing R2 URLs:', error);
