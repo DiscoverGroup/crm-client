@@ -22,12 +22,25 @@ const App: React.FC = () => {
     onConfirm?: () => void;
   }>({ isOpen: false, title: '', message: '', type: 'info' });
 
-  // Check MongoDB connection status (only works in production with Netlify functions)
+  // Check MongoDB and R2 connection status (only works in production with Netlify functions)
   useEffect(() => {
     // Fix any R2 URLs that were stored with incorrect domain
     FileService.fixR2URLs();
     
-    const checkMongoDB = async () => {
+    const checkConnections = async () => {
+      // Check if running on Netlify by checking the hostname
+      const isNetlify = window.location.hostname.includes('netlify.app') || 
+                        window.location.hostname.includes('netlify.com');
+      
+      if (!isNetlify) {
+        console.log('📦 Running in development mode - using localStorage');
+        return;
+      }
+
+      console.log('🚀 Running on Netlify - Production Mode');
+      console.log('─────────────────────────────────────');
+
+      // Check MongoDB Atlas connection
       try {
         const response = await fetch('/.netlify/functions/database', {
           method: 'POST',
@@ -38,14 +51,35 @@ const App: React.FC = () => {
         if (result.success) {
           console.log('✅ MongoDB Atlas: Connected');
         } else {
-          console.log('⚠️ MongoDB Atlas: Using localStorage (development mode)');
+          console.log('❌ MongoDB Atlas: Connection issue -', result.error);
         }
       } catch (error) {
-        // Silent in development - Netlify functions only work in production
-        console.log('📦 Running in development mode - using localStorage');
+        console.error('❌ MongoDB Atlas: Connection failed -', error);
       }
+
+      // Check Cloudflare R2 configuration
+      const r2AccountId = import.meta.env.VITE_R2_ACCOUNT_ID;
+      const r2AccessKey = import.meta.env.VITE_R2_ACCESS_KEY_ID;
+      const r2SecretKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+      const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+      const r2Bucket = import.meta.env.VITE_R2_BUCKET_NAME;
+
+      if (r2AccountId && r2AccessKey && r2SecretKey && r2PublicUrl && r2Bucket) {
+        console.log('✅ Cloudflare R2: Configured');
+        console.log(`   • Bucket: ${r2Bucket}`);
+        console.log(`   • Public URL: ${r2PublicUrl}`);
+      } else {
+        console.log('❌ Cloudflare R2: Not configured or missing credentials');
+        if (!r2AccountId) console.log('   • Missing: VITE_R2_ACCOUNT_ID');
+        if (!r2AccessKey) console.log('   • Missing: VITE_R2_ACCESS_KEY_ID');
+        if (!r2SecretKey) console.log('   • Missing: VITE_R2_SECRET_ACCESS_KEY');
+        if (!r2PublicUrl) console.log('   • Missing: VITE_R2_PUBLIC_URL');
+        if (!r2Bucket) console.log('   • Missing: VITE_R2_BUCKET_NAME');
+      }
+      
+      console.log('─────────────────────────────────────');
     };
-    checkMongoDB();
+    checkConnections();
   }, []);
 
   // Initialize default admin account
