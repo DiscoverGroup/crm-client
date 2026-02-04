@@ -331,6 +331,16 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              // Blur the textarea to close mention dropdown
+              if (document.activeElement instanceof HTMLTextAreaElement) {
+                document.activeElement.blur();
+              }
+            }}
+            onFocus={() => {
+              // Ensure mention dropdown closes when status gets focus
+              if (document.activeElement instanceof HTMLTextAreaElement) {
+                document.activeElement.blur();
+              }
             }}
             style={{
               padding: '4px 8px',

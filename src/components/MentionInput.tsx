@@ -188,12 +188,10 @@ const MentionInput: React.FC<MentionInputProps> = ({
         onSelect={handleSelectionChange}
         onClick={handleSelectionChange}
         onBlur={() => {
-          // Delay to allow click on suggestion to register
+          // Close suggestions immediately when focus is lost
           setTimeout(() => {
-            if (!containerRef.current?.contains(document.activeElement)) {
-              setShowSuggestions(false);
-            }
-          }, 200);
+            setShowSuggestions(false);
+          }, 150);
         }}
         placeholder={placeholder}
         style={{
