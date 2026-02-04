@@ -142,7 +142,7 @@ const MentionInput: React.FC<MentionInputProps> = ({
   };
 
   return (
-    <div style={{ position: 'relative', ...style }}>
+    <div style={{ position: 'relative', width: '100%', zIndex: 1, ...style }}>
       <textarea
         ref={textareaRef}
         value={value}
@@ -170,17 +170,16 @@ const MentionInput: React.FC<MentionInputProps> = ({
           ref={suggestionsRef}
           style={{
             position: 'absolute',
-            bottom: '100%',
+            bottom: 'calc(100% + 4px)',
             left: 0,
             right: 0,
-            marginBottom: '4px',
             backgroundColor: 'white',
-            border: '1px solid #e2e8f0',
+            border: '2px solid #3b82f6',
             borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
             maxHeight: '200px',
             overflowY: 'auto',
-            zIndex: 1000
+            zIndex: 9999
           }}
         >
           {suggestions.map((user, index) => (
