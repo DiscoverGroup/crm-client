@@ -6,24 +6,41 @@ interface SidebarProps {
   onNavigateToDeleted: () => void;
   onNavigateToActivityLog: () => void;
   onNavigateToAdminPanel?: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigateToProfile, onNavigateToDeleted, onNavigateToActivityLog, onNavigateToAdminPanel }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  onNavigateToClientRecords, 
+  onNavigateToProfile, 
+  onNavigateToDeleted, 
+  onNavigateToActivityLog, 
+  onNavigateToAdminPanel,
+  isOpen = false,
+  onClose
+}) => {
+  const handleNavigation = (callback: () => void) => {
+    callback();
+    if (onClose) onClose();
+  };
+
   return (
-    <div style={{
-      width: '280px',
-      background: 'linear-gradient(180deg, #0d47a1 0%, #083d63 50%, #062e4a 100%)',
-      color: 'white',
-      padding: '24px',
-      height: '100vh',
-      boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      zIndex: 1000,
-      overflowY: 'auto',
-      borderRight: '2px solid rgba(251, 191, 36, 0.2)'
-    }}>
+    <div 
+      className={`sidebar-container ${isOpen ? 'open' : ''}`}
+      style={{
+        width: '280px',
+        background: 'linear-gradient(180deg, #0d47a1 0%, #083d63 50%, #062e4a 100%)',
+        color: 'white',
+        padding: '24px',
+        height: '100vh',
+        boxShadow: '4px 0 15px rgba(0,0,0,0.1)',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 10001,
+        overflowY: 'auto',
+        borderRight: '2px solid rgba(251, 191, 36, 0.2)'
+      }}>
       {/* Header */}
       <div style={{ marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <div style={{
@@ -77,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
 
         {/* Client Records Button */}
         <button
-          onClick={onNavigateToClientRecords}
+          onClick={() => handleNavigation(onNavigateToClientRecords)}
           style={{
             width: '100%',
             padding: '14px 16px',
@@ -112,7 +129,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
 
         {/* User Profile Button */}
         <button
-          onClick={onNavigateToProfile}
+          onClick={() => handleNavigation(onNavigateToProfile)}
           style={{
             width: '100%',
             padding: '14px 16px',
@@ -147,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
 
         {/* Deleted Clients Button */}
         <button
-          onClick={onNavigateToDeleted}
+          onClick={() => handleNavigation(onNavigateToDeleted)}
           style={{
             width: '100%',
             padding: '14px 16px',
@@ -182,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
 
         {/* Activity Log Button */}
         <button
-          onClick={onNavigateToActivityLog}
+          onClick={() => handleNavigation(onNavigateToActivityLog)}
           style={{
             width: '100%',
             padding: '14px 16px',
@@ -257,7 +274,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigateToClientRecords, onNavigate
       {/* Admin Panel Button (conditionally rendered) */}
       {onNavigateToAdminPanel && (
         <button
-          onClick={onNavigateToAdminPanel}
+          onClick={() => handleNavigation(onNavigateToAdminPanel)}
           style={{
             width: '100%',
             padding: '14px 16px',

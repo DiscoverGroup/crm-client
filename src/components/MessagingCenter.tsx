@@ -29,6 +29,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [showConversationList, setShowConversationList] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,10 +121,12 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const handleStartChat = (userId: string, userName: string) => {
     loadDirectMessage(userId, userName);
+    setShowConversationList(false); // Hide list on mobile
   };
 
   const handleStartGroupChat = (groupId: string, groupName: string) => {
     loadGroupChat(groupId, groupName);
+    setShowConversationList(false); // Hide list on mobile
   };
 
   const getInitials = (name: string) => {
@@ -156,26 +159,30 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 10000,
-      padding: '20px'
+      padding: 'clamp(10px, 3vw, 20px)'
     }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '1200px',
-        height: '80vh',
-        display: 'flex',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        overflow: 'hidden'
-      }}>
-        {/* Conversations List */}
-        <div style={{
-          width: '320px',
-          borderRight: '1px solid #e2e8f0',
+      <div 
+        className="messaging-container"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '1200px',
+          height: 'min(80vh, 700px)',
           display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#f8fafc'
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          overflow: 'hidden'
         }}>
+        {/* Conversations List */}
+        <div 
+          className={`conversation-list ${!showConversationList ? 'hide-mobile' : ''}`}
+          style={{
+            width: '320px',
+            borderRight: '1px solid #e2e8f0',
+            display: showConversationList || !activeConversationId ? 'flex' : 'none',
+            flexDirection: 'column',
+            backgroundColor: '#f8fafc'
+          }}>
           {/* Header */}
           <div style={{
             padding: '20px',
@@ -250,6 +257,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     } else {
                       loadDirectMessage(conv.userId!, conv.userName!);
                     }
+                    setShowConversationList(false); // Hide list on mobile
                   }}
                   style={{
                     padding: '16px 20px',
@@ -376,6 +384,25 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 alignItems: 'center',
                 gap: '12px'
               }}>
+                {/* Back Button for Mobile */}
+                <button
+                  onClick={() => {
+                    setShowConversationList(true);
+                    setActiveConversationId(null);
+                  }}
+                  style={{
+                    display: 'none',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '4px 8px'
+                  }}
+                  className="mobile-back-btn"
+                >
+                  ←
+                </button>
                 <div style={{
                   width: '40px',
                   height: '40px',
@@ -392,7 +419,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 }}>
                   {isGroupChat ? '👥' : getInitials(activeConversationName)}
                 </div>
-                <div>
+                <div style={{ flex: 1 }}>
                   <div style={{
                     fontSize: '16px',
                     fontWeight: '600',

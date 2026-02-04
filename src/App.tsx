@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [showMessaging, setShowMessaging] = useState(false);
   const [messagingTargetUser, setMessagingTargetUser] = useState<{ id: string; name: string } | null>(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -640,18 +641,28 @@ const App: React.FC = () => {
           setShowMessaging(true);
         }}
         unreadMessageCount={unreadMessageCount}
+        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
-          <MainPage 
-            currentUser={currentUser || { fullName: '', username: '', id: '', email: '' }}
-            onUpdateUser={(updatedUser) => {
-              setCurrentUser(updatedUser);
-              saveAuthState(true, updatedUser);
-            }}
-            navigationRequest={navigationRequest}
-            onNavigationHandled={() => setNavigationRequest(null)}
-          />
+          <>
+            {/* Sidebar Overlay for mobile */}
+            <div 
+              className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+              onClick={() => setIsSidebarOpen(false)}
+            />
+            <MainPage 
+              currentUser={currentUser || { fullName: '', username: '', id: '', email: '' }}
+              onUpdateUser={(updatedUser) => {
+                setCurrentUser(updatedUser);
+                saveAuthState(true, updatedUser);
+              }}
+              navigationRequest={navigationRequest}
+              onNavigationHandled={() => setNavigationRequest(null)}
+              isSidebarOpen={isSidebarOpen}
+              onCloseSidebar={() => setIsSidebarOpen(false)}
+            />
+          </>
         ) : (
           <AuthContainer onLogin={handleLogin} onRegister={handleRegister} />
         )}

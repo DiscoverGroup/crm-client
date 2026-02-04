@@ -3014,9 +3014,18 @@ interface MainPageProps {
     params?: any;
   } | null;
   onNavigationHandled?: () => void;
+  isSidebarOpen?: boolean;
+  onCloseSidebar?: () => void;
 }
 
-const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigationRequest, onNavigationHandled }) => {
+const MainPage: React.FC<MainPageProps> = ({ 
+  currentUser, 
+  onUpdateUser, 
+  navigationRequest, 
+  onNavigationHandled,
+  isSidebarOpen = false,
+  onCloseSidebar
+}) => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -3197,8 +3206,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
               setViewProfile(false);
               setViewAdminPanel(true);
             } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
           />
-          <div style={{
+          <div
+            className="main-content"
+            style={{
             marginLeft: '300px',
             width: 'calc(100% - 300px)',
             minHeight: '100vh',
@@ -3240,8 +3253,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
               setViewDeleted(false);
               setViewAdminPanel(true);
             } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
           />
-          <div style={{
+          <div 
+            className="main-content"
+            style={{
             marginLeft: '300px',
             padding: '20px',
             width: 'calc(100% - 300px)',
@@ -3277,8 +3294,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
               setViewActivityLog(false);
               setViewAdminPanel(true);
             } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
           />
-          <div style={{
+          <div 
+            className="main-content"
+            style={{
             marginLeft: '300px',
             padding: '20px',
             width: 'calc(100% - 300px)',
@@ -3310,8 +3331,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
               setViewActivityLog(true);
             }}
             onNavigateToAdminPanel={() => setViewAdminPanel(true)}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
           />
-          <div style={{
+          <div
+            className="main-content"
+            style={{
             marginLeft: '300px',
             width: 'calc(100% - 300px)',
             minHeight: '100vh'
@@ -3329,8 +3354,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
             onNavigateToDeleted={() => setViewDeleted(true)}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
             onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
           />
-          <div style={{
+          <div
+            className="main-content"
+            style={{
             marginLeft: '300px',
             padding: '20px',
             width: 'calc(100% - 300px)',

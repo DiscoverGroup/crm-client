@@ -9,6 +9,7 @@ interface NavbarProps {
   onOpenUserDirectory?: () => void;
   onOpenMessaging?: () => void;
   unreadMessageCount?: number;
+  onToggleSidebar?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ 
@@ -18,10 +19,11 @@ const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   onOpenUserDirectory,
   onOpenMessaging,
-  unreadMessageCount = 0
+  unreadMessageCount = 0,
+  onToggleSidebar
 }) => (
   <nav style={{
-    padding: "1rem 2rem",
+    padding: "1rem clamp(1rem, 4vw, 2rem)",
     background: "linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #1e7bb8 75%, #fbbf24 100%)",
     color: "#fff",
     display: "flex",
@@ -30,9 +32,34 @@ const Navbar: React.FC<NavbarProps> = ({
     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
     position: "sticky",
     top: 0,
-    zIndex: 999
+    zIndex: 999,
+    flexWrap: "wrap",
+    gap: "12px"
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Mobile Hamburger Menu */}
+      {isLoggedIn && onToggleSidebar && (
+        <button
+          onClick={onToggleSidebar}
+          style={{
+            background: "rgba(255, 255, 255, 0.15)",
+            border: "1px solid rgba(255, 255, 255, 0.3)",
+            color: "white",
+            padding: "8px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "20px",
+            display: "none",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "40px",
+            height: "40px"
+          }}
+          className="mobile-menu-btn"
+        >
+          ☰
+        </button>
+      )}
       <img 
         src="/DG.jpg" 
         alt="Discover Group Logo" 
@@ -45,7 +72,7 @@ const Navbar: React.FC<NavbarProps> = ({
       <div>
         <h1 style={{ 
           margin: 0,
-          fontSize: "20px",
+          fontSize: "clamp(16px, 4vw, 20px)",
           fontWeight: "600",
           letterSpacing: "0.5px"
         }}>
@@ -53,10 +80,13 @@ const Navbar: React.FC<NavbarProps> = ({
         </h1>
         <p style={{
           margin: 0,
-          fontSize: "11px",
+          fontSize: "clamp(10px, 2vw, 11px)",
           opacity: 0.85,
-          fontWeight: "400"
-        }}>
+          fontWeight: "400",
+          display: "none"
+        }}
+        className="navbar-subtitle"
+        >
           Discover Group CRM
         </p>
       </div>
@@ -66,7 +96,8 @@ const Navbar: React.FC<NavbarProps> = ({
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: "16px"
+        gap: "clamp(8px, 2vw, 16px)",
+        flexWrap: "wrap"
       }}>
         {/* User Directory Button */}
         {onOpenUserDirectory && (
@@ -76,17 +107,19 @@ const Navbar: React.FC<NavbarProps> = ({
               background: "rgba(255, 255, 255, 0.15)",
               color: "white",
               border: "1px solid rgba(255, 255, 255, 0.25)",
-              padding: "8px 16px",
+              padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 3vw, 16px)",
               borderRadius: "8px",
               cursor: "pointer",
-              fontSize: "14px",
+              fontSize: "clamp(12px, 2.5vw, 14px)",
               fontWeight: "500",
               transition: "all 0.2s ease",
               backdropFilter: "blur(10px)",
               display: "flex",
               alignItems: "center",
-              gap: "6px"
+              gap: "6px",
+              whiteSpace: "nowrap"
             }}
+            className="navbar-btn"
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "rgba(255, 255, 255, 0.25)";
             }}
