@@ -68,6 +68,40 @@ const App: React.FC = () => {
     setShowMessaging(true);
   };
 
+  // Fix user data on app load - add IDs if missing
+  useEffect(() => {
+    const migrateUserData = () => {
+      const usersData = localStorage.getItem('crm_users');
+      if (usersData) {
+        try {
+          const users = JSON.parse(usersData);
+          let needsUpdate = false;
+          
+          const updatedUsers = users.map((user: any) => {
+            if (!user.id) {
+              needsUpdate = true;
+              return {
+                ...user,
+                id: user.email || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                role: user.role || 'user'
+              };
+            }
+            return user;
+          });
+          
+          if (needsUpdate) {
+            localStorage.setItem('crm_users', JSON.stringify(updatedUsers));
+            console.log('✅ User data migrated - IDs added to existing users');
+          }
+        } catch (error) {
+          console.error('Error migrating user data:', error);
+        }
+      }
+    };
+    
+    migrateUserData();
+  }, []);
+
   // Check MongoDB and R2 connection status (only works in production with Netlify functions)
   useEffect(() => {
     // Fix any R2 URLs that were stored with incorrect domain
@@ -369,6 +403,7 @@ const App: React.FC = () => {
 
     // Add new user (unverified)
     const newUser = {
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
       fullName: form.fullName,
       username: form.username,
       email: form.email,
@@ -379,7 +414,8 @@ const App: React.FC = () => {
       registeredAt: new Date().toISOString(),
       isVerified: false,
       verificationCode: verificationCode,
-      verificationCodeExpiry: Date.now() + (10 * 60 * 1000) // 10 minutes
+      verificationCodeExpiry: Date.now() + (10 * 60 * 1000), // 10 minutes
+      role: 'user' // Default role
     };
 
     users.push(newUser);

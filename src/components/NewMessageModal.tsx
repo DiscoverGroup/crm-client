@@ -35,7 +35,8 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
     const usersData = localStorage.getItem('crm_users');
     if (usersData) {
       const allUsers = JSON.parse(usersData);
-      setUsers(allUsers.filter((u: User) => u.id !== currentUser.id));
+      const filteredUsers = allUsers.filter((u: User) => u.id !== currentUser.id);
+      setUsers(filteredUsers);
     }
   };
 
