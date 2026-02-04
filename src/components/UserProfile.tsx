@@ -15,6 +15,7 @@ interface UserData {
   position: string;
   password?: string;
   profileImage?: string;
+  profileImageR2Path?: string; // Store R2 path for signed URL generation
 }
 
 const departmentPositions: Record<string, string[]> = {
@@ -93,6 +94,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [profileImageSignedUrl, setProfileImageSignedUrl] = useState<string>('');
+  const [loadingImage, setLoadingImage] = useState(false);
 
   useEffect(() => {
     // Load user data from localStorage
@@ -107,31 +110,61 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           email: user.email,
           department: user.department || '',
           position: user.position || '',
-          profileImage: user.profileImage || ''
+          profileImage: user.profileImage || '',
+          profileImageR2Path: user.profileImageR2Path || ''
         };
         setUserData(data);
         setOriginalData(data);
+        
+        // Load profile image if it exists
+        if (user.profileImageR2Path) {
+          loadProfileImage(user.profileImageR2Path);
+        }
       }
     }
   }, [currentUser]);
 
-  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newDept = e.target.value;
-    setUserData(prev => ({
-      ...prev,
-      department: newDept,
-      position: '' // Reset position when department changes
-    }));
-  };
-
-  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    console.log('Profile image selected:', file.name, file.type, file.size);
-    setUploading(true);
+  // Load profile image using Netlify function
+  const loadProfileImage = async (r2Path: string) => {
+    if (!r2Path) return;
+    
+    setLoadingImage(true);
     try {
-      const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+      const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+      const result = await response.json();
+      
+      if (result.success && result.url) {
+        setProfileImageSignedUrl(result.url);
+      }
+    } catch (error) {
+      console.error('Error loading profile image:', error);
+    } finally {
+      setLoadingImage(false);
+    } && result.path) {
+        const updatedUserData = {
+          ...userData,
+          profileImage: result.url,
+          profileImageR2Path: result.path
+        };
+        setUserData(updatedUserData);
+
+        // Automatically save to localStorage
+        const users = localStorage.getItem('crm_users');
+        if (users) {
+          const userList = JSON.parse(users);
+          const userIndex = userList.findIndex((u: any) => u.fullName === currentUser.fullName);
+          
+          if (userIndex !== -1) {
+            userList[userIndex] = {
+              ...userList[userIndex],
+              profileImage: result.url,
+              profileImageR2Path: result.path
+            };
+            localStorage.setItem('crm_users', JSON.stringify(userList));
+            setOriginalData(updatedUserData);
+            
+            // Load the new image
+            loadProfileImage(result.path2_BUCKET_NAME || 'crm-uploads';
       console.log('Uploading to bucket:', bucket, 'folder: profile-images');
       const result = await uploadFileToR2(file, bucket, 'profile-images');
       
@@ -311,10 +344,32 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           paddingBottom: '30px',
           borderBottom: '2px solid #e9ecef'
         }}>
-          {userData.profileImage ? (
+          {loadingImage ? (
+            <div style={{
+              width: '100px',
+              height: '100px',
+              borderRadius: '50%',
+              background: '#f0f0f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              color: '#666'
+            }}>
+              Loading...
+            </div>
+          ) : profileImageSignedUrl || userData.profileImage ? (
             <img 
-              src={userData.profileImage}
+              src={profileImageSignedUrl || userData.profileImage}
               alt={userData.fullName}
+              onError={(e) => {
+                // Fallback to initials if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                if (target.nextElementSibling) {
+                  (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                }
+              }}
               style={{
                 width: '100px',
                 height: '100px',
@@ -324,7 +379,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
                 border: '4px solid #fbbf24'
               }}
             />
-          ) : (
+          ) : null}
+          {!loadingImage && !(profileImageSignedUrl || userData.profileImage) && (
             <div style={{
               width: '100px',
               height: '100px',
