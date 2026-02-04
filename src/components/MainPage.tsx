@@ -3046,6 +3046,17 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
   const [viewActivityLog, setViewActivityLog] = useState(false);
   const [viewAdminPanel, setViewAdminPanel] = useState(false);
 
+  // Get current user's profile image R2 path
+  const getCurrentUserProfileImagePath = (): string | undefined => {
+    const users = localStorage.getItem('crm_users');
+    if (users) {
+      const userList = JSON.parse(users);
+      const user = userList.find((u: any) => u.fullName === currentUser.fullName);
+      return user?.profileImageR2Path;
+    }
+    return undefined;
+  };
+
   // Save view state to sessionStorage whenever it changes
   useEffect(() => {
     sessionStorage.setItem('crm_current_view', JSON.stringify({
