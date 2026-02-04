@@ -140,7 +140,35 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
       console.error('Error loading profile image:', error);
     } finally {
       setLoadingImage(false);
-    } && result.path) {
+    }
+  };
+
+  const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+      console.log('Uploading to bucket:', bucket, 'folder: profile-images');
+      const result = await uploadFileToR2(file, bucket, 'profile-images');
+      
+      console.log('Upload result:', result);
+      
+      if (result.success && result.url && result.path) {
         const updatedUserData = {
           ...userData,
           profileImage: result.url,
@@ -164,32 +192,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
             setOriginalData(updatedUserData);
             
             // Load the new image
-            loadProfileImage(result.path2_BUCKET_NAME || 'crm-uploads';
-      console.log('Uploading to bucket:', bucket, 'folder: profile-images');
-      const result = await uploadFileToR2(file, bucket, 'profile-images');
-      
-      console.log('Upload result:', result);
-      
-      if (result.success && result.url) {
-        const updatedUserData = {
-          ...userData,
-          profileImage: result.url
-        };
-        setUserData(updatedUserData);
-
-        // Automatically save to localStorage
-        const users = localStorage.getItem('crm_users');
-        if (users) {
-          const userList = JSON.parse(users);
-          const userIndex = userList.findIndex((u: any) => u.fullName === currentUser);
-          
-          if (userIndex !== -1) {
-            userList[userIndex] = {
-              ...userList[userIndex],
-              profileImage: result.url
-            };
-            localStorage.setItem('crm_users', JSON.stringify(userList));
-            setOriginalData(updatedUserData);
+            loadProfileImage(result.path);
           }
         }
         
@@ -234,6 +237,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           department: userData.department,
           position: userData.position,
           profileImage: userData.profileImage,
+          profileImageR2Path: userData.profileImageR2Path,
           ...(newPassword && { password: newPassword })
         };
 
