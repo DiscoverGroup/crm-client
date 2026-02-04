@@ -26,6 +26,7 @@ const MentionInput: React.FC<MentionInputProps> = ({
   const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Load all users from localStorage
   const getAllUsers = (): User[] => {
@@ -35,6 +36,26 @@ const MentionInput: React.FC<MentionInputProps> = ({
     }
     return [];
   };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSuggestions]);
 
   // Detect @ mentions and show suggestions
   useEffect(() => {
@@ -158,7 +179,7 @@ const MentionInput: React.FC<MentionInputProps> = ({
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', zIndex: 1, ...style }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: 1, ...style }}>
       <textarea
         ref={textareaRef}
         value={value}
@@ -166,6 +187,14 @@ const MentionInput: React.FC<MentionInputProps> = ({
         onKeyDown={handleKeyDown}
         onSelect={handleSelectionChange}
         onClick={handleSelectionChange}
+        onBlur={() => {
+          // Delay to allow click on suggestion to register
+          setTimeout(() => {
+            if (!containerRef.current?.contains(document.activeElement)) {
+              setShowSuggestions(false);
+            }
+          }, 200);
+        }}
         placeholder={placeholder}
         style={{
           width: '100%',
