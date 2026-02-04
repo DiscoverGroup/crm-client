@@ -32,7 +32,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
   // Helper function to render text with highlighted mentions
   const renderTextWithMentions = (text: string) => {
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@([\w-]+)/g;
     const parts = text.split(mentionRegex);
     
     return parts.map((part, index) => {
@@ -116,7 +116,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     setLogNotes(prev => [logNote, ...prev]);
     
     // Check for mentions and create notifications
-    const mentionRegex = /@(\w+)/g;
+    const mentionRegex = /@([\w-]+)/g;
     const mentions = newComment.match(mentionRegex);
     
     if (mentions) {

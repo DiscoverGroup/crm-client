@@ -83,14 +83,28 @@ export class NotificationService {
     logNoteId?: string;
     commentText: string;
   }): void {
+    console.log('🔔 Creating mention notification for:', params.mentionedUsername);
+    
     // Find the mentioned user
     const users = localStorage.getItem('crm_users');
-    if (!users) return;
+    if (!users) {
+      console.log('❌ No users found in localStorage');
+      return;
+    }
     
     const userList = JSON.parse(users);
-    const mentionedUser = userList.find((u: any) => u.username === params.mentionedUsername);
+    console.log('📋 All users:', userList.map((u: any) => u.username));
     
-    if (!mentionedUser) return;
+    const mentionedUser = userList.find((u: any) => 
+      u.username.toLowerCase() === params.mentionedUsername.toLowerCase()
+    );
+    
+    if (!mentionedUser) {
+      console.log('❌ User not found:', params.mentionedUsername);
+      return;
+    }
+
+    console.log('✅ Found user:', mentionedUser.fullName, '- Creating notification');
 
     this.addNotification({
       type: 'mention',
@@ -110,5 +124,7 @@ export class NotificationService {
         scrollTo: params.logNoteId
       }
     });
+    
+    console.log('✅ Notification created successfully');
   }
 }
