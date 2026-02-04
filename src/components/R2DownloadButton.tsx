@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 
 interface R2DownloadButtonProps {
-  url: string;
-  fileName: string;
+  url?: string;
+  fileName?: string;
   r2Path?: string;
   bucket?: string;
   className?: string;

@@ -19,7 +19,7 @@ export interface FileAttachment {
   paymentIndex?: number;
   paymentType?: 'regular' | 'first' | 'second' | 'third' | 'other';
   clientId?: string; // Associate files with specific clients
-  source?: 'payment-terms' | 'visa-service' | 'insurance-service' | 'eta-service'; // Track upload source
+  source?: 'payment-terms' | 'visa-service' | 'insurance-service' | 'eta-service' | 'booking-voucher'; // Track upload source
 }
 
 export class FileService {
