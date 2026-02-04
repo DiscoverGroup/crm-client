@@ -3009,9 +3009,14 @@ const ClientRecords: React.FC<{
 interface MainPageProps {
   currentUser: { fullName: string; username: string };
   onUpdateUser?: (user: { fullName: string; username: string }) => void;
+  navigationRequest?: {
+    page: 'client-form' | 'activity-log' | 'log-notes';
+    params?: any;
+  } | null;
+  onNavigationHandled?: () => void;
 }
 
-const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
+const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigationRequest, onNavigationHandled }) => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -3056,6 +3061,33 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
     }
     return undefined;
   };
+
+  // Handle navigation from notifications
+  useEffect(() => {
+    if (navigationRequest && onNavigationHandled) {
+      const { page, params } = navigationRequest;
+      
+      if (page === 'log-notes' && params?.clientId) {
+        // Navigate to client form (which shows log notes)
+        setViewingForm({ clientId: params.clientId });
+        setViewProfile(false);
+        setViewDeleted(false);
+        setViewActivityLog(false);
+        setViewAdminPanel(false);
+        
+        // TODO: Scroll to specific note if params.scrollTo is provided
+        // This would need to be handled in the ClientForm/LogNoteComponent
+      } else if (page === 'activity-log') {
+        setViewActivityLog(true);
+        setViewingForm(null);
+        setViewProfile(false);
+        setViewDeleted(false);
+        setViewAdminPanel(false);
+      }
+      
+      onNavigationHandled();
+    }
+  }, [navigationRequest, onNavigationHandled]);
 
   // Save view state to sessionStorage whenever it changes
   useEffect(() => {

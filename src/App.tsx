@@ -14,6 +14,10 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingUserEmail, setPendingUserEmail] = useState('');
+  const [navigationRequest, setNavigationRequest] = useState<{
+    page: 'client-form' | 'activity-log' | 'log-notes';
+    params?: any;
+  } | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -21,6 +25,11 @@ const App: React.FC = () => {
     type: 'success' | 'error' | 'warning' | 'info';
     onConfirm?: () => void;
   }>({ isOpen: false, title: '', message: '', type: 'info' });
+
+  // Handle navigation from notifications
+  const handleNavigate = (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => {
+    setNavigationRequest({ page, params });
+  };
 
   // Check MongoDB and R2 connection status (only works in production with Netlify functions)
   useEffect(() => {
@@ -545,6 +554,7 @@ const App: React.FC = () => {
         isLoggedIn={isLoggedIn}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onNavigate={handleNavigate}
       />
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
@@ -554,6 +564,8 @@ const App: React.FC = () => {
               setCurrentUser(updatedUser);
               saveAuthState(true, updatedUser);
             }}
+            navigationRequest={navigationRequest}
+            onNavigationHandled={() => setNavigationRequest(null)}
           />
         ) : (
           <AuthContainer onLogin={handleLogin} onRegister={handleRegister} />

@@ -3,6 +3,8 @@ import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
 import MentionInput from './MentionInput';
+import { NotificationService } from '../services/notificationService';
+import { ClientService } from '../services/clientService';
 
 interface LogNoteComponentProps {
   clientId: string;
@@ -112,6 +114,29 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     );
 
     setLogNotes(prev => [logNote, ...prev]);
+    
+    // Check for mentions and create notifications
+    const mentionRegex = /@(\w+)/g;
+    const mentions = newComment.match(mentionRegex);
+    
+    if (mentions) {
+      const client = ClientService.getClientById(clientId);
+      const clientName = client?.contactName || 'Unknown Client';
+      
+      mentions.forEach(mention => {
+        const username = mention.substring(1); // Remove @ symbol
+        NotificationService.createMentionNotification({
+          mentionedUsername: username,
+          fromUserId: currentUserId,
+          fromUserName: currentUserName,
+          clientId: clientId,
+          clientName: clientName,
+          logNoteId: logNote.id,
+          commentText: newComment
+        });
+      });
+    }
+    
     setNewComment('');
     setNewCommentStatus('pending');
   };

@@ -1,12 +1,14 @@
 import React from "react";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
   currentUser?: { fullName: string; username: string } | null;
   onLogout?: () => void;
+  onNavigate?: (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout }) => (
+const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout, onNavigate }) => (
   <nav style={{
     padding: "1rem 2rem",
     background: "linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #1e7bb8 75%, #fbbf24 100%)",
@@ -55,6 +57,12 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, currentUser, onLogout }) =>
         alignItems: "center",
         gap: "16px"
       }}>
+        {currentUser && onNavigate && (
+          <NotificationDropdown 
+            currentUser={currentUser} 
+            onNavigate={onNavigate}
+          />
+        )}
         <div style={{ textAlign: 'right' }}>
           <div style={{
             fontSize: "14px",
