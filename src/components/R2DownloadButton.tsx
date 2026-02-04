@@ -14,7 +14,6 @@ interface R2DownloadButtonProps {
  * If public URL fails, it generates a signed URL
  */
 const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
-  url,
   r2Path,
   className,
   style
