@@ -341,7 +341,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               outline: 'none',
               cursor: 'pointer',
               position: 'relative',
-              zIndex: 1000
+              zIndex: 1
             }}
           >
             <option value="pending">Pending</option>
@@ -652,7 +652,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     outline: 'none',
                     cursor: 'pointer',
                     position: 'relative',
-                    zIndex: 1000,
+                    zIndex: 1,
                     ...getStatusStyles(note.status)
                   }}
                 >
