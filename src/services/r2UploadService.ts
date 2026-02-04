@@ -1,4 +1,5 @@
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Client } from '../config/r2';
 
 interface UploadResponse {
@@ -109,4 +110,26 @@ export async function deleteFileFromR2(
 export function getR2FileUrl(filePath: string): string {
   const publicBaseUrl = getR2PublicUrl();
   return `${publicBaseUrl}/${filePath}`;
+}
+
+/**
+ * Generate a signed URL for downloading a file (valid for 1 hour)
+ * Use this if public access is not enabled on your R2 bucket
+ * @param bucket - The R2 bucket name
+ * @param filePath - The file path
+ * @param expiresIn - URL expiration time in seconds (default: 3600 = 1 hour)
+ * @returns Signed URL for downloading the file
+ */
+export async function getSignedDownloadUrl(
+  bucket: string,
+  filePath: string,
+  expiresIn: number = 3600
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: filePath,
+  });
+
+  const signedUrl = await getSignedUrl(r2Client, command, { expiresIn });
+  return signedUrl;
 }

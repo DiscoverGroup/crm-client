@@ -13,6 +13,7 @@ import DeletedClients from './DeletedClients';
 import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import { ActivityLogService } from '../services/activityLogService';
+import R2DownloadButton from './R2DownloadButton';
 
 // Utility for modern UI
 const modernInput = {
@@ -1563,23 +1564,12 @@ const ClientRecords: React.FC<{
                                   <span style={{ fontSize: "12px", color: "#059669" }}>
                                     ✓ {uploadedFile.file.name}
                                   </span>
-                                  <a
-                                    href={uploadedFile.file.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    download={uploadedFile.file.name}
-                                    style={{
-                                      fontSize: "12px",
-                                      color: "#3b82f6",
-                                      textDecoration: "none",
-                                      padding: "4px 8px",
-                                      border: "1px solid #3b82f6",
-                                      borderRadius: "4px",
-                                      cursor: "pointer"
-                                    }}
-                                  >
-                                    Download
-                                  </a>
+                                  <R2DownloadButton
+                                    url={uploadedFile.file.data}
+                                    fileName={uploadedFile.file.name}
+                                    r2Path={uploadedFile.file.r2Path}
+                                    bucket="crm-uploads"
+                                  />
                                   <button
                                     onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "depositSlip")}
                                     style={{
@@ -1623,23 +1613,12 @@ const ClientRecords: React.FC<{
                                   <span style={{ fontSize: "12px", color: "#059669" }}>
                                     ✓ {uploadedFile.file.name}
                                   </span>
-                                  <a
-                                    href={uploadedFile.file.data}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    download={uploadedFile.file.name}
-                                    style={{
-                                      fontSize: "12px",
-                                      color: "#3b82f6",
-                                      textDecoration: "none",
-                                      padding: "4px 8px",
-                                      border: "1px solid #3b82f6",
-                                      borderRadius: "4px",
-                                      cursor: "pointer"
-                                    }}
-                                  >
-                                    Download
-                                  </a>
+                                  <R2DownloadButton
+                                    url={uploadedFile.file.data}
+                                    fileName={uploadedFile.file.name}
+                                    r2Path={uploadedFile.file.r2Path}
+                                    bucket="crm-uploads"
+                                  />
                                   <button
                                     onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "receipt")}
                                     style={{

@@ -10,6 +10,14 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [filterAction, setFilterAction] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
+  const [sortOrder, setSortOrder] = useState<'recent' | 'oldest' | 'active'>('recent');
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFilterType, setDateFilterType] = useState<'specific' | 'range'>('specific');
+  const [specificDate, setSpecificDate] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('00:00');
+  const [endTime, setEndTime] = useState('23:59');
 
   useEffect(() => {
     loadLogs();
@@ -61,9 +69,50 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
     }
   };
 
-  const filteredLogs = filterAction === 'all' 
-    ? logs 
-    : logs.filter(log => log.action === filterAction);
+  // Apply all filters
+  const filteredLogs = logs.filter(log => {
+    // Action filter
+    if (filterAction !== 'all' && log.action !== filterAction) {
+      return false;
+    }
+
+    // Date filter
+    if (specificDate || (startDate && endDate)) {
+      const logDate = new Date(log.timestamp);
+      
+      if (dateFilterType === 'specific' && specificDate) {
+        const filterDate = new Date(specificDate);
+        const logDateOnly = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+        const filterDateOnly = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
+        if (logDateOnly.getTime() !== filterDateOnly.getTime()) {
+          return false;
+        }
+      } else if (dateFilterType === 'range' && startDate && endDate) {
+        const startDateTime = new Date(`${startDate}T${startTime}`);
+        const endDateTime = new Date(`${endDate}T${endTime}`);
+        if (logDate < startDateTime || logDate > endDateTime) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  });
+
+  // Apply sorting
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
+    const dateA = new Date(a.timestamp).getTime();
+    const dateB = new Date(b.timestamp).getTime();
+    
+    if (sortOrder === 'recent') {
+      return dateB - dateA; // Newest first
+    } else if (sortOrder === 'oldest') {
+      return dateA - dateB; // Oldest first
+    } else {
+      // Most active - group by client and show most frequently updated
+      return dateB - dateA;
+    }
+  });
 
   return (
     <div style={{
@@ -107,33 +156,218 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d' }}>
-            Filter:
-          </label>
-          <select
-            value={filterAction}
-            onChange={(e) => setFilterAction(e.target.value)}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d' }}>
+              Sort:
+            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              style={{
+                padding: '8px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="recent">Most recent</option>
+              <option value="oldest">Oldest first</option>
+              <option value="active">Most active</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d' }}>
+              Action:
+            </label>
+            <select
+              value={filterAction}
+              onChange={(e) => setFilterAction(e.target.value)}
+              style={{
+                padding: '8px 16px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+         sort backgroundColor: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="all">All Actions</option>
+              <option value="created">Created</option>
+              <option value="edited">Edited</option>
+              <option value="deleted">Deleted</option>
+              <option value="recovered">Recovered</option>
+              <option value="permanently_deleted">Permanently Deleted</option>
+              <option value="file_uploaded">File Uploaded</option>
+              <option value="file_deleted">File Deleted</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => setShowDateFilter(!showDateFilter)}
             style={{
               padding: '8px 16px',
-              border: '2px solid #e5e7eb',
+              backgroundColor: showDateFilter ? '#0d47a1' : '#fff',
+              color: showDateFilter ? '#fff' : '#0d47a1',
+              border: '2px solid #0d47a1',
               borderRadius: '8px',
+              cursor: 'pointer',
               fontSize: '14px',
-              backgroundColor: '#fff',
-              cursor: 'pointer'
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}
           >
-            <option value="all">All Actions</option>
-            <option value="created">Created</option>
-            <option value="edited">Edited</option>
-            <option value="deleted">Deleted</option>
-            <option value="recovered">Recovered</option>
-            <option value="permanently_deleted">Permanently Deleted</option>
-            <option value="file_uploaded">File Uploaded</option>
-            <option value="file_deleted">File Deleted</option>
-          </select>
+            📅 Date Filter
+          </button>
+
+          {(specificDate || startDate || endDate) && (
+            <button
+              onClick={() => {
+                setSpecificDate('');
+                setStartDate('');
+                setEndDate('');
+                setStartTime('00:00');
+                setEndTime('23:59');
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Date Filter Panel */}
+      {showDateFilter && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          padding: '20px',
+          marginBottom: '20px'
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', color: '#0d47a1', fontSize: '18px' }}>
+            📅 Date & Time Filter
+          </h3>
+
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value="specific"
+                checked={dateFilterType === 'specific'}
+                onChange={(e) => setDateFilterType(e.target.value as any)}
+              />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Specific Date</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                value="range"
+                checked={dateFilterType === 'range'}
+                onChange={(e) => setDateFilterType(e.target.value as any)}
+              />
+              <span style={{ fontSize: '14px', fontWeight: '500' }}>Date Range</span>
+            </label>
+          </div>
+
+          {dateFilterType === 'specific' ? (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d' }}>
+                Select Date:
+              </label>
+              <input
+                type="date"
+                value={specificDate}
+                onChange={(e) => setSpecificDate(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#6c757d', marginBottom: '8px' }}>
+                  Start Date & Time:
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#6c757d', marginBottom: '8px' }}>
+                  End Date & Time:
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Activity Timeline */}
       <div style={{
@@ -167,7 +401,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             }} />
 
             {/* Activity items */}
-            {filteredLogs.map((log, index) => (
+            {sortedLogs.map((log, index) => (
               <div
                 key={log.id}
                 style={{
