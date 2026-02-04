@@ -25,39 +25,28 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      // First, try the public URL
-      console.log('📥 Attempting download from public URL:', url);
-      
-      const response = await fetch(url, { method: 'HEAD' });
-      
-      if (response.ok) {
-        // Public URL works, use it directly
-        console.log('✅ Public URL accessible, downloading...');
-        window.open(url, '_blank');
-        return;
-      }
+    if (!r2Path) {
+      alert('File path not available for download');
+      return;
+    }
 
-      // Public URL failed, try Netlify function to generate signed URL
-      if (r2Path) {
-        console.log('⚠️ Public URL not accessible, using Netlify function...');
-        setIsGeneratingUrl(true);
-        
-        const functionResponse = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
-        const result = await functionResponse.json();
-        
-        if (result.success && result.url) {
-          console.log('✅ Signed URL generated via Netlify function');
-          window.open(result.url, '_blank');
-        } else {
-          throw new Error(result.error || 'Failed to generate download URL');
-        }
+    try {
+      console.log('📥 Generating secure download URL...');
+      setIsGeneratingUrl(true);
+      
+      // Use Netlify function to generate signed URL (more reliable than public URL)
+      const functionResponse = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+      const result = await functionResponse.json();
+      
+      if (result.success && result.url) {
+        console.log('✅ Download URL generated, opening file...');
+        window.open(result.url, '_blank');
       } else {
-        throw new Error('File path not available for download');
+        throw new Error(result.error || 'Failed to generate download URL');
       }
     } catch (error) {
       console.error('❌ Download failed:', error);
-      alert('Failed to download file. Please ensure:\n1. R2 public access is enabled, OR\n2. R2 credentials are configured in Netlify\n\nContact administrator if the issue persists.');
+      alert('Failed to download file. Please ensure R2 credentials are configured in Netlify.\n\nContact administrator if the issue persists.');
     } finally {
       setIsGeneratingUrl(false);
     }
