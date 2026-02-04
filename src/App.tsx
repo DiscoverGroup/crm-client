@@ -14,7 +14,7 @@ import { MessagingService } from "./services/messagingService";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingUserEmail, setPendingUserEmail] = useState('');
@@ -205,7 +205,7 @@ const App: React.FC = () => {
   }, []);
 
   // Save authentication state to localStorage
-  const saveAuthState = (loggedIn: boolean, user: { fullName: string; username: string; id: string } | null) => {
+  const saveAuthState = (loggedIn: boolean, user: { fullName: string; username: string; id: string; email: string } | null) => {
     const authData = {
       isLoggedIn: loggedIn,
       currentUser: user,
@@ -277,7 +277,8 @@ const App: React.FC = () => {
             const userData = { 
               fullName: user.fullName || user.username, 
               username: user.username,
-              id: user.id || user.email
+              id: user.id || user.email,
+              email: user.email
             };
             setCurrentUser(userData);
             setIsLoggedIn(true);
@@ -607,7 +608,7 @@ const App: React.FC = () => {
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
           <MainPage 
-            currentUser={currentUser || { fullName: '', username: '', id: '' }}
+            currentUser={currentUser || { fullName: '', username: '', id: '', email: '' }}
             onUpdateUser={(updatedUser) => {
               setCurrentUser(updatedUser);
               saveAuthState(true, updatedUser);

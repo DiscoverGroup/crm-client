@@ -3,7 +3,7 @@ import NotificationDropdown from "./NotificationDropdown";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
-  currentUser?: { fullName: string; username: string; id: string } | null;
+  currentUser?: { fullName: string; username: string; id: string; email: string } | null;
   onLogout?: () => void;
   onNavigate?: (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => void;
   onOpenUserDirectory?: () => void;
