@@ -8,6 +8,11 @@ export interface Message {
   message: string;
   timestamp: Date;
   isRead: boolean;
+  seenAt?: Date; // When the message was seen
+  reactions?: { [userId: string]: string }; // userId -> emoji
+  isEdited?: boolean;
+  editedAt?: Date;
+  isDeleted?: boolean;
 }
 
 export interface Conversation {
@@ -128,9 +133,11 @@ export class MessagingService {
   // Mark messages as read
   static markAsRead(userId: string, otherUserId: string): void {
     const messages = this.getAllMessages();
+    const now = new Date();
     messages.forEach(message => {
       if (message.toUserId === userId && message.fromUserId === otherUserId && !message.isRead) {
         message.isRead = true;
+        message.seenAt = now;
       }
     });
     this.saveMessages(messages);
@@ -279,11 +286,64 @@ export class MessagingService {
   // Mark group messages as read
   static markGroupAsRead(userId: string, groupId: string): void {
     const messages = this.getAllMessages();
+    const now = new Date();
     messages.forEach(message => {
       if (message.groupId === groupId && message.fromUserId !== userId && !message.isRead) {
         message.isRead = true;
+        message.seenAt = now;
       }
     });
     this.saveMessages(messages);
+  }
+
+  // Add reaction to message
+  static addReaction(messageId: string, userId: string, emoji: string): void {
+    const messages = this.getAllMessages();
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      if (!message.reactions) {
+        message.reactions = {};
+      }
+      message.reactions[userId] = emoji;
+      this.saveMessages(messages);
+    }
+  }
+
+  // Remove reaction from message
+  static removeReaction(messageId: string, userId: string): void {
+    const messages = this.getAllMessages();
+    const message = messages.find(m => m.id === messageId);
+    if (message && message.reactions) {
+      delete message.reactions[userId];
+      this.saveMessages(messages);
+    }
+  }
+
+  // Edit message
+  static editMessage(messageId: string, newText: string): void {
+    const messages = this.getAllMessages();
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      message.message = newText;
+      message.isEdited = true;
+      message.editedAt = new Date();
+      this.saveMessages(messages);
+    }
+  }
+
+  // Delete message
+  static deleteMessage(messageId: string): void {
+    const messages = this.getAllMessages();
+    const message = messages.find(m => m.id === messageId);
+    if (message) {
+      message.isDeleted = true;
+      message.message = 'This message was deleted';
+      this.saveMessages(messages);
+    }
+  }
+
+  // Copy message text
+  static copyMessage(message: Message): string {
+    return message.message;
   }
 }

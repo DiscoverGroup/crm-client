@@ -103,6 +103,7 @@
     max-width: 100vw !important;
     max-height: 100vh !important;
     border-radius: 0 !important;
+    margin: 0 !important;
   }
   
   .conversation-list {
@@ -122,6 +123,86 @@
     display: flex !important;
     align-items: center;
     justify-content: center;
+  }
+  
+  /* Message bubbles - increase max width for mobile */
+  .message-bubble-container {
+    max-width: 75% !important;
+  }
+  
+  /* Reaction button - always visible on mobile (no hover) */
+  .reaction-btn {
+    display: flex !important;
+    opacity: 0.8 !important;
+  }
+  
+  /* Reaction picker - better mobile positioning */
+  [style*="position: absolute"][style*="boxShadow"] {
+    position: fixed !important;
+    bottom: 100px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    top: auto !important;
+    right: auto !important;
+    z-index: 10001 !important;
+  }
+  
+  /* Context menu - center bottom on mobile */
+  [style*="position: fixed"][style*="zIndex: 1000"]:not(.messaging-container) {
+    position: fixed !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: 20px !important;
+    top: auto !important;
+    width: 90% !important;
+    max-width: 300px !important;
+  }
+  
+  /* Typing indicator - smaller on mobile */
+  .typing-dot {
+    width: 6px !important;
+    height: 6px !important;
+  }
+  
+  /* Message input area - better mobile spacing */
+  .chat-area > div:last-child {
+    padding: 12px 16px !important;
+  }
+  
+  /* Edit mode - full width on mobile */
+  .message-bubble-container input[type="text"] {
+    min-width: 200px !important;
+  }
+  
+  /* Reactions display - wrap nicely */
+  [style*="display: flex"][style*="gap: 4px"][style*="flexWrap"] {
+    max-width: 100% !important;
+  }
+  
+  /* Message text - better word wrap */
+  [style*="wordBreak: break-word"] {
+    max-width: 100%;
+    overflow-wrap: break-word;
+  }
+  
+  /* Improve touch targets for message actions */
+  .message-bubble-container button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
+
+/* Long-press context menu for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .message-bubble-container {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  
+  /* Show reaction button on touch devices */
+  .reaction-btn {
+    display: flex !important;
+    opacity: 0.8 !important;
   }
 }
 
