@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { getSignedDownloadUrl } from '../services/r2UploadService';
 
 interface R2DownloadButtonProps {
   url: string;
@@ -16,9 +15,7 @@ interface R2DownloadButtonProps {
  */
 const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
   url,
-  fileName,
   r2Path,
-  bucket = 'crm-uploads',
   className,
   style
 }) => {

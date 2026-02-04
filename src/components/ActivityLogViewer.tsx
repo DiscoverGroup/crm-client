@@ -191,7 +191,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
                 fontSize: '14px',
-         sort backgroundColor: '#fff',
+                backgroundColor: '#fff',
                 cursor: 'pointer'
               }}
             >
