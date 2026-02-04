@@ -18,17 +18,49 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
   const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('00:00');
   const [endTime, setEndTime] = useState('23:59');
+  const [profileImages, setProfileImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadLogs();
   }, [clientId]);
 
   const loadLogs = () => {
-    if (clientId) {
-      setLogs(ActivityLogService.getLogsByClient(clientId));
-    } else {
-      setLogs(ActivityLogService.getRecentLogs(100));
+    const loadedLogs = clientId 
+      ? ActivityLogService.getLogsByClient(clientId)
+      : ActivityLogService.getRecentLogs(100);
+    
+    setLogs(loadedLogs);
+    
+    // Load profile images for all unique users
+    loadProfileImages(loadedLogs);
+  };
+
+  const loadProfileImages = async (logs: ActivityLog[]) => {
+    const imageCache: Record<string, string> = {};
+    const uniqueUsers = new Map<string, string>();
+    
+    // Collect unique users with R2 paths
+    logs.forEach(log => {
+      if (log.profileImageR2Path && !uniqueUsers.has(log.performedBy)) {
+        uniqueUsers.set(log.performedBy, log.profileImageR2Path);
+      }
+    });
+    
+    // Load images for each unique user
+    for (const [userId, r2Path] of uniqueUsers) {
+      try {
+        const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+        const result = await response.json();
+        
+        if (result.success && result.url) {
+          imageCache[userId] = result.url;
+        }
+      } catch (error) {
+        console.error(`Error loading profile image for ${userId}:`, error);
+      }
     }
+    
+    setProfileImages(imageCache);
   };
 
   const formatDate = (dateString: string) => {
@@ -492,9 +524,40 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                   <div style={{
                     fontSize: '13px',
                     color: '#6c757d',
-                    marginBottom: '4px'
+                    marginBottom: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}>
-                    By: <strong>{log.performedByUser}</strong>
+                    {profileImages[log.performedBy] ? (
+                      <img 
+                        src={profileImages[log.performedBy]} 
+                        alt={log.performedByUser}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #e5e7eb'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: '#e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        color: '#6c757d'
+                      }}>
+                        {log.performedByUser.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span>By: <strong>{log.performedByUser}</strong></span>
                   </div>
 
                   {log.details && (

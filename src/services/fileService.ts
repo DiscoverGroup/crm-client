@@ -109,6 +109,17 @@ export class FileService {
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
       
+      // Helper function to get current user's profile image R2 path
+      const getUserProfileImagePath = (userName: string): string | undefined => {
+        const users = localStorage.getItem('crm_users');
+        if (users) {
+          const userList = JSON.parse(users);
+          const user = userList.find((u: any) => u.fullName === userName);
+          return user?.profileImageR2Path;
+        }
+        return undefined;
+      };
+      
       // Log file upload activity if clientId exists
       if (clientId && currentUser) {
         const client = ClientService.getClientById(clientId);
@@ -118,6 +129,7 @@ export class FileService {
           action: 'file_uploaded',
           performedBy: currentUser,
           performedByUser: currentUser,
+          profileImageR2Path: getUserProfileImagePath(currentUser),
           details: `Uploaded file: ${file.name} (${category}${source ? ' - ' + source : ''})`
         });
       }
@@ -216,12 +228,25 @@ export class FileService {
       // Log file deletion activity if clientId exists
       if (attachment && attachment.clientId && currentUser) {
         const client = ClientService.getClientById(attachment.clientId);
+        
+        // Helper function to get current user's profile image R2 path
+        const getUserProfileImagePath = (userName: string): string | undefined => {
+          const users = localStorage.getItem('crm_users');
+          if (users) {
+            const userList = JSON.parse(users);
+            const user = userList.find((u: any) => u.fullName === userName);
+            return user?.profileImageR2Path;
+          }
+          return undefined;
+        };
+        
         ActivityLogService.addLog({
           clientId: attachment.clientId,
           clientName: client?.contactName || 'Unknown',
           action: 'file_deleted',
           performedBy: currentUser,
           performedByUser: currentUser,
+          profileImageR2Path: getUserProfileImagePath(currentUser),
           details: `Deleted file: ${attachment.file.name}`
         });
       }

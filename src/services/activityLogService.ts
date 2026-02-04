@@ -7,6 +7,7 @@ export interface ActivityLog {
   action: 'created' | 'edited' | 'deleted' | 'recovered' | 'permanently_deleted' | 'file_uploaded' | 'file_deleted';
   performedBy: string;
   performedByUser: string; // Full name
+  profileImageR2Path?: string; // R2 path for user profile image
   timestamp: string;
   details?: string;
   changes?: Record<string, { old: any; new: any }>;

@@ -154,6 +154,17 @@ const ClientRecords: React.FC<{
   const currentUserId = "user_1"; // In a real app, get from auth context
   const currentUserName = propsCurrentUser?.fullName || "Current User"; // Use prop or fallback
   
+  // Get current user's profile image R2 path
+  const getCurrentUserProfileImagePath = (): string | undefined => {
+    const users = localStorage.getItem('crm_users');
+    if (users) {
+      const userList = JSON.parse(users);
+      const user = userList.find((u: any) => u.fullName === propsCurrentUser?.fullName);
+      return user?.profileImageR2Path;
+    }
+    return undefined;
+  };
+  
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
     clientId: currentClientId,
@@ -666,6 +677,7 @@ const ClientRecords: React.FC<{
           action: 'created',
           performedBy: currentUserName,
           performedByUser: currentUserName,
+          profileImageR2Path: getCurrentUserProfileImagePath(),
           details: `New client created`
         });
       } else {
@@ -675,6 +687,7 @@ const ClientRecords: React.FC<{
           action: 'edited',
           performedBy: currentUserName,
           performedByUser: currentUserName,
+          profileImageR2Path: getCurrentUserProfileImagePath(),
           details: `Client information updated`
         });
       }
@@ -756,6 +769,7 @@ const ClientRecords: React.FC<{
         action: 'edited',
         performedBy: currentUserName,
         performedByUser: currentUserName,
+        profileImageR2Path: getCurrentUserProfileImagePath(),
         details: `Package & travel information updated`
       });
       
@@ -3657,6 +3671,7 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
                                     clientName: client.contactName || 'Unknown',
                                     action: 'deleted',
                                     performedBy: currentUser.fullName,
+                                    profileImageR2Path: getCurrentUserProfileImagePath(),
                                     performedByUser: currentUser.fullName,
                                     details: `Client moved to trash`
                                   });

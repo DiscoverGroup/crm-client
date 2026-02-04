@@ -11,6 +11,17 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
   const [deletedClients, setDeletedClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Get current user's profile image R2 path
+  const getCurrentUserProfileImagePath = (): string | undefined => {
+    const users = localStorage.getItem('crm_users');
+    if (users) {
+      const userList = JSON.parse(users);
+      const user = userList.find((u: any) => u.fullName === currentUser);
+      return user?.profileImageR2Path;
+    }
+    return undefined;
+  };
+
   useEffect(() => {
     loadDeletedClients();
   }, []);
@@ -32,6 +43,7 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
           action: 'recovered',
           performedBy: currentUser,
           performedByUser: currentUser,
+          profileImageR2Path: getCurrentUserProfileImagePath(),
           details: 'Client recovered from trash'
         });
         alert('Client recovered successfully!');
@@ -53,6 +65,7 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
             action: 'permanently_deleted',
             performedBy: currentUser,
             performedByUser: currentUser,
+            profileImageR2Path: getCurrentUserProfileImagePath(),
             details: 'Client permanently deleted from system'
           });
           alert('Client permanently deleted.');
