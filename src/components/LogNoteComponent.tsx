@@ -278,35 +278,6 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         marginBottom: '16px',
         border: '1px solid #e2e8f0'
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '8px',
-          marginBottom: '8px'
-        }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            background: '#3b82f6',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '11px',
-            fontWeight: '600'
-          }}>
-            {getInitials(currentUserName)}
-          </div>
-          <div style={{ flex: 1 }}>
-            <MentionInput
-              value={newComment}
-              onChange={setNewComment}
-              placeholder="Add comment... (Type @ to mention someone)"
-            />
-          </div>
-        </div>
-        
         {/* Status dropdown for new comment */}
         <div style={{
           display: 'flex',
@@ -358,6 +329,35 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             <option value="done">Done</option>
             <option value="on hold">On Hold</option>
           </select>
+        </div>
+        
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '8px',
+          marginBottom: '8px'
+        }}>
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            background: '#3b82f6',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '11px',
+            fontWeight: '600'
+          }}>
+            {getInitials(currentUserName)}
+          </div>
+          <div style={{ flex: 1 }}>
+            <MentionInput
+              value={newComment}
+              onChange={setNewComment}
+              placeholder="Add comment... (Type @ to mention someone)"
+            />
+          </div>
         </div>
         
         {/* Submit button */}
