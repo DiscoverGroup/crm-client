@@ -523,6 +523,57 @@ const ClientRecords: React.FC<{
     }
   };
 
+  // Generic file upload handler for booking vouchers and passport attachments
+  const handleGenericFileUpload = async (
+    file: File,
+    category: 'other',
+    fileType: string,
+    section: string
+  ) => {
+    try {
+      const currentClientId = clientId || tempClientId;
+      await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName);
+      
+      logAttachment(section, 'uploaded', file.name, fileType);
+      
+      const clientAttachments = FileService.getFilesByClient(currentClientId);
+      setAttachments([...clientAttachments]);
+      
+      window.dispatchEvent(new Event('fileAttachmentUpdated'));
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    }
+  };
+
+  // Generic file removal handler
+  const handleGenericFileRemove = async (fileId: string, fileType: string, section: string) => {
+    if (!window.confirm('Are you sure you want to remove this file?')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Removing file:', fileId);
+      const success = await FileService.deleteFile(fileId, currentUserName);
+      
+      if (success) {
+        const currentClientId = clientId || tempClientId;
+        const clientAttachments = FileService.getFilesByClient(currentClientId);
+        setAttachments([...clientAttachments]);
+        
+        logAttachment(section, 'deleted', 'File removed', fileType);
+        window.dispatchEvent(new Event('fileAttachmentUpdated'));
+        
+        console.log('✅ File removed successfully');
+      } else {
+        alert('Failed to remove file. Please try again.');
+      }
+    } catch (error) {
+      console.error('❌ Error removing file:', error);
+      alert('Failed to remove file. Please try again.');
+    }
+  };
+
   const handleSavePaymentDetails = async () => {
     setIsSaving(true);
     try {
@@ -1910,14 +1961,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setIntlFlight(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'international-flight', 'booking-voucher');
+                        setIntlFlight(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {intlFlight && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {intlFlight.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.file.name.includes('international-flight') || intlFlight?.name === att.file.name
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'international-flight', 'booking-voucher');
+                              setIntlFlight(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Local Flight 1 */}
@@ -1926,14 +2017,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setLocalFlight1(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-1', 'booking-voucher');
+                        setLocalFlight1(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {localFlight1 && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {localFlight1.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('local-flight-1') || localFlight1?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-1', 'booking-voucher');
+                              setLocalFlight1(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Local Flight 2 */}
@@ -1942,14 +2073,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setLocalFlight2(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-2', 'booking-voucher');
+                        setLocalFlight2(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {localFlight2 && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {localFlight2.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('local-flight-2') || localFlight2?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-2', 'booking-voucher');
+                              setLocalFlight2(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Local Flight 3 */}
@@ -1958,14 +2129,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setLocalFlight3(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-3', 'booking-voucher');
+                        setLocalFlight3(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {localFlight3 && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {localFlight3.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('local-flight-3') || localFlight3?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-3', 'booking-voucher');
+                              setLocalFlight3(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Local Flight 4 */}
@@ -1974,14 +2185,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setLocalFlight4(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-4', 'booking-voucher');
+                        setLocalFlight4(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {localFlight4 && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {localFlight4.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('local-flight-4') || localFlight4?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-4', 'booking-voucher');
+                              setLocalFlight4(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Hotel Voucher */}
@@ -1990,14 +2241,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setHotelVoucher(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'hotel-voucher', 'booking-voucher');
+                        setHotelVoucher(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {hotelVoucher && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {hotelVoucher.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('hotel-voucher') || hotelVoucher?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'hotel-voucher', 'booking-voucher');
+                              setHotelVoucher(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Other Files */}
@@ -2006,14 +2297,54 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={(e) => setOtherFiles(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'other-files', 'booking-voucher');
+                        setOtherFiles(file);
+                      }
+                    }}
                     style={{ fontSize: "14px", width: "100%" }}
                   />
-                  {otherFiles && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {otherFiles.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      (att.file.name.includes('other-files') || otherFiles?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'other-files', 'booking-voucher');
+                              setOtherFiles(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>

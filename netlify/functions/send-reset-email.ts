@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import nodemailer from 'nodemailer';
+import crypto from 'crypto';
 
 // Gmail SMTP Configuration
 const GMAIL_USER = process.env.GMAIL_USER || 'romanolantano.discovergrp@gmail.com';
@@ -141,7 +142,5 @@ export const handler: Handler = async (event) => {
 
 // Generate a secure random token
 function generateResetToken(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(32)))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  return crypto.randomBytes(32).toString('hex');
 }
