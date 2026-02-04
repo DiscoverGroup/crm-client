@@ -3007,8 +3007,8 @@ const ClientRecords: React.FC<{
 };
 
 interface MainPageProps {
-  currentUser: { fullName: string; username: string };
-  onUpdateUser?: (user: { fullName: string; username: string }) => void;
+  currentUser: { fullName: string; username: string; id: string; email: string };
+  onUpdateUser?: (user: { fullName: string; username: string; id: string; email: string }) => void;
   navigationRequest?: {
     page: 'client-form' | 'activity-log' | 'log-notes';
     params?: any;
@@ -3209,7 +3209,12 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser, navigati
               onBack={() => setViewProfile(false)}
               onUpdateUser={(userData) => {
                 if (onUpdateUser) {
-                  onUpdateUser({ fullName: userData.fullName, username: userData.username });
+                  onUpdateUser({ 
+                    fullName: userData.fullName, 
+                    username: userData.username,
+                    id: currentUser.id,
+                    email: userData.email
+                  });
                 }
               }}
             />

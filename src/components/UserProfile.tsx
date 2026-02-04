@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { uploadFileToR2 } from '../services/r2UploadService';
 
 interface UserProfileProps {
-  currentUser: { fullName: string; username: string };
+  currentUser: { fullName: string; username: string; id?: string; email?: string };
   onBack: () => void;
   onUpdateUser: (updatedData: UserData) => void;
 }
