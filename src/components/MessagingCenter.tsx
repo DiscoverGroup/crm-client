@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessagingService, type Message, type Conversation } from '../services/messagingService';
+import NewMessageModal from './NewMessageModal';
 
 interface User {
   id: string;
   fullName: string;
   username: string;
+  email: string;
 }
 
 interface MessagingCenterProps {
@@ -21,16 +23,18 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   onClose 
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConversationUserId, setActiveConversationUserId] = useState<string | null>(selectedUserId || null);
-  const [activeConversationUserName, setActiveConversationUserName] = useState<string>(selectedUserName || '');
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(selectedUserId || null);
+  const [activeConversationName, setActiveConversationName] = useState<string>(selectedUserName || '');
+  const [isGroupChat, setIsGroupChat] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadConversations();
     if (selectedUserId) {
-      loadConversation(selectedUserId, selectedUserName || '');
+      loadDirectMessage(selectedUserId, selectedUserName || '');
     }
     
     // Refresh conversations every 5 seconds
@@ -39,13 +43,17 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   }, [currentUser.id]);
 
   useEffect(() => {
-    if (activeConversationUserId) {
+    if (activeConversationId) {
       const interval = setInterval(() => {
-        loadConversation(activeConversationUserId, activeConversationUserName);
+        if (isGroupChat) {
+          loadGroupChat(activeConversationId, activeConversationName);
+        } else {
+          loadDirectMessage(activeConversationId, activeConversationName);
+        }
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [activeConversationUserId]);
+  }, [activeConversationId, isGroupChat]);
 
   useEffect(() => {
     scrollToBottom();
@@ -56,35 +64,66 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   };
 
   const loadConversations = () => {
-    const convs = MessagingService.getConversations(currentUser.id);
+    const convs = MessagingService.getAllConversations(currentUser.id);
     setConversations(convs);
   };
 
-  const loadConversation = (userId: string, userName: string) => {
+  const loadDirectMessage = (userId: string, userName: string) => {
     const conv = MessagingService.getConversation(currentUser.id, userId);
     setMessages(conv);
-    setActiveConversationUserId(userId);
-    setActiveConversationUserName(userName);
+    setActiveConversationId(userId);
+    setActiveConversationName(userName);
+    setIsGroupChat(false);
     
     // Mark as read
     MessagingService.markAsRead(currentUser.id, userId);
     loadConversations();
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !activeConversationUserId) return;
+  const loadGroupChat = (groupId: string, groupName: string) => {
+    const msgs = MessagingService.getGroupMessages(groupId);
+    setMessages(msgs);
+    setActiveConversationId(groupId);
+    setActiveConversationName(groupName);
+    setIsGroupChat(true);
+    
+    // Mark as read
+    MessagingService.markGroupAsRead(currentUser.id, groupId);
+    loadConversations();
+  };
 
-    MessagingService.sendMessage(
-      currentUser.id,
-      currentUser.fullName,
-      activeConversationUserId,
-      activeConversationUserName,
-      newMessage.trim()
-    );
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !activeConversationId) return;
+
+    if (isGroupChat) {
+      MessagingService.sendGroupMessage(
+        currentUser.id,
+        currentUser.fullName,
+        activeConversationId,
+        newMessage.trim()
+      );
+      loadGroupChat(activeConversationId, activeConversationName);
+    } else {
+      MessagingService.sendMessage(
+        currentUser.id,
+        currentUser.fullName,
+        activeConversationId,
+        activeConversationName,
+        newMessage.trim()
+      );
+      loadDirectMessage(activeConversationId, activeConversationName);
+    }
 
     setNewMessage('');
-    loadConversation(activeConversationUserId, activeConversationUserName);
     loadConversations();
+  };
+
+  const handleStartChat = (userId: string, userName: string) => {
+    loadDirectMessage(userId, userName);
+  };
+
+  const handleStartGroupChat = (groupId: string, groupName: string) => {
+    loadGroupChat(groupId, groupName);
   };
 
   const getInitials = (name: string) => {
@@ -147,7 +186,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              marginBottom: '4px'
+              marginBottom: '12px'
             }}>
               <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>
                 💬 Messages
@@ -165,6 +204,26 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 ✕
               </button>
             </div>
+            <button
+              onClick={() => setShowNewMessageModal(true)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              ✉️ New Message
+            </button>
           </div>
 
           {/* Conversations */}
@@ -184,22 +243,28 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             ) : (
               conversations.map(conv => (
                 <div
-                  key={conv.userId}
-                  onClick={() => loadConversation(conv.userId, conv.userName)}
+                  key={conv.isGroup ? conv.groupId : conv.userId}
+                  onClick={() => {
+                    if (conv.isGroup) {
+                      loadGroupChat(conv.groupId!, conv.groupName!);
+                    } else {
+                      loadDirectMessage(conv.userId!, conv.userName!);
+                    }
+                  }}
                   style={{
                     padding: '16px 20px',
                     cursor: 'pointer',
                     borderBottom: '1px solid #e2e8f0',
-                    backgroundColor: activeConversationUserId === conv.userId ? '#f0f9ff' : 'white',
+                    backgroundColor: activeConversationId === (conv.isGroup ? conv.groupId : conv.userId) ? '#f0f9ff' : 'white',
                     transition: 'background-color 0.2s'
                   }}
                   onMouseOver={(e) => {
-                    if (activeConversationUserId !== conv.userId) {
+                    if (activeConversationId !== (conv.isGroup ? conv.groupId : conv.userId)) {
                       e.currentTarget.style.backgroundColor = '#f8fafc';
                     }
                   }}
                   onMouseOut={(e) => {
-                    if (activeConversationUserId !== conv.userId) {
+                    if (activeConversationId !== (conv.isGroup ? conv.groupId : conv.userId)) {
                       e.currentTarget.style.backgroundColor = 'white';
                     }
                   }}
@@ -213,7 +278,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       width: '48px',
                       height: '48px',
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: conv.isGroup 
+                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       color: 'white',
                       display: 'flex',
                       alignItems: 'center',
@@ -223,7 +290,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       flexShrink: 0,
                       position: 'relative'
                     }}>
-                      {getInitials(conv.userName)}
+                      {conv.isGroup ? '👥' : getInitials(conv.userName || conv.groupName || '')}
                       {conv.unreadCount > 0 && (
                         <div style={{
                           position: 'absolute',
@@ -253,9 +320,17 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
-                        marginBottom: '4px'
+                        marginBottom: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
                       }}>
-                        {conv.userName}
+                        {conv.isGroup ? conv.groupName : conv.userName}
+                        {conv.isGroup && conv.participants && (
+                          <span style={{ fontSize: '12px', color: '#64748b' }}>
+                            ({conv.participants.length})
+                          </span>
+                        )}
                       </div>
                       {conv.lastMessage && (
                         <div style={{
@@ -290,7 +365,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           display: 'flex',
           flexDirection: 'column'
         }}>
-          {activeConversationUserId ? (
+          {activeConversationId ? (
             <>
               {/* Chat Header */}
               <div style={{
@@ -305,7 +380,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   width: '40px',
                   height: '40px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: isGroupChat 
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   display: 'flex',
                   alignItems: 'center',
@@ -313,7 +390,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   fontSize: '14px',
                   fontWeight: '600'
                 }}>
-                  {getInitials(activeConversationUserName)}
+                  {isGroupChat ? '👥' : getInitials(activeConversationName)}
                 </div>
                 <div>
                   <div style={{
@@ -321,8 +398,16 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     fontWeight: '600',
                     color: '#1e293b'
                   }}>
-                    {activeConversationUserName}
+                    {activeConversationName}
                   </div>
+                  {isGroupChat && (
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#64748b'
+                    }}>
+                      Group Chat
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -373,6 +458,17 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         flexDirection: 'column',
                         alignItems: isFromMe ? 'flex-end' : 'flex-start'
                       }}>
+                        {isGroupChat && !isFromMe && showAvatar && (
+                          <div style={{
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            color: '#64748b',
+                            marginBottom: '4px',
+                            padding: '0 4px'
+                          }}>
+                            {message.fromUserName}
+                          </div>
+                        )}
                         <div style={{
                           padding: '10px 14px',
                           borderRadius: isFromMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
@@ -470,6 +566,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           )}
         </div>
       </div>
+
+      {showNewMessageModal && (
+        <NewMessageModal
+          currentUser={currentUser}
+          onClose={() => setShowNewMessageModal(false)}
+          onStartChat={handleStartChat}
+          onStartGroupChat={handleStartGroupChat}
+        />
+      )}
     </div>
   );
 };
