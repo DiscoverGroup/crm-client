@@ -705,13 +705,15 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
               {/* Reply Form */}
               {replyingTo === note.id && (
-                <div style={{
-                  marginTop: '8px',
-                  padding: '8px',
-                  background: '#f8fafc',
-                  borderRadius: '6px',
-                  border: '1px solid #e2e8f0'
-                }}>
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    marginTop: '8px',
+                    padding: '8px',
+                    background: '#f8fafc',
+                    borderRadius: '6px',
+                    border: '1px solid #e2e8f0'
+                  }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'flex-start',
