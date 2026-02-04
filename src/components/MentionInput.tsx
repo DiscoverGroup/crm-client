@@ -186,7 +186,7 @@ const MentionInput: React.FC<MentionInputProps> = ({
           ref={suggestionsRef}
           style={{
             position: 'absolute',
-            bottom: 'calc(100% + 4px)',
+            top: 'calc(100% + 4px)',
             left: 0,
             right: 0,
             backgroundColor: 'white',

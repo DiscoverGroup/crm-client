@@ -177,6 +177,52 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     );
 
     if (reply) {
+      // Check for mentions in reply and create notifications
+      const mentionRegex = /@([\w-]+)/g;
+      const mentions = replyText.match(mentionRegex);
+      
+      if (mentions) {
+        const client = ClientService.getClientById(clientId);
+        const clientName = client?.contactName || 'Unknown Client';
+        
+        // Get all users for @everyone
+        const allUsersStr = localStorage.getItem('crm_users');
+        const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+        
+        mentions.forEach(mention => {
+          const username = mention.substring(1); // Remove @ symbol
+          
+          // Check if it's @everyone
+          if (username.toLowerCase() === 'everyone') {
+            // Notify all users except the current user
+            allUsers.forEach((user: any) => {
+              if (user.id !== currentUserId) {
+                NotificationService.createMentionNotification({
+                  mentionedUsername: user.username,
+                  fromUserId: currentUserId,
+                  fromUserName: currentUserName,
+                  clientId: clientId,
+                  clientName: clientName,
+                  logNoteId: logNoteId,
+                  commentText: replyText
+                });
+              }
+            });
+          } else {
+            // Notify specific user
+            NotificationService.createMentionNotification({
+              mentionedUsername: username,
+              fromUserId: currentUserId,
+              fromUserName: currentUserName,
+              clientId: clientId,
+              clientName: clientName,
+              logNoteId: logNoteId,
+              commentText: replyText
+            });
+          }
+        });
+      }
+      
       const notes = LogNoteService.getLogNotes(clientId);
       setLogNotes(notes);
       setReplyText('');
@@ -676,20 +722,12 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                       {getInitials(currentUserName)}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <textarea
+                      <MentionInput
                         value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        placeholder="Write a reply..."
+                        onChange={setReplyText}
+                        placeholder="Write a reply... (Type @ to mention someone)"
                         style={{
-                          width: '100%',
-                          minHeight: '50px',
-                          padding: '6px',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          resize: 'vertical',
-                          outline: 'none'
+                          width: '100%'
                         }}
                       />
                       <div style={{
