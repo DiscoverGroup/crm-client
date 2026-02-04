@@ -123,17 +123,41 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       const client = ClientService.getClientById(clientId);
       const clientName = client?.contactName || 'Unknown Client';
       
+      // Get all users for @everyone
+      const allUsersStr = localStorage.getItem('crm_users');
+      const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+      
       mentions.forEach(mention => {
         const username = mention.substring(1); // Remove @ symbol
-        NotificationService.createMentionNotification({
-          mentionedUsername: username,
-          fromUserId: currentUserId,
-          fromUserName: currentUserName,
-          clientId: clientId,
-          clientName: clientName,
-          logNoteId: logNote.id,
-          commentText: newComment
-        });
+        
+        // Check if it's @everyone
+        if (username.toLowerCase() === 'everyone') {
+          // Notify all users except the current user
+          allUsers.forEach((user: any) => {
+            if (user.id !== currentUserId) {
+              NotificationService.createMentionNotification({
+                mentionedUsername: user.username,
+                fromUserId: currentUserId,
+                fromUserName: currentUserName,
+                clientId: clientId,
+                clientName: clientName,
+                logNoteId: logNote.id,
+                commentText: newComment
+              });
+            }
+          });
+        } else {
+          // Notify specific user
+          NotificationService.createMentionNotification({
+            mentionedUsername: username,
+            fromUserId: currentUserId,
+            fromUserName: currentUserName,
+            clientId: clientId,
+            clientName: clientName,
+            logNoteId: logNote.id,
+            commentText: newComment
+          });
+        }
       });
     }
     

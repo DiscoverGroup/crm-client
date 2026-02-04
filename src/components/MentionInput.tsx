@@ -61,10 +61,26 @@ const MentionInput: React.FC<MentionInputProps> = ({
       const search = textAfterAt.toLowerCase();
       
       const allUsers = getAllUsers();
-      const filtered = allUsers.filter(user => 
+      
+      // Create @everyone option
+      const everyoneOption: User = {
+        fullName: 'Everyone',
+        username: 'everyone',
+        department: 'All Users',
+        position: 'Mention all users'
+      };
+      
+      // Filter regular users
+      const filteredUsers = allUsers.filter(user => 
         user.fullName.toLowerCase().includes(search) ||
         user.username.toLowerCase().includes(search)
       );
+      
+      // Add @everyone at the top if it matches the search
+      let filtered = filteredUsers;
+      if ('everyone'.includes(search) || search === '') {
+        filtered = [everyoneOption, ...filteredUsers];
+      }
       
       if (filtered.length > 0) {
         setSuggestions(filtered);
@@ -200,27 +216,30 @@ const MentionInput: React.FC<MentionInputProps> = ({
                   width: '32px',
                   height: '32px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: user.username === 'everyone' 
+                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' 
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '12px',
+                  fontSize: user.username === 'everyone' ? '14px' : '12px',
                   fontWeight: '600'
                 }}>
-                  {user.fullName.charAt(0).toUpperCase()}
+                  {user.username === 'everyone' ? '👥' : user.fullName.charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ 
                     fontSize: '13px', 
-                    fontWeight: '500',
-                    color: '#1e293b'
+                    fontWeight: user.username === 'everyone' ? '600' : '500',
+                    color: user.username === 'everyone' ? '#d97706' : '#1e293b'
                   }}>
                     {user.fullName}
                   </div>
                   <div style={{ 
                     fontSize: '11px', 
-                    color: '#64748b'
+                    color: '#64748b',
+                    fontStyle: user.username === 'everyone' ? 'italic' : 'normal'
                   }}>
                     @{user.username}
                     {user.position && ` • ${user.position}`}
