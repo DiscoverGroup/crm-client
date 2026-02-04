@@ -143,6 +143,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     }
   };
 
+  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setUserData({ 
+      ...userData, 
+      department: e.target.value,
+      position: '' // Reset position when department changes
+    });
+  };
+
   const handleProfileImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
