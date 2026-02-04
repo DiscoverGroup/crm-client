@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
+import ToastNotification from './ToastNotification';
 
 interface NotificationDropdownProps {
   currentUser: { fullName: string; username: string };
@@ -12,13 +13,27 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [toastNotification, setToastNotification] = useState<Notification | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const previousCountRef = useRef<number>(0);
 
   // Load notifications
   const loadNotifications = () => {
     const userNotifs = NotificationService.getUserNotifications(currentUser.fullName);
+    const newUnreadCount = NotificationService.getUnreadCount(currentUser.fullName);
+    
+    // Check if there's a new notification
+    if (newUnreadCount > previousCountRef.current && userNotifs.length > 0) {
+      // Show toast for the most recent unread notification
+      const latestUnread = userNotifs.find(n => !n.isRead);
+      if (latestUnread) {
+        setToastNotification(latestUnread);
+      }
+    }
+    
+    previousCountRef.current = newUnreadCount;
     setNotifications(userNotifs);
-    setUnreadCount(NotificationService.getUnreadCount(currentUser.fullName));
+    setUnreadCount(newUnreadCount);
   };
 
   useEffect(() => {
@@ -298,6 +313,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
           </div>
         </div>
       )}
+      
+      {/* Toast Notification */}
+      <ToastNotification 
+        notification={toastNotification}
+        onClose={() => setToastNotification(null)}
+      />
     </div>
   );
 };

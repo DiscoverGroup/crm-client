@@ -5,12 +5,16 @@ import AuthContainer from "./components/AuthContainer";
 import MainPage from "./components/MainPage";
 import Modal from "./components/Modal";
 import OTPVerification from "./components/OTPVerification";
+import UserDirectory from "./components/UserDirectory";
+import UserProfileView from "./components/UserProfileView";
+import MessagingCenter from "./components/MessagingCenter";
 import { MongoDBService } from "./services/mongoDBService";
 import { FileService } from "./services/fileService";
+import { MessagingService } from "./services/messagingService";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingUserEmail, setPendingUserEmail] = useState('');
@@ -18,6 +22,12 @@ const App: React.FC = () => {
     page: 'client-form' | 'activity-log' | 'log-notes';
     params?: any;
   } | null>(null);
+  const [showUserDirectory, setShowUserDirectory] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [showMessaging, setShowMessaging] = useState(false);
+  const [messagingTargetUser, setMessagingTargetUser] = useState<{ id: string; name: string } | null>(null);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -29,6 +39,33 @@ const App: React.FC = () => {
   // Handle navigation from notifications
   const handleNavigate = (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => {
     setNavigationRequest({ page, params });
+  };
+
+  // Load unread message count
+  useEffect(() => {
+    if (isLoggedIn && currentUser) {
+      const updateUnreadCount = () => {
+        const count = MessagingService.getUnreadCount(currentUser.id);
+        setUnreadMessageCount(count);
+      };
+      
+      updateUnreadCount();
+      const interval = setInterval(updateUnreadCount, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn, currentUser]);
+
+  // Handle user actions
+  const handleViewProfile = (user: any) => {
+    setSelectedUser(user);
+    setShowUserProfile(true);
+  };
+
+  const handleMessageUser = (user: any) => {
+    setMessagingTargetUser({ id: user.id, name: user.fullName });
+    setShowUserDirectory(false);
+    setShowUserProfile(false);
+    setShowMessaging(true);
   };
 
   // Check MongoDB and R2 connection status (only works in production with Netlify functions)
@@ -168,7 +205,7 @@ const App: React.FC = () => {
   }, []);
 
   // Save authentication state to localStorage
-  const saveAuthState = (loggedIn: boolean, user: { fullName: string; username: string } | null) => {
+  const saveAuthState = (loggedIn: boolean, user: { fullName: string; username: string; id: string } | null) => {
     const authData = {
       isLoggedIn: loggedIn,
       currentUser: user,
@@ -237,9 +274,14 @@ const App: React.FC = () => {
           message: `Welcome back, ${user.fullName || user.username}!`,
           type: 'success',
           onConfirm: () => {
-            setCurrentUser({ fullName: user.fullName || user.username, username: user.username });
+            const userData = { 
+              fullName: user.fullName || user.username, 
+              username: user.username,
+              id: user.id || user.email
+            };
+            setCurrentUser(userData);
             setIsLoggedIn(true);
-            saveAuthState(true, { fullName: user.fullName || user.username, username: user.username });
+            saveAuthState(true, userData);
           }
         });
       } else {
@@ -555,11 +597,17 @@ const App: React.FC = () => {
         currentUser={currentUser}
         onLogout={handleLogout}
         onNavigate={handleNavigate}
+        onOpenUserDirectory={() => setShowUserDirectory(true)}
+        onOpenMessaging={() => {
+          setMessagingTargetUser(null);
+          setShowMessaging(true);
+        }}
+        unreadMessageCount={unreadMessageCount}
       />
       <div style={{ flex: 1 }}>
         {isLoggedIn ? (
           <MainPage 
-            currentUser={currentUser || { fullName: '', username: '' }}
+            currentUser={currentUser || { fullName: '', username: '', id: '' }}
             onUpdateUser={(updatedUser) => {
               setCurrentUser(updatedUser);
               saveAuthState(true, updatedUser);
@@ -572,6 +620,42 @@ const App: React.FC = () => {
         )}
       </div>
       <Footer />
+      
+      {/* User Directory Modal */}
+      {showUserDirectory && currentUser && (
+        <UserDirectory
+          currentUser={currentUser}
+          onViewProfile={handleViewProfile}
+          onMessageUser={handleMessageUser}
+          onClose={() => setShowUserDirectory(false)}
+        />
+      )}
+      
+      {/* User Profile View Modal */}
+      {showUserProfile && selectedUser && currentUser && (
+        <UserProfileView
+          user={selectedUser}
+          currentUser={currentUser}
+          onClose={() => {
+            setShowUserProfile(false);
+            setSelectedUser(null);
+          }}
+          onMessage={handleMessageUser}
+        />
+      )}
+      
+      {/* Messaging Center Modal */}
+      {showMessaging && currentUser && (
+        <MessagingCenter
+          currentUser={currentUser}
+          selectedUserId={messagingTargetUser?.id}
+          selectedUserName={messagingTargetUser?.name}
+          onClose={() => {
+            setShowMessaging(false);
+            setMessagingTargetUser(null);
+          }}
+        />
+      )}
     </div>
   );
 };
