@@ -37,6 +37,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
+  const [showChatMenu, setShowChatMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,8 +80,16 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   };
 
   const loadConversations = () => {
-    const convs = MessagingService.getAllConversations(currentUser.id);
-    setConversations(convs);
+    const allConvs = MessagingService.getAllConversations(currentUser.id);
+    // Filter out archived conversations
+    const nonArchivedConvs = allConvs.filter(conv => {
+      const isArchived = MessagingService.isConversationArchived(
+        conv.isGroup ? undefined : conv.userId,
+        conv.isGroup ? conv.groupId : undefined
+      );
+      return !isArchived;
+    });
+    setConversations(nonArchivedConvs);
   };
 
   const loadDirectMessage = (userId: string, userName: string) => {
@@ -224,10 +233,48 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setContextMenu(null);
   };
 
+  const handleDeleteConversation = () => {
+    if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+      MessagingService.deleteConversation(
+        currentUser.id,
+        isGroupChat ? undefined : activeConversationId!,
+        isGroupChat ? activeConversationId! : undefined
+      );
+      setActiveConversationId(null);
+      setActiveConversationName('');
+      setMessages([]);
+      setShowConversationList(true);
+      setShowChatMenu(false);
+      loadConversations();
+    }
+  };
+
+  const handleArchiveConversation = () => {
+    const isArchived = MessagingService.isConversationArchived(
+      isGroupChat ? undefined : activeConversationId!,
+      isGroupChat ? activeConversationId! : undefined
+    );
+    
+    MessagingService.toggleArchiveConversation(
+      isGroupChat ? undefined : activeConversationId!,
+      isGroupChat ? activeConversationId! : undefined
+    );
+    
+    setActiveConversationId(null);
+    setActiveConversationName('');
+    setMessages([]);
+    setShowConversationList(true);
+    setShowChatMenu(false);
+    loadConversations();
+    
+    alert(isArchived ? 'Conversation unarchived' : 'Conversation archived');
+  };
+
   useEffect(() => {
     const handleClickOutside = () => {
       setContextMenu(null);
       setShowReactionPicker(null);
+      setShowChatMenu(false);
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
@@ -551,6 +598,89 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     </div>
                   )}
                 </div>
+                
+                {/* Menu Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowChatMenu(!showChatMenu);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '8px',
+                    position: 'relative'
+                  }}
+                >
+                  ⋮
+                </button>
+
+                {/* Dropdown Menu */}
+                {showChatMenu && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute',
+                      top: '70px',
+                      right: '24px',
+                      background: 'white',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      padding: '4px',
+                      zIndex: 1000,
+                      minWidth: '180px'
+                    }}
+                  >
+                    <button
+                      onClick={handleArchiveConversation}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '14px',
+                        color: '#1e293b'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span>📦</span> {MessagingService.isConversationArchived(
+                        isGroupChat ? undefined : activeConversationId!,
+                        isGroupChat ? activeConversationId! : undefined
+                      ) ? 'Unarchive' : 'Archive'}
+                    </button>
+                    <button
+                      onClick={handleDeleteConversation}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '14px',
+                        color: '#ef4444'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span>🗑️</span> Delete Conversation
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Messages */}

@@ -25,6 +25,7 @@ export interface Conversation {
   lastMessageTime?: Date;
   unreadCount: number;
   isGroup?: boolean;
+  isArchived?: boolean; // Whether conversation is archived
 }
 
 export interface GroupChat {
@@ -147,16 +148,6 @@ export class MessagingService {
   static getUnreadCount(userId: string): number {
     const messages = this.getAllMessages();
     return messages.filter(m => m.toUserId === userId && !m.isRead).length;
-  }
-
-  // Delete conversation
-  static deleteConversation(user1Id: string, user2Id: string): void {
-    const messages = this.getAllMessages();
-    const filtered = messages.filter(m => 
-      !((m.fromUserId === user1Id && m.toUserId === user2Id) ||
-        (m.fromUserId === user2Id && m.toUserId === user1Id))
-    );
-    this.saveMessages(filtered);
   }
 
   // Group Chat Methods
@@ -345,5 +336,54 @@ export class MessagingService {
   // Copy message text
   static copyMessage(message: Message): string {
     return message.message;
+  }
+
+  // Delete conversation (remove all messages)
+  static deleteConversation(userId: string, otherUserId?: string, groupId?: string): void {
+    let messages = this.getAllMessages();
+    
+    if (groupId) {
+      // Delete group conversation
+      messages = messages.filter(m => m.groupId !== groupId);
+      
+      // Also remove the group
+      const groups = this.getAllGroups();
+      const updatedGroups = groups.filter(g => g.id !== groupId);
+      localStorage.setItem(this.GROUPS_KEY, JSON.stringify(updatedGroups));
+    } else if (otherUserId) {
+      // Delete direct conversation
+      messages = messages.filter(m => 
+        !((m.fromUserId === userId && m.toUserId === otherUserId) ||
+          (m.fromUserId === otherUserId && m.toUserId === userId))
+      );
+    }
+    
+    this.saveMessages(messages);
+  }
+
+  // Archive/Unarchive conversation
+  static toggleArchiveConversation(otherUserId?: string, groupId?: string): void {
+    const ARCHIVE_KEY = 'crm_archived_conversations';
+    const archived = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
+    
+    const index = archived.indexOf(conversationKey);
+    if (index > -1) {
+      // Unarchive
+      archived.splice(index, 1);
+    } else {
+      // Archive
+      archived.push(conversationKey);
+    }
+    
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archived));
+  }
+
+  // Check if conversation is archived
+  static isConversationArchived(otherUserId?: string, groupId?: string): boolean {
+    const ARCHIVE_KEY = 'crm_archived_conversations';
+    const archived = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
+    return archived.includes(conversationKey);
   }
 }
