@@ -3,7 +3,6 @@ import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
 import MentionInput from './MentionInput';
-import MentionInput from './MentionInput';
 
 interface LogNoteComponentProps {
   clientId: string;
