@@ -44,13 +44,13 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Generate a signed URL (valid for 5 minutes)
+    // Generate a signed URL (valid for 7 days - maximum allowed)
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: filePath,
     });
 
-    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 300 });
+    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
 
     // Return the signed URL
     return {
