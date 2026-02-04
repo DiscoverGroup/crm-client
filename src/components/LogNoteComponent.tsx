@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
+import MentionInput from './MentionInput';
+import MentionInput from './MentionInput';
 
 interface LogNoteComponentProps {
   clientId: string;
@@ -25,6 +27,33 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   // Helper function to get user initials
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Helper function to render text with highlighted mentions
+  const renderTextWithMentions = (text: string) => {
+    const mentionRegex = /@(\w+)/g;
+    const parts = text.split(mentionRegex);
+    
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        // This is a username (captured group)
+        return (
+          <span
+            key={index}
+            style={{
+              backgroundColor: '#dbeafe',
+              color: '#1e40af',
+              padding: '2px 4px',
+              borderRadius: '4px',
+              fontWeight: '500'
+            }}
+          >
+            @{part}
+          </span>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
   };
 
   // Helper function to format timestamp like "Today at 6:06 PM"
@@ -176,21 +205,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             {getInitials(currentUserName)}
           </div>
           <div style={{ flex: 1 }}>
-            <textarea
+            <MentionInput
               value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add comment..."
-              style={{
-                width: '100%',
-                minHeight: '60px',
-                padding: '8px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '6px',
-                fontSize: '13px',
-                resize: 'vertical',
-                outline: 'none',
-                fontFamily: 'inherit'
-              }}
+              onChange={setNewComment}
+              placeholder="Add comment... (Type @ to mention someone)"
             />
           </div>
         </div>
@@ -494,7 +512,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           fontSize: '11px',
                           whiteSpace: 'pre-line'
                         }}>
-                          {note.description.split('\n').slice(1).join('\n')}
+                          {renderTextWithMentions(note.description.split('\n').slice(1).join('\n'))}
                         </div>
                       </div>
                     ) : (
@@ -508,7 +526,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             color: '#64748b',
                             fontSize: '11px'
                           }}>
-                            {note.description}
+                            {renderTextWithMentions(note.description)}
                           </div>
                         )}
                       </div>
@@ -739,7 +757,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           fontSize: '11px',
                           lineHeight: '1.3'
                         }}>
-                          {reply.message}
+                          {renderTextWithMentions(reply.message)}
                         </div>
                       </div>
                     </div>
