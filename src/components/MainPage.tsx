@@ -472,8 +472,12 @@ const ClientRecords: React.FC<{
     }
 
     try {
+      console.log('🗑️ Removing file:', fileId);
+      
       // Delete file from FileService
-      const success = await FileService.deleteFile(fileId);
+      const success = await FileService.deleteFile(fileId, currentUserName);
+      
+      console.log('Delete result:', success);
       
       if (success) {
         // Clear from local state
@@ -484,13 +488,18 @@ const ClientRecords: React.FC<{
           })
         );
         
-        // Refresh attachments
+        // Refresh attachments immediately with a new array reference to force re-render
         const currentClientId = clientId || tempClientId;
         const clientAttachments = FileService.getFilesByClient(currentClientId);
-        setAttachments(clientAttachments);
+        console.log('Refreshed attachments after deletion:', clientAttachments.length);
+        setAttachments([...clientAttachments]); // Create new array to ensure state update
         
-        // Trigger file update event
-        window.dispatchEvent(new Event('fileAttachmentUpdated'));
+        // Clear the file input element
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+          const inputElement = input as HTMLInputElement;
+          inputElement.value = '';
+        });
         
         // Log the removal
         logAttachment(
@@ -499,11 +508,16 @@ const ClientRecords: React.FC<{
           'File removed',
           field === "depositSlip" ? "deposit slip" : "receipt"
         );
+        
+        // Trigger file update event
+        window.dispatchEvent(new Event('fileAttachmentUpdated'));
+        
+        console.log('✅ File removed successfully');
       } else {
         alert('Failed to remove file. Please try again.');
       }
     } catch (error) {
-      console.error('Error removing file:', error);
+      console.error('❌ Error removing file:', error);
       alert('Failed to remove file. Please try again.');
     }
   };
@@ -2679,12 +2693,42 @@ const MainPage: React.FC<MainPageProps> = ({ currentUser, onUpdateUser }) => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [loading, setLoading] = useState(false);
   
-  // Navigation state for form view
-  const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string} | null>(null);
-  const [viewProfile, setViewProfile] = useState(false);
+  // Navigation state for form view - restore from sessionStorage on page load
+  const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string} | null>(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewingForm || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+  const [viewProfile, setViewProfile] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewProfile || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [viewDeleted, setViewDeleted] = useState(false);
   const [viewActivityLog, setViewActivityLog] = useState(false);
   const [viewAdminPanel, setViewAdminPanel] = useState(false);
+
+  // Save view state to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('crm_current_view', JSON.stringify({
+      viewingForm,
+      viewProfile
+    }));
+  }, [viewingForm, viewProfile]);
 
   // Check if current user is admin
   const isAdmin = () => {

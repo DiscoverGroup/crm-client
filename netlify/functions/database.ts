@@ -28,8 +28,12 @@ export const handler: Handler = async (event) => {
     const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
 
     const client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000, // Fail fast after 5 seconds
-      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      retryWrites: true,
+      w: 'majority',
     });
     const db = client.db(DB_NAME);
     const col = db.collection(collection);
@@ -84,8 +88,8 @@ export const handler: Handler = async (event) => {
     let hint = 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0';
     
     // Provide specific hints based on error type
-    if (error.message?.includes('SSL') || error.message?.includes('TLS')) {
-      hint = 'SSL/TLS error - likely wrong password or special characters in password need URL encoding. Also verify database user permissions.';
+    if (error.message?.includes('SSL') || error.message?.includes('TLS') || error.message?.includes('ssl3_read_bytes')) {
+      hint = 'SSL/TLS error - Check these: 1) Encode special characters in password (e.g., @ = %40, ! = %21). 2) Use correct MongoDB connection string format: mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority. 3) Verify database user has correct permissions. 4) Check if IP whitelist includes 0.0.0.0/0 in MongoDB Atlas Network Access.';
     } else if (error.message?.includes('authentication failed')) {
       hint = 'Authentication failed - check username and password in MONGODB_URI';
     } else if (error.message?.includes('ENOTFOUND') || error.message?.includes('ETIMEDOUT')) {

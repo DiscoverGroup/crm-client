@@ -186,21 +186,32 @@ export class FileService {
   // Delete file by ID with R2 cleanup
   static async deleteFile(fileId: string, currentUser?: string): Promise<boolean> {
     try {
+      console.log('🗑️ FileService.deleteFile called with fileId:', fileId);
       const attachments = this.getAllFileAttachments();
+      console.log('📦 Total attachments before deletion:', attachments.length);
+      
       const attachment = attachments.find(att => att.file.id === fileId);
+      console.log('🔍 Found attachment to delete:', attachment);
       
-      // If it's an R2 file, delete from R2 first
-      if (attachment && attachment.file.isR2 && attachment.file.r2Path) {
-        try {
-          await deleteFileFromR2(this.R2_BUCKET, attachment.file.r2Path);
-        } catch (error) {
-          console.error('Error deleting file from R2:', error);
-          // Continue to remove from localStorage anyway
-        }
-      }
-      
+      // Delete from localStorage immediately (don't wait for R2)
       const filteredAttachments = attachments.filter(att => att.file.id !== fileId);
+      console.log('📦 Total attachments after filtering:', filteredAttachments.length);
+      console.log('💾 Saving to localStorage...');
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
+      console.log('✅ localStorage updated');
+      
+      // Verify the save
+      const verification = localStorage.getItem(this.STORAGE_KEY);
+      const verifiedAttachments = JSON.parse(verification || '[]');
+      console.log('✓ Verification - attachments in storage:', verifiedAttachments.length);
+      
+      // Delete from R2 in the background (non-blocking)
+      if (attachment && attachment.file.isR2 && attachment.file.r2Path) {
+        console.log('☁️ Attempting R2 deletion in background:', attachment.file.r2Path);
+        deleteFileFromR2(this.R2_BUCKET, attachment.file.r2Path)
+          .then(() => console.log('✅ R2 deletion successful'))
+          .catch(error => console.error('❌ R2 deletion failed (file already removed from UI):', error));
+      }
       
       // Log file deletion activity if clientId exists
       if (attachment && attachment.clientId && currentUser) {
@@ -217,7 +228,7 @@ export class FileService {
       
       return true;
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error('❌ Error deleting file:', error);
       return false;
     }
   }
