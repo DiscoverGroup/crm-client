@@ -90,10 +90,22 @@ export const handler: Handler = async (event) => {
       if (!conversationsMap.has(conversationKey)) {
         const meta = metaMap.get(conversationKey) || { isPinned: false, isArchived: false };
         
+        // Get the other user's name from the message
+        let otherUserName = null;
+        if (!isGroup) {
+          if (msg.fromUserId === userId) {
+            // Current user sent this message, get recipient's name
+            otherUserName = msg.toUserName || null;
+          } else {
+            // Current user received this message, get sender's name
+            otherUserName = msg.fromUserName || null;
+          }
+        }
+        
         conversationsMap.set(conversationKey, {
           userId: otherUserId,
           groupId: msg.groupId,
-          userName: isGroup ? null : (msg.fromUserId === userId ? null : msg.fromUserName),
+          userName: otherUserName,
           groupName: isGroup ? msg.groupId : null,
           isGroup,
           lastMessage: msg.content,
@@ -118,14 +130,20 @@ export const handler: Handler = async (event) => {
 
     if (userIds.length > 0) {
       const users = await usersCol
-        .find({ id: { $in: userIds } })
+        .find({ 
+          $or: [
+            { id: { $in: userIds } },
+            { email: { $in: userIds } }
+          ]
+        })
         .toArray();
 
-      const userMap = new Map(users.map(u => [u.id, u.name]));
+      const userMap = new Map(users.map(u => [u.id || u.email, u.fullName || u.name || u.username]));
 
       for (const [key, conv] of conversationsMap.entries()) {
         if (!conv.isGroup && conv.userId) {
-          conv.userName = userMap.get(conv.userId) || 'Unknown User';
+          const userName = userMap.get(conv.userId);
+          conv.userName = userName || conv.userName || 'Unknown User';
         }
       }
     }

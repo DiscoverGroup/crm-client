@@ -60,6 +60,7 @@ export const handler: Handler = async (event) => {
       fromUserId: message.fromUserId,
       fromUserName: message.fromUserName,
       toUserId: message.toUserId || null,
+      toUserName: message.toUserName || null,
       groupId: message.groupId || null,
       content: message.content,
       timestamp: message.timestamp || new Date().toISOString(),
