@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessagingService, type Message, type Conversation } from '../services/messagingService';
 import NewMessageModal from './NewMessageModal';
 import { uploadFileToR2 } from '../services/r2UploadService';
+import R2DownloadButton from './R2DownloadButton';
 import './MessagingCenter.css';
 
 const emojiCategories = {
@@ -609,6 +610,11 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       const remainingText = messageText.replace(fileMatch[0], '').trim();
       const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
       
+      // Extract R2 path from URL (remove domain part)
+      // URL format: https://pub-xxx.r2.dev/messages/1234-filename.pdf
+      const r2PathMatch = fileUrl.match(/\/messages\/(.+)$/);
+      const r2Path = r2PathMatch ? `messages/${r2PathMatch[1]}` : '';
+      
       return (
         <div>
           {isImage ? (
@@ -623,13 +629,25 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   cursor: 'pointer'
                 }}
                 onClick={() => window.open(fileUrl, '_blank')}
+                onError={(e) => {
+                  // If direct URL fails, hide image and show download button instead
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
+              {r2Path && (
+                <div style={{ marginTop: '4px' }}>
+                  <R2DownloadButton 
+                    r2Path={r2Path}
+                    style={{
+                      fontSize: '11px',
+                      padding: '4px 8px'
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ) : (
-            <a
-              href={fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -637,8 +655,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 padding: '8px 12px',
                 background: 'rgba(255,255,255,0.2)',
                 borderRadius: '8px',
-                textDecoration: 'none',
-                color: 'inherit',
                 marginBottom: remainingText ? '8px' : '0'
               }}
             >
@@ -654,11 +670,20 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   {fileName}
                 </div>
                 <div style={{ fontSize: '11px', opacity: 0.8 }}>
-                  Click to download
+                  Click download button
                 </div>
               </div>
-              <span style={{ fontSize: '16px' }}>⬇️</span>
-            </a>
+              {r2Path && (
+                <R2DownloadButton 
+                  r2Path={r2Path}
+                  style={{
+                    fontSize: '11px',
+                    padding: '4px 8px',
+                    marginLeft: '4px'
+                  }}
+                />
+              )}
+            </div>
           )}
           {remainingText && <div>{remainingText}</div>}
         </div>
@@ -900,7 +925,32 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             flex: 1,
             overflowY: 'auto'
           }}>
-            {filteredConversations.length === 0 ? (
+            {isLoadingConversations ? (
+              <div style={{
+                padding: '40px 20px',
+                textAlign: 'center',
+                color: '#64748b'
+              }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #e2e8f0',
+                  borderTop: '4px solid #3b82f6',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: '0 auto 12px'
+                }} />
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  Loading conversations...
+                </p>
+                <style>{`
+                  @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                  }
+                `}</style>
+              </div>
+            ) : filteredConversations.length === 0 ? (
               <div style={{
                 padding: '40px 20px',
                 textAlign: 'center',
@@ -1407,7 +1457,44 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 padding: '20px 24px',
                 background: '#f8fafc'
               }}>
-                {messages.map((message, index) => {
+                {isLoadingMessages ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: '#64748b'
+                  }}>
+                    <div style={{
+                      width: '50px',
+                      height: '50px',
+                      border: '4px solid #e2e8f0',
+                      borderTop: '4px solid #3b82f6',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                      marginBottom: '16px'
+                    }} />
+                    <p style={{ margin: 0, fontSize: '14px' }}>
+                      Loading messages...
+                    </p>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: '#64748b'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
+                    <p style={{ margin: 0, fontSize: '14px' }}>
+                      No messages yet. Start the conversation!
+                    </p>
+                  </div>
+                ) : (
+                  messages.map((message, index) => {
                   const isFromMe = message.fromUserId === currentUser.id;
                   const showAvatar = index === 0 || messages[index - 1].fromUserId !== message.fromUserId;
 
@@ -1420,10 +1507,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         marginBottom: showAvatar ? '16px' : '4px',
                         position: 'relative'
                       }}
-                      onContextMenu={(e) => !message.isDeleted && handleContextMenu(e, message)}
-                      onTouchStart={() => handleTouchStart(message)}
-                      onTouchEnd={handleTouchEnd}
-                      onTouchMove={handleTouchEnd}
                     >
                       {!isFromMe && showAvatar && (
                         <div style={{
@@ -1469,6 +1552,10 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                           className="message-bubble-container"
                           style={{ position: 'relative', display: 'inline-block' }}
                           title={formatFullTimestamp(typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)}
+                          onContextMenu={(e) => !message.isDeleted && handleContextMenu(e, message)}
+                          onTouchStart={() => handleTouchStart(message)}
+                          onTouchEnd={handleTouchEnd}
+                          onTouchMove={handleTouchEnd}
                         >
                           {editingMessageId === message.id ? (
                             <div style={{
@@ -1672,10 +1759,11 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       </div>
                     </div>
                   );
-                })}
+                })
+                )}
                 
                 {/* Typing Indicator */}
-                {otherUserTyping && (
+                {!isLoadingMessages && otherUserTyping && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
