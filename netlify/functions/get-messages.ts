@@ -82,13 +82,15 @@ export const handler: Handler = async (event) => {
     const messages = await messagesCol
       .find(query)
       .sort({ timestamp: 1 })
+      .limit(1000) // Limit to last 1000 messages for performance
       .toArray();
 
-    await client.close();
+    // Close connection in background
+    client.close().catch(err => console.error('Error closing connection:', err));
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ success: true, data: messages })
     };
   } catch (error: any) {

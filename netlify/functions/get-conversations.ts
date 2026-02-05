@@ -67,7 +67,7 @@ export const handler: Handler = async (event) => {
     const conversationMetaCol = db.collection('conversation_meta');
     const groupsCol = db.collection('groups');
 
-    // Get all messages involving this user
+    // Get all messages involving this user (limit for performance)
     const messages = await messagesCol
       .find({
         $or: [
@@ -76,6 +76,7 @@ export const handler: Handler = async (event) => {
         ]
       })
       .sort({ timestamp: -1 })
+      .limit(500) // Limit to recent messages for performance
       .toArray();
 
     // Get groups where user is a participant
@@ -85,10 +86,11 @@ export const handler: Handler = async (event) => {
 
     const groupIds = userGroups.map(g => g.id);
 
-    // Get group messages
+    // Get group messages (limit for performance)
     const groupMessages = await messagesCol
       .find({ groupId: { $in: groupIds } })
       .sort({ timestamp: -1 })
+      .limit(500) // Limit to recent messages for performance
       .toArray();
 
     // Combine all messages and sort by timestamp descending (newest first)
@@ -215,7 +217,8 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    await client.close();
+    // Close connection in background
+    client.close().catch(err => console.error('Error closing connection:', err));
 
     const conversations = Array.from(conversationsMap.values());
 

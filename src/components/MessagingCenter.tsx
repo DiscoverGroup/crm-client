@@ -92,8 +92,12 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [showCustomizeChat, setShowCustomizeChat] = useState(false);
   const [editingChatName, setEditingChatName] = useState(false);
   const [newChatName, setNewChatName] = useState('');
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const conversationLoadTimeoutRef = useRef<number | null>(null);
+  const messageLoadTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     loadConversations();
@@ -114,25 +118,36 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     };
     simulateOnlineUsers();
     
-    // Refresh conversations every 5 seconds
+    // Refresh conversations every 15 seconds (reduced from 5 for stability)
     const interval = setInterval(() => {
-      loadConversations();
+      if (!isLoadingConversations) {
+        loadConversations();
+      }
       simulateOnlineUsers();
-    }, 5000);
+    }, 15000);
     
     return () => {
       clearInterval(interval);
+      if (conversationLoadTimeoutRef.current) {
+        clearTimeout(conversationLoadTimeoutRef.current);
+      }
+      if (messageLoadTimeoutRef.current) {
+        clearTimeout(messageLoadTimeoutRef.current);
+      }
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, [currentUser.id]);
+  }, [currentUser.id, isLoadingConversations]);
 
   useEffect(() => {
     if (activeConversationId) {
       const interval = setInterval(() => {
-        if (isGroupChat) {
-          loadGroupChat(activeConversationId, activeConversationName);
-        } else {
-          loadDirectMessage(activeConversationId, activeConversationName);
+        // Only poll if not already loading to prevent race conditions
+        if (!isLoadingMessages) {
+          if (isGroupChat) {
+            loadGroupChat(activeConversationId, activeConversationName);
+          } else {
+            loadDirectMessage(activeConversationId, activeConversationName);
+          }
         }
         // Simulate checking if other user is typing (would come from real-time backend)
         // In production, this would be replaced with actual WebSocket/polling logic
@@ -141,10 +156,10 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         if (randomTyping) {
           setTimeout(() => setOtherUserTyping(false), 3000);
         }
-      }, 3000);
+      }, 10000); // Increased from 3s to 10s for stability
       return () => clearInterval(interval);
     }
-  }, [activeConversationId, isGroupChat]);
+  }, [activeConversationId, isGroupChat, isLoadingMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -208,7 +223,10 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     return matchesSearch;
   });
 
-  const loadDirectMessage = async (userId: string, userName: string) => {
+  const loadDirectMessage = async (userId: string, userName: string, skipConversationReload = false) => {
+    if (isLoadingMessages) return; // Prevent concurrent requests
+    
+    setIsLoadingMessages(true);
     try {
       const conv = await MessagingService.getConversation(currentUser.id, userId);
       setMessages(conv);
@@ -224,13 +242,22 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       
       // Mark as read
       await MessagingService.markAsRead(currentUser.id, userId);
-      await loadConversations();
+      
+      // Only reload conversations if needed (avoid unnecessary API calls)
+      if (!skipConversationReload) {
+        await loadConversations();
+      }
     } catch (error) {
       console.error('Failed to load direct message:', error);
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
-  const loadGroupChat = async (groupId: string, groupName: string) => {
+  const loadGroupChat = async (groupId: string, groupName: string, skipConversationReload = false) => {
+    if (isLoadingMessages) return; // Prevent concurrent requests
+    
+    setIsLoadingMessages(true);
     try {
       const msgs = await MessagingService.getGroupMessages(groupId);
       setMessages(msgs);
@@ -246,9 +273,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       
       // Mark as read
       await MessagingService.markGroupAsRead(currentUser.id, groupId);
-      await loadConversations();
+      
+      // Only reload conversations if needed (avoid unnecessary API calls)
+      if (!skipConversationReload) {
+        await loadConversations();
+      }
     } catch (error) {
       console.error('Failed to load group chat:', error);
+    } finally {
+      setIsLoadingMessages(false);
     }
   };
 
@@ -286,32 +319,43 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       messageText = `↩️ Replying to: "${replyingTo.content.substring(0, 50)}..."\n${messageText}`;
     }
 
-    if (isGroupChat) {
-      await MessagingService.sendGroupMessage(
-        currentUser.id,
-        currentUser.fullName,
-        activeConversationId,
-        messageText,
-        replyingTo?.id
-      );
-      await loadGroupChat(activeConversationId, activeConversationName);
-    } else {
-      await MessagingService.sendMessage(
-        currentUser.id,
-        currentUser.fullName,
-        activeConversationId,
-        activeConversationName,
-        messageText,
-        replyingTo?.id
-      );
-      await loadDirectMessage(activeConversationId, activeConversationName);
-    }
+    try {
+      if (isGroupChat) {
+        await MessagingService.sendGroupMessage(
+          currentUser.id,
+          currentUser.fullName,
+          activeConversationId,
+          messageText,
+          replyingTo?.id
+        );
+        // Reload messages with skipConversationReload to avoid double-loading
+        await loadGroupChat(activeConversationId, activeConversationName, true);
+      } else {
+        await MessagingService.sendMessage(
+          currentUser.id,
+          currentUser.fullName,
+          activeConversationId,
+          activeConversationName,
+          messageText,
+          replyingTo?.id
+        );
+        // Reload messages with skipConversationReload to avoid double-loading
+        await loadDirectMessage(activeConversationId, activeConversationName, true);
+      }
 
-    setNewMessage('');
-    setReplyingTo(null);
-    clearAttachment();
-    setShowEmojiPicker(false);
-    await loadConversations();
+      setNewMessage('');
+      setReplyingTo(null);
+      clearAttachment();
+      setShowEmojiPicker(false);
+      
+      // Reload conversations after a short delay to ensure message is processed
+      conversationLoadTimeoutRef.current = window.setTimeout(() => {
+        loadConversations();
+      }, 500);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   const handleStartChat = (userId: string, userName: string) => {

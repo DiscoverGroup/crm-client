@@ -83,8 +83,11 @@ export const handler: Handler = async (event) => {
       createdAt: new Date()
     };
 
+    // Insert and immediately return (don't wait for connection close)
     await messagesCol.insertOne(messageDoc);
-    await client.close();
+    
+    // Close connection in background
+    client.close().catch(err => console.error('Error closing connection:', err));
 
     return {
       statusCode: 200,
