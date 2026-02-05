@@ -45,8 +45,8 @@ const App: React.FC = () => {
   // Load unread message count
   useEffect(() => {
     if (isLoggedIn && currentUser) {
-      const updateUnreadCount = () => {
-        const count = MessagingService.getUnreadCount(currentUser.id);
+      const updateUnreadCount = async () => {
+        const count = await MessagingService.getUnreadCount(currentUser.id);
         setUnreadMessageCount(count);
       };
       

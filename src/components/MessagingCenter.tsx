@@ -84,6 +84,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [conversationMenuId, setConversationMenuId] = useState<string | null>(null);
+  const [currentConvIsPinned, setCurrentConvIsPinned] = useState(false);
+  const [currentConvIsArchived, setCurrentConvIsArchived] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,33 +148,39 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadConversations = () => {
-    const allConvs = MessagingService.getAllConversations(currentUser.id);
-    console.log('All conversations loaded:', allConvs.length);
-    // Filter out archived conversations
-    const nonArchivedConvs = allConvs.filter(conv => {
-      const isArchived = MessagingService.isConversationArchived(
-        conv.isGroup ? undefined : conv.userId,
-        conv.isGroup ? conv.groupId : undefined
+  const loadConversations = async () => {
+    try {
+      const allConvs = await MessagingService.getAllConversations(currentUser.id);
+      // Filter out archived conversations using Promise.all for async checks
+      const archivedChecks = await Promise.all(
+        allConvs.map(conv => 
+          MessagingService.isConversationArchived(
+            conv.isGroup ? undefined : conv.userId,
+            conv.isGroup ? conv.groupId : undefined
+          )
+        )
       );
-      return !isArchived;
-    });
-    console.log('Non-archived conversations:', nonArchivedConvs.length);
-    // Sort pinned conversations to top
-    const sorted = nonArchivedConvs.sort((a, b) => {
-      const aPinned = MessagingService.isConversationPinned(
-        a.isGroup ? undefined : a.userId,
-        a.isGroup ? a.groupId : undefined
+      const nonArchivedConvs = allConvs.filter((_, index) => !archivedChecks[index]);
+      
+      // Sort pinned conversations to top using Promise.all for async checks
+      const pinnedChecks = await Promise.all(
+        nonArchivedConvs.map(conv =>
+          MessagingService.isConversationPinned(
+            conv.isGroup ? undefined : conv.userId,
+            conv.isGroup ? conv.groupId : undefined
+          )
+        )
       );
-      const bPinned = MessagingService.isConversationPinned(
-        b.isGroup ? undefined : b.userId,
-        b.isGroup ? b.groupId : undefined
-      );
-      if (aPinned && !bPinned) return -1;
-      if (!aPinned && bPinned) return 1;
-      return 0;
-    });
-    setConversations(sorted);
+      const sorted = nonArchivedConvs.map((conv, index) => ({ ...conv, isPinned: pinnedChecks[index] }));
+      sorted.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      });
+      setConversations(sorted);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    }
   };
 
   const filteredConversations = conversations.filter(conv => {
@@ -182,28 +190,48 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
            lastMsg.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const loadDirectMessage = (userId: string, userName: string) => {
-    const conv = MessagingService.getConversation(currentUser.id, userId);
-    setMessages(conv);
-    setActiveConversationId(userId);
-    setActiveConversationName(userName);
-    setIsGroupChat(false);
-    
-    // Mark as read
-    MessagingService.markAsRead(currentUser.id, userId);
-    loadConversations();
+  const loadDirectMessage = async (userId: string, userName: string) => {
+    try {
+      const conv = await MessagingService.getConversation(currentUser.id, userId);
+      setMessages(conv);
+      setActiveConversationId(userId);
+      setActiveConversationName(userName);
+      setIsGroupChat(false);
+      
+      // Update pin/archive status
+      const isPinned = await MessagingService.isConversationPinned(userId, undefined);
+      const isArchived = await MessagingService.isConversationArchived(userId, undefined);
+      setCurrentConvIsPinned(isPinned);
+      setCurrentConvIsArchived(isArchived);
+      
+      // Mark as read
+      await MessagingService.markAsRead(currentUser.id, userId);
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to load direct message:', error);
+    }
   };
 
-  const loadGroupChat = (groupId: string, groupName: string) => {
-    const msgs = MessagingService.getGroupMessages(groupId);
-    setMessages(msgs);
-    setActiveConversationId(groupId);
-    setActiveConversationName(groupName);
-    setIsGroupChat(true);
-    
-    // Mark as read
-    MessagingService.markGroupAsRead(currentUser.id, groupId);
-    loadConversations();
+  const loadGroupChat = async (groupId: string, groupName: string) => {
+    try {
+      const msgs = await MessagingService.getGroupMessages(groupId);
+      setMessages(msgs);
+      setActiveConversationId(groupId);
+      setActiveConversationName(groupName);
+      setIsGroupChat(true);
+      
+      // Update pin/archive status
+      const isPinned = await MessagingService.isConversationPinned(undefined, groupId);
+      const isArchived = await MessagingService.isConversationArchived(undefined, groupId);
+      setCurrentConvIsPinned(isPinned);
+      setCurrentConvIsArchived(isArchived);
+      
+      // Mark as read
+      await MessagingService.markGroupAsRead(currentUser.id, groupId);
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to load group chat:', error);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -237,33 +265,35 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     }
     
     if (replyingTo) {
-      messageText = `↩️ Replying to: "${replyingTo.message.substring(0, 50)}..."\n${messageText}`;
+      messageText = `↩️ Replying to: "${replyingTo.content.substring(0, 50)}..."\n${messageText}`;
     }
 
     if (isGroupChat) {
-      MessagingService.sendGroupMessage(
+      await MessagingService.sendGroupMessage(
         currentUser.id,
         currentUser.fullName,
         activeConversationId,
-        messageText
+        messageText,
+        replyingTo?.id
       );
-      loadGroupChat(activeConversationId, activeConversationName);
+      await loadGroupChat(activeConversationId, activeConversationName);
     } else {
-      MessagingService.sendMessage(
+      await MessagingService.sendMessage(
         currentUser.id,
         currentUser.fullName,
         activeConversationId,
         activeConversationName,
-        messageText
+        messageText,
+        replyingTo?.id
       );
-      loadDirectMessage(activeConversationId, activeConversationName);
+      await loadDirectMessage(activeConversationId, activeConversationName);
     }
 
     setNewMessage('');
     setReplyingTo(null);
     clearAttachment();
     setShowEmojiPicker(false);
-    loadConversations();
+    await loadConversations();
   };
 
   const handleStartChat = (userId: string, userName: string) => {
@@ -328,35 +358,45 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     }
   };
 
-  const handlePinConversation = () => {
-    MessagingService.togglePinConversation(
-      isGroupChat ? undefined : activeConversationId!,
-      isGroupChat ? activeConversationId! : undefined
-    );
-    setShowChatMenu(false);
-    loadConversations();
-  };
-
-  const handleDeleteConversationFromList = (userId?: string, groupId?: string) => {
-    if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
-      console.log('Deleting conversation:', { currentUserId: currentUser.id, userId, groupId });
-      MessagingService.deleteConversation(
-        currentUser.id,
-        userId,
-        groupId
+  const handlePinConversation = async () => {
+    try {
+      await MessagingService.togglePinConversation(
+        isGroupChat ? undefined : activeConversationId!,
+        isGroupChat ? activeConversationId! : undefined
       );
-      setConversationMenuId(null);
-      // Force reload conversations
-      setTimeout(() => {
-        loadConversations();
-      }, 100);
+      setCurrentConvIsPinned(!currentConvIsPinned);
+      setShowChatMenu(false);
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to pin conversation:', error);
     }
   };
 
-  const handleArchiveConversationFromList = (userId?: string, groupId?: string) => {
-    MessagingService.toggleArchiveConversation(userId, groupId);
-    setConversationMenuId(null);
-    loadConversations();
+  const handleDeleteConversationFromList = async (userId?: string, groupId?: string) => {
+    if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+      try {
+        await MessagingService.deleteConversation(
+          currentUser.id,
+          userId,
+          groupId
+        );
+        setConversationMenuId(null);
+        // Force reload conversations
+        await loadConversations();
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+      }
+    }
+  };
+
+  const handleArchiveConversationFromList = async (userId?: string, groupId?: string) => {
+    try {
+      await MessagingService.toggleArchiveConversation(userId, groupId);
+      setConversationMenuId(null);
+      await loadConversations();
+    } catch (error) {
+      console.error('Failed to archive conversation:', error);
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent, message: Message) => {
@@ -376,7 +416,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const handleEditMessage = (message: Message) => {
     setEditingMessageId(message.id);
-    setEditText(message.message);
+    setEditText(message.content);
     setContextMenu(null);
   };
 
@@ -393,58 +433,62 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     }
   };
 
-  const handleDeleteMessage = (messageId: string) => {
+  const handleDeleteMessage = async (messageId: string) => {
     if (confirm('Are you sure you want to delete this message?')) {
       MessagingService.deleteMessage(messageId);
       if (isGroupChat) {
-        loadGroupChat(activeConversationId!, activeConversationName);
+        await loadGroupChat(activeConversationId!, activeConversationName);
       } else {
-        loadDirectMessage(activeConversationId!, activeConversationName);
+        await loadDirectMessage(activeConversationId!, activeConversationName);
       }
     }
     setContextMenu(null);
   };
 
-  const handleCopyMessage = (message: Message) => {
-    navigator.clipboard.writeText(message.message);
+  const handleCopyMessage = async (message: Message) => {
+    await navigator.clipboard.writeText(message.content);
     setContextMenu(null);
   };
 
-  const handleDeleteConversation = () => {
+  const handleDeleteConversation = async () => {
     if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
-      MessagingService.deleteConversation(
-        currentUser.id,
+      try {
+        await MessagingService.deleteConversation(
+          currentUser.id,
+          isGroupChat ? undefined : activeConversationId!,
+          isGroupChat ? activeConversationId! : undefined
+        );
+        setActiveConversationId(null);
+        setActiveConversationName('');
+        setMessages([]);
+        setShowConversationList(true);
+        setShowChatMenu(false);
+        await loadConversations();
+      } catch (error) {
+        console.error('Failed to delete conversation:', error);
+      }
+    }
+  };
+
+  const handleArchiveConversation = async () => {
+    try {
+      await MessagingService.toggleArchiveConversation(
         isGroupChat ? undefined : activeConversationId!,
         isGroupChat ? activeConversationId! : undefined
       );
+      
+      const wasArchived = currentConvIsArchived;
       setActiveConversationId(null);
       setActiveConversationName('');
       setMessages([]);
       setShowConversationList(true);
       setShowChatMenu(false);
-      loadConversations();
+      await loadConversations();
+      
+      alert(wasArchived ? 'Conversation unarchived' : 'Conversation archived');
+    } catch (error) {
+      console.error('Failed to archive conversation:', error);
     }
-  };
-
-  const handleArchiveConversation = () => {
-    const isArchived = MessagingService.isConversationArchived(
-      isGroupChat ? undefined : activeConversationId!,
-      isGroupChat ? activeConversationId! : undefined
-    );
-    
-    MessagingService.toggleArchiveConversation(
-      isGroupChat ? undefined : activeConversationId!,
-      isGroupChat ? activeConversationId! : undefined
-    );
-    
-    setActiveConversationId(null);
-    setActiveConversationName('');
-    setMessages([]);
-    setShowConversationList(true);
-    setShowChatMenu(false);
-    loadConversations();
-    
-    alert(isArchived ? 'Conversation unarchived' : 'Conversation archived');
   };
 
   useEffect(() => {
@@ -767,10 +811,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
               </div>
             ) : (
               filteredConversations.map(conv => {
-                const isPinned = MessagingService.isConversationPinned(
-                  conv.isGroup ? undefined : conv.userId,
-                  conv.isGroup ? conv.groupId : undefined
-                );
                 const isOnline = !conv.isGroup && conv.userId && onlineUsers.has(conv.userId);
                 const convId = conv.isGroup ? conv.groupId! : conv.userId!;
                 return (
@@ -874,7 +914,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         alignItems: 'center',
                         gap: '6px'
                       }}>
-                        {isPinned && <span style={{ fontSize: '12px' }}>📌</span>}
+                        {conv.isPinned && <span style={{ fontSize: '12px' }}>📌</span>}
                         {conv.isGroup ? conv.groupName : conv.userName}
                         {isOnline && <span style={{ fontSize: '10px', color: '#10b981' }}>●</span>}
                         {conv.isGroup && conv.participants && (
@@ -948,7 +988,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     >
                       <button
                         onClick={() => {
-                          console.log('Archive clicked:', conv);
                           handleArchiveConversationFromList(
                             !conv.isGroup ? conv.userId : undefined,
                             conv.isGroup ? conv.groupId : undefined
@@ -975,14 +1014,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          console.log('Delete clicked - Full conversation object:', JSON.stringify(conv, null, 2));
-                          console.log('Conv properties:', {
-                            userId: conv.userId,
-                            userName: conv.userName,
-                            groupId: conv.groupId,
-                            groupName: conv.groupName,
-                            isGroup: conv.isGroup
-                          });
                           handleDeleteConversationFromList(
                             !conv.isGroup ? conv.userId : undefined,
                             conv.isGroup ? conv.groupId : undefined
@@ -1186,10 +1217,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
                       onMouseOut={(e) => e.currentTarget.style.background = 'none'}
                     >
-                      <span>📌</span> {MessagingService.isConversationPinned(
-                        isGroupChat ? undefined : activeConversationId!,
-                        isGroupChat ? activeConversationId! : undefined
-                      ) ? 'Unpin' : 'Pin'}
+                      <span>📌</span> {currentConvIsPinned ? 'Unpin' : 'Pin'}
                     </button>
                     <button
                       onClick={handleArchiveConversation}
@@ -1210,10 +1238,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
                       onMouseOut={(e) => e.currentTarget.style.background = 'none'}
                     >
-                      <span>📦</span> {MessagingService.isConversationArchived(
-                        isGroupChat ? undefined : activeConversationId!,
-                        isGroupChat ? activeConversationId! : undefined
-                      ) ? 'Unarchive' : 'Archive'}
+                      <span>📦</span> {currentConvIsArchived ? 'Unarchive' : 'Archive'}
                     </button>
                     <button
                       onClick={handleDeleteConversation}
@@ -1308,7 +1333,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         <div
                           className="message-bubble-container"
                           style={{ position: 'relative', display: 'inline-block' }}
-                          title={formatFullTimestamp(message.timestamp)}
+                          title={formatFullTimestamp(typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)}
                         >
                           {editingMessageId === message.id ? (
                             <div style={{
@@ -1372,7 +1397,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                                 fontStyle: message.isDeleted ? 'italic' : 'normal',
                                 position: 'relative'
                               }}>
-                                {renderMessageContent(message.message)}
+                                {renderMessageContent(message.content)}
                                 {message.isEdited && !message.isDeleted && (
                                   <span style={{
                                     fontSize: '10px',
@@ -1502,7 +1527,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                           alignItems: 'center',
                           gap: '4px'
                         }}>
-                          {formatTime(message.timestamp)}
+                          {formatTime(typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)}
                           {isFromMe && message.isRead && message.seenAt && (
                             <span style={{ fontSize: '10px' }} title={`Seen at ${formatFullTimestamp(message.seenAt)}`}>
                               • Seen
@@ -1582,7 +1607,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         Replying to {replyingTo.fromUserName}
                       </div>
                       <div style={{ fontSize: '13px', color: '#1e293b', marginTop: '2px' }}>
-                        {replyingTo.message.substring(0, 50)}{replyingTo.message.length > 50 ? '...' : ''}
+                        {replyingTo.content.substring(0, 50)}{replyingTo.content.length > 50 ? '...' : ''}
                       </div>
                     </div>
                     <button

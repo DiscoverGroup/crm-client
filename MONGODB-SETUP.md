@@ -15,6 +15,8 @@ The application uses the following MongoDB collections:
 - **file_attachments** - File metadata
 - **payments** - Payment records
 - **log_notes** - Notes and logs
+- **messages** - Direct and group messages
+- **conversation_meta** - Conversation metadata (pinned, archived status)
 
 ## Environment Variables
 
