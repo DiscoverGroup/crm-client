@@ -5,9 +5,21 @@ const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -15,7 +27,7 @@ export const handler: Handler = async (event) => {
   if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ 
         success: false, 
         error: 'MONGODB_URI environment variable is not configured' 
@@ -30,6 +42,7 @@ export const handler: Handler = async (event) => {
     if (!message.fromUserId || !message.content) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Missing required fields: fromUserId, content' })
       };
     }
@@ -38,6 +51,7 @@ export const handler: Handler = async (event) => {
     if (!message.toUserId && !message.groupId) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Must specify either toUserId or groupId' })
       };
     }
@@ -74,14 +88,14 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ success: true, data: messageDoc })
     };
   } catch (error: any) {
     console.error('Send message error:', error);
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ 
         success: false, 
         error: error.message || 'Failed to send message' 
