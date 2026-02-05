@@ -99,6 +99,46 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const conversationLoadTimeoutRef = useRef<number | null>(null);
   const messageLoadTimeoutRef = useRef<number | null>(null);
 
+  const loadConversations = async () => {
+    if (isLoadingConversations) return; // Prevent concurrent requests
+    
+    setIsLoadingConversations(true);
+    try {
+      const allConvs = await MessagingService.getAllConversations(currentUser.id);
+      // Filter out archived conversations using Promise.all for async checks
+      const archivedChecks = await Promise.all(
+        allConvs.map(conv => 
+          MessagingService.isConversationArchived(
+            conv.isGroup ? undefined : conv.userId,
+            conv.isGroup ? conv.groupId : undefined
+          )
+        )
+      );
+      const nonArchivedConvs = allConvs.filter((_, index) => !archivedChecks[index]);
+      
+      // Sort pinned conversations to top using Promise.all for async checks
+      const pinnedChecks = await Promise.all(
+        nonArchivedConvs.map(conv =>
+          MessagingService.isConversationPinned(
+            conv.isGroup ? undefined : conv.userId,
+            conv.isGroup ? conv.groupId : undefined
+          )
+        )
+      );
+      const sorted = nonArchivedConvs.map((conv, index) => ({ ...conv, isPinned: pinnedChecks[index] }));
+      sorted.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      });
+      setConversations(sorted);
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
   useEffect(() => {
     loadConversations();
     if (selectedUserId) {
@@ -167,41 +207,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const loadConversations = async () => {
-    try {
-      const allConvs = await MessagingService.getAllConversations(currentUser.id);
-      // Filter out archived conversations using Promise.all for async checks
-      const archivedChecks = await Promise.all(
-        allConvs.map(conv => 
-          MessagingService.isConversationArchived(
-            conv.isGroup ? undefined : conv.userId,
-            conv.isGroup ? conv.groupId : undefined
-          )
-        )
-      );
-      const nonArchivedConvs = allConvs.filter((_, index) => !archivedChecks[index]);
-      
-      // Sort pinned conversations to top using Promise.all for async checks
-      const pinnedChecks = await Promise.all(
-        nonArchivedConvs.map(conv =>
-          MessagingService.isConversationPinned(
-            conv.isGroup ? undefined : conv.userId,
-            conv.isGroup ? conv.groupId : undefined
-          )
-        )
-      );
-      const sorted = nonArchivedConvs.map((conv, index) => ({ ...conv, isPinned: pinnedChecks[index] }));
-      sorted.sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return 0;
-      });
-      setConversations(sorted);
-    } catch (error) {
-      console.error('Failed to load conversations:', error);
-    }
   };
 
   const filteredConversations = conversations.filter(conv => {
