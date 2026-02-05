@@ -947,10 +947,13 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       }}
                     >
                       <button
-                        onClick={() => handleArchiveConversationFromList(
-                          conv.isGroup ? undefined : conv.userId,
-                          conv.isGroup ? conv.groupId : undefined
-                        )}
+                        onClick={() => {
+                          console.log('Archive clicked:', conv);
+                          handleArchiveConversationFromList(
+                            !conv.isGroup ? conv.userId : undefined,
+                            conv.isGroup ? conv.groupId : undefined
+                          );
+                        }}
                         style={{
                           width: '100%',
                           padding: '10px 12px',
@@ -971,10 +974,13 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         <span>📦</span> Archive
                       </button>
                       <button
-                        onClick={() => handleDeleteConversationFromList(
-                          conv.isGroup ? undefined : conv.userId,
-                          conv.isGroup ? conv.groupId : undefined
-                        )}
+                        onClick={() => {
+                          console.log('Delete clicked:', conv);
+                          handleDeleteConversationFromList(
+                            !conv.isGroup ? conv.userId : undefined,
+                            conv.isGroup ? conv.groupId : undefined
+                          );
+                        }}
                         style={{
                           width: '100%',
                           padding: '10px 12px',
