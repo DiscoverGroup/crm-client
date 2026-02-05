@@ -1064,22 +1064,36 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 alignItems: 'center',
                 gap: '12px'
               }}>
-                {/* Back Button for Mobile */}
+                {/* Back Button */}
                 <button
                   onClick={() => {
                     setShowConversationList(true);
                     setActiveConversationId(null);
+                    setActiveConversationName('');
+                    setMessages([]);
                   }}
                   style={{
-                    display: 'none',
                     background: 'none',
                     border: 'none',
-                    fontSize: '20px',
+                    fontSize: '24px',
                     cursor: 'pointer',
                     color: '#64748b',
-                    padding: '4px 8px'
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    transition: 'all 0.2s'
                   }}
-                  className="mobile-back-btn"
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.color = '#1e293b';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  title="Back to conversations"
                 >
                   ←
                 </button>
