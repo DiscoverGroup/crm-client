@@ -311,10 +311,10 @@ export class MessagingService {
   }
 
   // Get group messages
-  static async getGroupMessages(groupId: string): Promise<Message[]> {
+  static async getGroupMessages(userId: string, groupId: string): Promise<Message[]> {
     try {
       const messages = await this.apiCall('get-messages', {
-        userId: '', // Not needed for group
+        userId, // Required by backend validation
         groupId
       });
       return messages.sort((a: Message, b: Message) => 

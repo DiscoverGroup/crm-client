@@ -264,7 +264,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     
     setIsLoadingMessages(true);
     try {
-      const msgs = await MessagingService.getGroupMessages(groupId);
+      const msgs = await MessagingService.getGroupMessages(currentUser.id, groupId);
       setMessages(msgs);
       setActiveConversationId(groupId);
       setActiveConversationName(groupName);
