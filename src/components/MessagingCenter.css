@@ -21,6 +21,11 @@
   display: flex !important;
 }
 
+/* Conversation options button - show on hover */
+.conversation-item:hover .conversation-options-btn {
+  opacity: 1 !important;
+}
+
 /* Smooth scrollbar for conversations */
 .conversation-list::-webkit-scrollbar {
   width: 6px;

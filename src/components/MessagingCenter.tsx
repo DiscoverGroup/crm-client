@@ -83,6 +83,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [conversationMenuId, setConversationMenuId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -334,6 +335,24 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     loadConversations();
   };
 
+  const handleDeleteConversationFromList = (userId?: string, groupId?: string) => {
+    if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+      MessagingService.deleteConversation(
+        currentUser.id,
+        userId,
+        groupId
+      );
+      setConversationMenuId(null);
+      loadConversations();
+    }
+  };
+
+  const handleArchiveConversationFromList = (userId?: string, groupId?: string) => {
+    MessagingService.toggleArchiveConversation(userId, groupId);
+    setConversationMenuId(null);
+    loadConversations();
+  };
+
   const handleContextMenu = (e: React.MouseEvent, message: Message) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, message });
@@ -427,6 +446,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       setContextMenu(null);
       setShowReactionPicker(null);
       setShowChatMenu(false);
+      setConversationMenuId(null);
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
@@ -746,40 +766,45 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   conv.isGroup ? conv.groupId : undefined
                 );
                 const isOnline = !conv.isGroup && conv.userId && onlineUsers.has(conv.userId);
+                const convId = conv.isGroup ? conv.groupId! : conv.userId!;
                 return (
                 <div
-                  key={conv.isGroup ? conv.groupId : conv.userId}
-                  onClick={() => {
-                    if (conv.isGroup) {
-                      loadGroupChat(conv.groupId!, conv.groupName!);
-                    } else {
-                      loadDirectMessage(conv.userId!, conv.userName!);
-                    }
-                    setShowConversationList(false); // Hide list on mobile
-                  }}
+                  key={convId}
+                  className="conversation-item"
                   style={{
                     padding: '16px 20px',
                     cursor: 'pointer',
                     borderBottom: '1px solid #e2e8f0',
-                    backgroundColor: activeConversationId === (conv.isGroup ? conv.groupId : conv.userId) ? '#f0f9ff' : 'white',
-                    transition: 'background-color 0.2s'
+                    backgroundColor: activeConversationId === convId ? '#f0f9ff' : 'white',
+                    transition: 'background-color 0.2s',
+                    position: 'relative'
                   }}
                   onMouseOver={(e) => {
-                    if (activeConversationId !== (conv.isGroup ? conv.groupId : conv.userId)) {
+                    if (activeConversationId !== convId) {
                       e.currentTarget.style.backgroundColor = '#f8fafc';
                     }
                   }}
                   onMouseOut={(e) => {
-                    if (activeConversationId !== (conv.isGroup ? conv.groupId : conv.userId)) {
+                    if (activeConversationId !== convId) {
                       e.currentTarget.style.backgroundColor = 'white';
                     }
                   }}
                 >
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}>
+                  <div 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px'
+                    }}
+                    onClick={() => {
+                      if (conv.isGroup) {
+                        loadGroupChat(conv.groupId!, conv.groupName!);
+                      } else {
+                        loadDirectMessage(conv.userId!, conv.userName!);
+                      }
+                      setShowConversationList(false);
+                    }}
+                  >
                     <div style={{
                       width: '48px',
                       height: '48px',
@@ -867,12 +892,104 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     {conv.lastMessageTime && (
                       <div style={{
                         fontSize: '11px',
-                        color: '#94a3b8'
+                        color: '#94a3b8',
+                        flexShrink: 0
                       }}>
                         {formatTime(conv.lastMessageTime)}
                       </div>
                     )}
                   </div>
+
+                  {/* 3-Dot Options Menu */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConversationMenuId(conversationMenuId === convId ? null : convId);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      right: '20px',
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '20px',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      padding: '4px 8px',
+                      opacity: conversationMenuId === convId ? 1 : 0,
+                      transition: 'opacity 0.2s'
+                    }}
+                    className="conversation-options-btn"
+                  >
+                    ⋮
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {conversationMenuId === convId && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        top: '45px',
+                        right: '20px',
+                        background: 'white',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        padding: '4px',
+                        zIndex: 1000,
+                        minWidth: '160px'
+                      }}
+                    >
+                      <button
+                        onClick={() => handleArchiveConversationFromList(
+                          conv.isGroup ? undefined : conv.userId,
+                          conv.isGroup ? conv.groupId : undefined
+                        )}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: 'none',
+                          border: 'none',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          fontSize: '14px',
+                          color: '#1e293b'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                      >
+                        <span>📦</span> Archive
+                      </button>
+                      <button
+                        onClick={() => handleDeleteConversationFromList(
+                          conv.isGroup ? undefined : conv.userId,
+                          conv.isGroup ? conv.groupId : undefined
+                        )}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: 'none',
+                          border: 'none',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          fontSize: '14px',
+                          color: '#ef4444'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                      >
+                        <span>🗑️</span> Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
               })
