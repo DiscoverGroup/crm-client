@@ -36,10 +36,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (usersData) {
       try {
         const parsedUsers = JSON.parse(usersData);
+        console.log('📋 AdminPanel loaded users:', parsedUsers.length);
+        console.log('Users:', parsedUsers.map(u => ({ email: u.email, verified: u.isVerified, role: u.role })));
         setUsers(parsedUsers);
       } catch (error) {
         console.error('Error loading users:', error);
       }
+    } else {
+      console.warn('⚠️ No users found in localStorage');
     }
   };
 
@@ -127,13 +131,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             Manage user accounts, roles, and permissions
           </p>
         </div>
-        <button
-          onClick={onBack}
-          style={{
-            padding: '10px 20px',
-            background: '#64748b',
-            color: 'white',
-            border: 'none',
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            onClick={loadUsers}
+            style={{
+              padding: '10px 20px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            title="Refresh user list"
+          >
+            🔄 Refresh
+          </button>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '10px 20px',
+              background: '#64748b',
+              color: 'white',
+              border: 'none',
             borderRadius: '8px',
             cursor: 'pointer',
             fontSize: '14px',
@@ -142,6 +166,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         >
           ← Back to Dashboard
         </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

@@ -435,6 +435,8 @@ const App: React.FC = () => {
     if (existingUsers) {
       try {
         users = JSON.parse(existingUsers);
+        console.log('📋 Existing users in localStorage:', users.length);
+        console.log('Existing emails:', users.map((u: any) => u.email));
       } catch (error) {
         console.error('Error parsing existing users:', error);
       }
@@ -444,7 +446,11 @@ const App: React.FC = () => {
     const emailExists = users.some((u: any) => u.email === form.email);
     const usernameExists = users.some((u: any) => u.username === form.username);
 
+    console.log(`Checking registration for: ${form.email}`);
+    console.log(`Email exists: ${emailExists}, Username exists: ${usernameExists}`);
+
     if (emailExists) {
+      console.warn(`⚠️ Email ${form.email} is already registered`);
       setModalConfig({
         isOpen: true,
         title: 'Email Already Registered',
@@ -486,6 +492,8 @@ const App: React.FC = () => {
 
     users.push(newUser);
     localStorage.setItem('crm_users', JSON.stringify(users));
+    console.log('✅ New user added to localStorage:', newUser.email);
+    console.log('Total users now:', users.length);
 
     // Save to MongoDB Atlas
     try {
