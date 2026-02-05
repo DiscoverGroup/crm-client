@@ -177,7 +177,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       }
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
-  }, [currentUser.id, isLoadingConversations]);
+  }, [currentUser.id]);
 
   useEffect(() => {
     if (activeConversationId) {
