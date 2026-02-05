@@ -89,7 +89,6 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [showChatInfo, setShowChatInfo] = useState(true);
   const [conversationFilter, setConversationFilter] = useState<'all' | 'unread' | 'groups' | 'communities'>('all');
   const [isMuted, setIsMuted] = useState(false);
-  const [chatMembers, setChatMembers] = useState<User[]>([]);
   const [showCustomizeChat, setShowCustomizeChat] = useState(false);
   const [editingChatName, setEditingChatName] = useState(false);
   const [newChatName, setNewChatName] = useState('');
