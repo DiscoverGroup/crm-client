@@ -975,7 +975,14 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       </button>
                       <button
                         onClick={() => {
-                          console.log('Delete clicked:', conv);
+                          console.log('Delete clicked - Full conversation object:', JSON.stringify(conv, null, 2));
+                          console.log('Conv properties:', {
+                            userId: conv.userId,
+                            userName: conv.userName,
+                            groupId: conv.groupId,
+                            groupName: conv.groupName,
+                            isGroup: conv.isGroup
+                          });
                           handleDeleteConversationFromList(
                             !conv.isGroup ? conv.userId : undefined,
                             conv.isGroup ? conv.groupId : undefined
