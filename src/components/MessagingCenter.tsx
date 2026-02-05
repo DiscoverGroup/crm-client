@@ -148,6 +148,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const loadConversations = () => {
     const allConvs = MessagingService.getAllConversations(currentUser.id);
+    console.log('All conversations loaded:', allConvs.length);
     // Filter out archived conversations
     const nonArchivedConvs = allConvs.filter(conv => {
       const isArchived = MessagingService.isConversationArchived(
@@ -156,6 +157,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       );
       return !isArchived;
     });
+    console.log('Non-archived conversations:', nonArchivedConvs.length);
     // Sort pinned conversations to top
     const sorted = nonArchivedConvs.sort((a, b) => {
       const aPinned = MessagingService.isConversationPinned(
@@ -337,13 +339,17 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const handleDeleteConversationFromList = (userId?: string, groupId?: string) => {
     if (confirm('Are you sure you want to delete this conversation? This cannot be undone.')) {
+      console.log('Deleting conversation:', { currentUserId: currentUser.id, userId, groupId });
       MessagingService.deleteConversation(
         currentUser.id,
         userId,
         groupId
       );
       setConversationMenuId(null);
-      loadConversations();
+      // Force reload conversations
+      setTimeout(() => {
+        loadConversations();
+      }, 100);
     }
   };
 

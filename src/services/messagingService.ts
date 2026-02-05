@@ -341,10 +341,13 @@ export class MessagingService {
   // Delete conversation (remove all messages)
   static deleteConversation(userId: string, otherUserId?: string, groupId?: string): void {
     let messages = this.getAllMessages();
+    console.log('Before delete - total messages:', messages.length);
+    console.log('Deleting for:', { userId, otherUserId, groupId });
     
     if (groupId) {
       // Delete group conversation
       messages = messages.filter(m => m.groupId !== groupId);
+      console.log('After group delete:', messages.length);
       
       // Also remove the group
       const groups = this.getAllGroups();
@@ -352,13 +355,16 @@ export class MessagingService {
       localStorage.setItem(this.GROUPS_KEY, JSON.stringify(updatedGroups));
     } else if (otherUserId) {
       // Delete direct conversation
+      const beforeLength = messages.length;
       messages = messages.filter(m => 
         !((m.fromUserId === userId && m.toUserId === otherUserId) ||
           (m.fromUserId === otherUserId && m.toUserId === userId))
       );
+      console.log('After direct conversation delete:', messages.length, 'deleted:', beforeLength - messages.length);
     }
     
     this.saveMessages(messages);
+    console.log('Messages saved to localStorage');
   }
 
   // Archive/Unarchive conversation
