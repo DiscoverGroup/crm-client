@@ -17,6 +17,7 @@ The application uses the following MongoDB collections:
 - **log_notes** - Notes and logs
 - **messages** - Direct and group messages
 - **conversation_meta** - Conversation metadata (pinned, archived status)
+- **groups** - Group chat definitions and participants
 
 ## Environment Variables
 

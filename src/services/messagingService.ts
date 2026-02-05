@@ -245,19 +245,33 @@ export class MessagingService {
   }
 
   // Create a group chat
-  static createGroup(name: string, participantIds: string[], participantNames: string[], createdBy: string): GroupChat {
-    const groups = this.getAllGroups();
-    const newGroup: GroupChat = {
-      id: Date.now().toString(),
-      name,
-      participants: participantIds,
-      participantNames,
-      createdBy,
-      createdAt: new Date()
-    };
-    groups.push(newGroup);
-    this.saveGroups(groups);
-    return newGroup;
+  static async createGroup(name: string, participantIds: string[], participantNames: string[], createdBy: string): Promise<GroupChat> {
+    try {
+      const groupData = {
+        name,
+        participantIds,
+        participantNames,
+        createdBy
+      };
+      
+      const result = await this.apiCall('create-group', groupData);
+      return result;
+    } catch (error) {
+      // Fallback to localStorage
+      console.warn('Falling back to localStorage for createGroup');
+      const groups = this.getAllGroups();
+      const newGroup: GroupChat = {
+        id: Date.now().toString(),
+        name,
+        participants: participantIds,
+        participantNames,
+        createdBy,
+        createdAt: new Date()
+      };
+      groups.push(newGroup);
+      this.saveGroups(groups);
+      return newGroup;
+    }
   }
 
   // Send message to group

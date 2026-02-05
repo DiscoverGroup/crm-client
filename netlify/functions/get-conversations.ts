@@ -46,18 +46,34 @@ export const handler: Handler = async (event) => {
     const messagesCol = db.collection('messages');
     const usersCol = db.collection('users');
     const conversationMetaCol = db.collection('conversation_meta');
+    const groupsCol = db.collection('groups');
 
     // Get all messages involving this user
     const messages = await messagesCol
       .find({
         $or: [
           { fromUserId: userId },
-          { toUserId: userId },
-          { groupId: { $exists: true } }
+          { toUserId: userId }
         ]
       })
       .sort({ timestamp: -1 })
       .toArray();
+
+    // Get groups where user is a participant
+    const userGroups = await groupsCol
+      .find({ participants: userId })
+      .toArray();
+
+    const groupIds = userGroups.map(g => g.id);
+
+    // Get group messages
+    const groupMessages = await messagesCol
+      .find({ groupId: { $in: groupIds } })
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    // Combine all messages
+    const allMessages = [...messages, ...groupMessages];
 
     // Get conversation metadata (pinned, archived status)
     const conversationMetas = await conversationMetaCol
@@ -73,8 +89,9 @@ export const handler: Handler = async (event) => {
 
     // Group messages by conversation
     const conversationsMap = new Map();
+    const groupMap = new Map(userGroups.map(g => [g.id, g]));
 
-    for (const msg of messages) {
+    for (const msg of allMessages) {
       let conversationKey;
       let otherUserId;
       let isGroup = false;
@@ -105,20 +122,27 @@ export const handler: Handler = async (event) => {
         conversationsMap.set(conversationKey, {
           userId: otherUserId,
           groupId: msg.groupId,
-          userName: otherUserName,
-          groupName: isGroup ? msg.groupId : null,
+          userName: otherUserNa(groupMap.get(msg.groupId)?.name || msg.groupId) : null,
           isGroup,
           lastMessage: msg.content,
           lastMessageTime: msg.timestamp,
           unreadCount: 0,
           isPinned: meta.isPinned,
-          isArchived: meta.isArchived
+          isArchived: meta.isArchived,
+          participants: isGroup ? groupMap.get(msg.groupId)?.participants : undefined
         });
       }
 
       // Count unread messages
       if (msg.toUserId === userId && !msg.isRead) {
         const conv = conversationsMap.get(conversationKey);
+        conv.unreadCount++;
+      }
+      
+      // Count unread group messages
+      if (msg.groupId && msg.fromUserId !== userId && !msg.isRead) {
+        const conv = conversationsMap.get(conversationKey);
+        if (conv) const conv = conversationsMap.get(conversationKey);
         conv.unreadCount++;
       }
     }
