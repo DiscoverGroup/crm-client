@@ -208,10 +208,75 @@ const App: React.FC = () => {
 
         users.push(adminAccount);
         localStorage.setItem('crm_users', JSON.stringify(users));
+        
+        // Save admin account to MongoDB
+        MongoDBService.saveUser(adminAccount).then(result => {
+          if (result.success) {
+            console.log('✅ Admin account synced to MongoDB');
+          }
+        }).catch(err => {
+          console.error('Failed to sync admin to MongoDB:', err);
+        });
       }
     };
 
     initializeAdminAccount();
+  }, []);
+
+  // Sync all localStorage users to MongoDB
+  useEffect(() => {
+    const syncUsersToMongoDB = async () => {
+      const usersData = localStorage.getItem('crm_users');
+      if (!usersData) return;
+
+      try {
+        const users = JSON.parse(usersData);
+        console.log(`🔄 Syncing ${users.length} users to MongoDB...`);
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const user of users) {
+          try {
+            // Check if user already exists in MongoDB
+            const existingUser = await MongoDBService.findUser(user.email);
+            
+            if (!existingUser) {
+              // User doesn't exist, insert it
+              const result = await MongoDBService.saveUser(user);
+              if (result.success) {
+                successCount++;
+                console.log(`✅ Synced user: ${user.fullName} (${user.email})`);
+              } else {
+                failCount++;
+                console.warn(`⚠️ Failed to sync user: ${user.email}`);
+              }
+            } else {
+              // User exists, update if needed
+              const result = await MongoDBService.updateUser(user.email, user);
+              if (result.success) {
+                successCount++;
+                console.log(`✅ Updated user: ${user.fullName} (${user.email})`);
+              }
+            }
+          } catch (error) {
+            failCount++;
+            console.error(`❌ Error syncing user ${user.email}:`, error);
+          }
+        }
+
+        console.log(`✅ MongoDB sync complete: ${successCount} successful, ${failCount} failed`);
+      } catch (error) {
+        console.error('Error syncing users to MongoDB:', error);
+      }
+    };
+
+    // Only run sync once on mount, after a short delay to let other initialization complete
+    const timer = setTimeout(() => {
+      syncUsersToMongoDB();
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Check for existing authentication on app load
@@ -423,10 +488,17 @@ const App: React.FC = () => {
     localStorage.setItem('crm_users', JSON.stringify(users));
 
     // Save to MongoDB Atlas
-    MongoDBService.saveUser(newUser).catch(err => {
-      console.error('MongoDB sync failed:', err);
-      // Continue even if MongoDB sync fails - localStorage is the primary storage for now
-    });
+    try {
+      const mongoResult = await MongoDBService.saveUser(newUser);
+      if (mongoResult.success) {
+        console.log('✅ User saved to MongoDB Atlas');
+      } else {
+        console.warn('⚠️ Failed to save user to MongoDB:', mongoResult.message);
+      }
+    } catch (err) {
+      console.error('❌ MongoDB sync failed:', err);
+      // Continue even if MongoDB sync fails - localStorage is the primary storage
+    }
 
     // Send verification email
     try {
@@ -466,7 +538,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOTPVerify = (code: string) => {
+  const handleOTPVerify = async (code: string) => {
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) return;
 
@@ -500,24 +572,30 @@ const App: React.FC = () => {
 
       // Verify code
       if (user.verificationCode === code) {
-        users[userIndex] = {
-          ...user,
+        const updates = {
           isVerified: true,
           verificationCode: null,
           verificationCodeExpiry: null,
           verifiedAt: new Date().toISOString()
         };
+        
+        users[userIndex] = {
+          ...user,
+          ...updates
+        };
         localStorage.setItem('crm_users', JSON.stringify(users));
         
         // Update user verification status in MongoDB
-        MongoDBService.updateUser(user.email, {
-          isVerified: true,
-          verificationCode: null,
-          verificationCodeExpiry: null,
-          verifiedAt: new Date().toISOString()
-        }).catch(err => {
-          console.error('MongoDB sync failed:', err);
-        });
+        try {
+          const result = await MongoDBService.updateUser(user.email, updates);
+          if (result.success) {
+            console.log('✅ User verification synced to MongoDB');
+          } else {
+            console.warn('⚠️ Failed to sync verification to MongoDB:', result.message);
+          }
+        } catch (err) {
+          console.error('❌ MongoDB sync failed:', err);
+        }
         
         setShowOTPVerification(false);
         setModalConfig({
