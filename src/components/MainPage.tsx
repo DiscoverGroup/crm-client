@@ -3056,9 +3056,42 @@ const MainPage: React.FC<MainPageProps> = ({
     }
     return false;
   });
-  const [viewDeleted, setViewDeleted] = useState(false);
-  const [viewActivityLog, setViewActivityLog] = useState(false);
-  const [viewAdminPanel, setViewAdminPanel] = useState(false);
+  const [viewDeleted, setViewDeleted] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewDeleted || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+  const [viewActivityLog, setViewActivityLog] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewActivityLog || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+  const [viewAdminPanel, setViewAdminPanel] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewAdminPanel || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
 
   // Get current user's profile image R2 path
   const getCurrentUserProfileImagePath = (): string | undefined => {
@@ -3102,9 +3135,12 @@ const MainPage: React.FC<MainPageProps> = ({
   useEffect(() => {
     sessionStorage.setItem('crm_current_view', JSON.stringify({
       viewingForm,
-      viewProfile
+      viewProfile,
+      viewDeleted,
+      viewActivityLog,
+      viewAdminPanel
     }));
-  }, [viewingForm, viewProfile]);
+  }, [viewingForm, viewProfile, viewDeleted, viewActivityLog, viewAdminPanel]);
 
   // Check if current user is admin
   const isAdmin = () => {
