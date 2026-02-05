@@ -37,7 +37,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       try {
         const parsedUsers = JSON.parse(usersData);
         console.log('📋 AdminPanel loaded users:', parsedUsers.length);
-        console.log('Users:', parsedUsers.map(u => ({ email: u.email, verified: u.isVerified, role: u.role })));
+        console.log('Users:', parsedUsers.map((u: User) => ({ email: u.email, verified: u.isVerified, role: u.role })));
         setUsers(parsedUsers);
       } catch (error) {
         console.error('Error loading users:', error);
