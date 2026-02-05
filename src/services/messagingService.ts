@@ -386,4 +386,30 @@ export class MessagingService {
     const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
     return archived.includes(conversationKey);
   }
+
+  // Pin/Unpin conversation
+  static togglePinConversation(otherUserId?: string, groupId?: string): void {
+    const PIN_KEY = 'crm_pinned_conversations';
+    const pinned = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
+    const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
+    
+    const index = pinned.indexOf(conversationKey);
+    if (index > -1) {
+      // Unpin
+      pinned.splice(index, 1);
+    } else {
+      // Pin
+      pinned.push(conversationKey);
+    }
+    
+    localStorage.setItem(PIN_KEY, JSON.stringify(pinned));
+  }
+
+  // Check if conversation is pinned
+  static isConversationPinned(otherUserId?: string, groupId?: string): boolean {
+    const PIN_KEY = 'crm_pinned_conversations';
+    const pinned = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
+    const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
+    return pinned.includes(conversationKey);
+  }
 }

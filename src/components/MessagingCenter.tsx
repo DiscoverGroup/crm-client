@@ -1,6 +1,43 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessagingService, type Message, type Conversation } from '../services/messagingService';
 import NewMessageModal from './NewMessageModal';
+import { uploadFileToR2 } from '../services/r2UploadService';
+import './MessagingCenter.css';
+
+const emojiCategories = {
+  smileys: {
+    name: '😊 Smileys',
+    emojis: ['😊', '😂', '🤣', '😍', '😘', '😋', '😎', '🤗', '🤔', '😴', '😇', '🥳', '🤩', '😏', '😅', '😆', '😁', '😄', '😃', '😀', '🙂', '🤪', '😜', '😝', '😛', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒']
+  },
+  gestures: {
+    name: '👋 Gestures',
+    emojis: ['👍', '👎', '👏', '🙌', '👐', '🤝', '🙏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐', '🖖', '👋', '🤏', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃']
+  },
+  hearts: {
+    name: '❤️ Hearts',
+    emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '💌']
+  },
+  animals: {
+    name: '🐶 Animals',
+    emojis: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞']
+  },
+  food: {
+    name: '🍕 Food',
+    emojis: ['🍕', '🍔', '🍟', '🌭', '🍿', '🧈', '🥐', '🥖', '🥨', '🥯', '🧇', '🥞', '🧀', '🍖', '🍗', '🥩', '🥓', '🍳', '🥘', '🍲', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜']
+  },
+  activities: {
+    name: '⚽ Activities',
+    emojis: ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🪀', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🪁', '🏹', '🎣', '🤿', '🥊', '🥋', '🎽', '🛹', '🛼', '🛷', '⛸️', '🥌', '🎿']
+  },
+  travel: {
+    name: '✈️ Travel',
+    emojis: ['✈️', '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐', '🛻', '🚚', '🚛', '🚜', '🦯', '🦽', '🦼', '🛴', '🚲', '🛵', '🏍️', '🛺', '🚨', '🚔', '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃']
+  },
+  objects: {
+    name: '💼 Objects',
+    emojis: ['💼', '📱', '💻', '⌨️', '🖥️', '🖨️', '🖱️', '🖲️', '🕹️', '🗜️', '💾', '💿', '📀', '📼', '📷', '📸', '📹', '🎥', '📽️', '🎞️', '📞', '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '⏱️', '⏲️', '⏰']
+  }
+};
 
 interface User {
   id: string;
@@ -38,7 +75,16 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState<string>('smileys');
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadConversations();
@@ -46,9 +92,29 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       loadDirectMessage(selectedUserId, selectedUserName || '');
     }
     
+    // Simulate online users (in production, this would come from WebSocket/API)
+    const simulateOnlineUsers = () => {
+      const usersData = localStorage.getItem('crm_users');
+      if (usersData) {
+        const allUsers = JSON.parse(usersData);
+        const randomOnline = allUsers
+          .filter((u: User) => u.id !== currentUser.id && Math.random() > 0.5)
+          .map((u: User) => u.id);
+        setOnlineUsers(new Set(randomOnline));
+      }
+    };
+    simulateOnlineUsers();
+    
     // Refresh conversations every 5 seconds
-    const interval = setInterval(loadConversations, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      loadConversations();
+      simulateOnlineUsers();
+    }, 5000);
+    
+    return () => {
+      clearInterval(interval);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
   }, [currentUser.id]);
 
   useEffect(() => {
@@ -89,8 +155,29 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       );
       return !isArchived;
     });
-    setConversations(nonArchivedConvs);
+    // Sort pinned conversations to top
+    const sorted = nonArchivedConvs.sort((a, b) => {
+      const aPinned = MessagingService.isConversationPinned(
+        a.isGroup ? undefined : a.userId,
+        a.isGroup ? a.groupId : undefined
+      );
+      const bPinned = MessagingService.isConversationPinned(
+        b.isGroup ? undefined : b.userId,
+        b.isGroup ? b.groupId : undefined
+      );
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      return 0;
+    });
+    setConversations(sorted);
   };
+
+  const filteredConversations = conversations.filter(conv => {
+    const name = (conv.isGroup ? conv.groupName : conv.userName) || '';
+    const lastMsg = conv.lastMessage || '';
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           lastMsg.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const loadDirectMessage = (userId: string, userName: string) => {
     const conv = MessagingService.getConversation(currentUser.id, userId);
@@ -116,15 +203,46 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     loadConversations();
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !activeConversationId) return;
+  const handleSendMessage = async () => {
+    if ((!newMessage.trim() && !attachedFile) || !activeConversationId) return;
+
+    let messageText = newMessage.trim();
+    let fileUrl = '';
+    
+    // Upload file to R2 if attached
+    if (attachedFile) {
+      setUploadingFile(true);
+      try {
+        const bucketName = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-attachments';
+        const uploadResult = await uploadFileToR2(attachedFile, bucketName, 'messages');
+        
+        if (uploadResult.success && uploadResult.url) {
+          fileUrl = uploadResult.url;
+          messageText = `📎 [${attachedFile.name}](${fileUrl})${messageText ? '\n' + messageText : ''}`;
+        } else {
+          alert('Failed to upload file: ' + (uploadResult.error || 'Unknown error'));
+          setUploadingFile(false);
+          return;
+        }
+      } catch (error) {
+        console.error('File upload error:', error);
+        alert('Failed to upload file. Please try again.');
+        setUploadingFile(false);
+        return;
+      }
+      setUploadingFile(false);
+    }
+    
+    if (replyingTo) {
+      messageText = `↩️ Replying to: "${replyingTo.message.substring(0, 50)}..."\n${messageText}`;
+    }
 
     if (isGroupChat) {
       MessagingService.sendGroupMessage(
         currentUser.id,
         currentUser.fullName,
         activeConversationId,
-        newMessage.trim()
+        messageText
       );
       loadGroupChat(activeConversationId, activeConversationName);
     } else {
@@ -133,12 +251,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         currentUser.fullName,
         activeConversationId,
         activeConversationName,
-        newMessage.trim()
+        messageText
       );
       loadDirectMessage(activeConversationId, activeConversationName);
     }
 
     setNewMessage('');
+    setReplyingTo(null);
+    clearAttachment();
+    setShowEmojiPicker(false);
     loadConversations();
   };
 
@@ -180,6 +301,37 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       minute: '2-digit', 
       hour12: true 
     });
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAttachedFile(file);
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+      }
+    }
+  };
+
+  const clearAttachment = () => {
+    setAttachedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePinConversation = () => {
+    MessagingService.togglePinConversation(
+      isGroupChat ? undefined : activeConversationId!,
+      isGroupChat ? activeConversationId! : undefined
+    );
+    setShowChatMenu(false);
+    loadConversations();
   };
 
   const handleContextMenu = (e: React.MouseEvent, message: Message) => {
@@ -309,6 +461,76 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const reactions = ['👍', '❤️', '😂', '😮', '😢', '😡', '👏', '🔥'];
 
+  // Helper function to render message with file attachments
+  const renderMessageContent = (messageText: string) => {
+    // Check if message contains file attachment link
+    const fileMatch = messageText.match(/📎 \[(.*?)\]\((.*?)\)/);
+    
+    if (fileMatch) {
+      const fileName = fileMatch[1];
+      const fileUrl = fileMatch[2];
+      const remainingText = messageText.replace(fileMatch[0], '').trim();
+      const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+      
+      return (
+        <div>
+          {isImage ? (
+            <div style={{ marginBottom: remainingText ? '8px' : '0' }}>
+              <img 
+                src={fileUrl} 
+                alt={fileName}
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '300px',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => window.open(fileUrl, '_blank')}
+              />
+            </div>
+          ) : (
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                background: 'rgba(255,255,255,0.2)',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: 'inherit',
+                marginBottom: remainingText ? '8px' : '0'
+              }}
+            >
+              <span style={{ fontSize: '24px' }}>📎</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ 
+                  fontSize: '13px', 
+                  fontWeight: '600',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {fileName}
+                </div>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>
+                  Click to download
+                </div>
+              </div>
+              <span style={{ fontSize: '16px' }}>⬇️</span>
+            </a>
+          )}
+          {remainingText && <div>{remainingText}</div>}
+        </div>
+      );
+    }
+    
+    return messageText;
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -357,8 +579,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
               justifyContent: 'space-between',
               marginBottom: '12px'
             }}>
-              <h3 style={{ margin: 0, fontSize: '18px', color: '#1e293b' }}>
-                💬 Messages
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#1e293b' }}>
+                Chats
               </h3>
               <button
                 onClick={onClose}
@@ -373,6 +595,29 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 ✕
               </button>
             </div>
+            
+            {/* Search Bar */}
+            <div style={{
+              position: 'relative',
+              marginBottom: '12px'
+            }}>
+              <input
+                type="text"
+                placeholder="🔍 Search messages"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: '#f1f5f9'
+                }}
+              />
+            </div>
+
             <button
               onClick={() => setShowNewMessageModal(true)}
               style={{
@@ -393,6 +638,89 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             >
               ✉️ New Message
             </button>
+
+            {/* Active Now Section */}
+            {onlineUsers.size > 0 && (
+              <div style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid #e2e8f0'
+              }}>
+                <div style={{
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  color: '#64748b',
+                  marginBottom: '8px'
+                }}>
+                  Active Now ({onlineUsers.size})
+                </div>
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  overflowX: 'auto',
+                  paddingBottom: '4px'
+                }}>
+                  {Array.from(onlineUsers).slice(0, 5).map(userId => {
+                    const conv = conversations.find(c => c.userId === userId);
+                    if (!conv) return null;
+                    return (
+                      <div
+                        key={userId}
+                        onClick={() => {
+                          loadDirectMessage(userId, conv.userName!);
+                          setShowConversationList(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          minWidth: '60px'
+                        }}
+                      >
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          position: 'relative'
+                        }}>
+                          {getInitials(conv.userName!)}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '2px',
+                            right: '2px',
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: '#10b981',
+                            border: '2px solid white'
+                          }} />
+                        </div>
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#64748b',
+                          marginTop: '4px',
+                          textAlign: 'center',
+                          maxWidth: '60px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {conv.userName!.split(' ')[0]}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Conversations */}
@@ -400,17 +728,25 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             flex: 1,
             overflowY: 'auto'
           }}>
-            {conversations.length === 0 ? (
+            {filteredConversations.length === 0 ? (
               <div style={{
                 padding: '40px 20px',
                 textAlign: 'center',
                 color: '#64748b'
               }}>
                 <div style={{ fontSize: '48px', marginBottom: '12px' }}>💬</div>
-                <p style={{ margin: 0, fontSize: '14px' }}>No conversations yet</p>
+                <p style={{ margin: 0, fontSize: '14px' }}>
+                  {searchQuery ? 'No results found' : 'No conversations yet'}
+                </p>
               </div>
             ) : (
-              conversations.map(conv => (
+              filteredConversations.map(conv => {
+                const isPinned = MessagingService.isConversationPinned(
+                  conv.isGroup ? undefined : conv.userId,
+                  conv.isGroup ? conv.groupId : undefined
+                );
+                const isOnline = !conv.isGroup && conv.userId && onlineUsers.has(conv.userId);
+                return (
                 <div
                   key={conv.isGroup ? conv.groupId : conv.userId}
                   onClick={() => {
@@ -481,6 +817,18 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                           {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                         </div>
                       )}
+                      {isOnline && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '2px',
+                          right: '2px',
+                          width: '12px',
+                          height: '12px',
+                          borderRadius: '50%',
+                          backgroundColor: '#10b981',
+                          border: '2px solid white'
+                        }} />
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
@@ -495,7 +843,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         alignItems: 'center',
                         gap: '6px'
                       }}>
+                        {isPinned && <span style={{ fontSize: '12px' }}>📌</span>}
                         {conv.isGroup ? conv.groupName : conv.userName}
+                        {isOnline && <span style={{ fontSize: '10px', color: '#10b981' }}>●</span>}
                         {conv.isGroup && conv.participants && (
                           <span style={{ fontSize: '12px', color: '#64748b' }}>
                             ({conv.participants.length})
@@ -524,7 +874,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     )}
                   </div>
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
@@ -589,15 +940,61 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   }}>
                     {activeConversationName}
                   </div>
-                  {isGroupChat && (
+                  {!isGroupChat && activeConversationId && onlineUsers.has(activeConversationId) ? (
+                    <div style={{
+                      fontSize: '13px',
+                      color: '#10b981',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      <span>●</span> Active now
+                    </div>
+                  ) : isGroupChat ? (
                     <div style={{
                       fontSize: '13px',
                       color: '#64748b'
                     }}>
                       Group Chat
                     </div>
-                  )}
+                  ) : null}
                 </div>
+                
+                {/* Call Buttons */}
+                <button
+                  onClick={() => alert('Audio call feature coming soon!')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#3b82f6',
+                    padding: '8px',
+                    borderRadius: '50%'
+                  }}
+                  title="Audio Call"
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  📞
+                </button>
+                <button
+                  onClick={() => alert('Video call feature coming soon!')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#3b82f6',
+                    padding: '8px',
+                    borderRadius: '50%'
+                  }}
+                  title="Video Call"
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  📹
+                </button>
                 
                 {/* Menu Button */}
                 <button
@@ -634,6 +1031,30 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                       minWidth: '180px'
                     }}
                   >
+                    <button
+                      onClick={handlePinConversation}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'none',
+                        border: 'none',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        fontSize: '14px',
+                        color: '#1e293b'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span>📌</span> {MessagingService.isConversationPinned(
+                        isGroupChat ? undefined : activeConversationId!,
+                        isGroupChat ? activeConversationId! : undefined
+                      ) ? 'Unpin' : 'Pin'}
+                    </button>
                     <button
                       onClick={handleArchiveConversation}
                       style={{
@@ -815,7 +1236,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                                 fontStyle: message.isDeleted ? 'italic' : 'normal',
                                 position: 'relative'
                               }}>
-                                {message.message}
+                                {renderMessageContent(message.message)}
                                 {message.isEdited && !message.isDeleted && (
                                   <span style={{
                                     fontSize: '10px',
@@ -1009,6 +1430,86 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 borderTop: '1px solid #e2e8f0',
                 background: 'white'
               }}>
+                {/* Reply Banner */}
+                {replyingTo && (
+                  <div style={{
+                    padding: '8px 12px',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                        Replying to {replyingTo.fromUserName}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#1e293b', marginTop: '2px' }}>
+                        {replyingTo.message.substring(0, 50)}{replyingTo.message.length > 50 ? '...' : ''}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setReplyingTo(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        color: '#64748b'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* File Preview */}
+                {attachedFile && (
+                  <div style={{
+                    padding: '8px 12px',
+                    background: '#f1f5f9',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {previewUrl ? (
+                        <img src={previewUrl} alt="Preview" style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '4px',
+                          objectFit: 'cover'
+                        }} />
+                      ) : (
+                        <div style={{ fontSize: '24px' }}>📎</div>
+                      )}
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#1e293b', fontWeight: '600' }}>
+                          {attachedFile.name}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          {(attachedFile.size / 1024).toFixed(1)} KB
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={clearAttachment}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        color: '#64748b'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
                 {isTyping && (
                   <div style={{
                     fontSize: '11px',
@@ -1019,11 +1520,53 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     typing...
                   </div>
                 )}
+                
                 <div style={{
                   display: 'flex',
-                  gap: '12px',
-                  alignItems: 'center'
+                  gap: '8px',
+                  alignItems: 'flex-end',
+                  position: 'relative'
                 }}>
+                  {/* Emoji Picker Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowEmojiPicker(!showEmojiPicker);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '24px',
+                      cursor: 'pointer',
+                      padding: '8px'
+                    }}
+                    title="Add emoji"
+                  >
+                    😊
+                  </button>
+
+                  {/* File Attach Button */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileSelect}
+                    accept="image/*,application/pdf,.doc,.docx"
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '24px',
+                      cursor: 'pointer',
+                      padding: '8px'
+                    }}
+                    title="Attach file"
+                  >
+                    📎
+                  </button>
+
                   <input
                     type="text"
                     value={newMessage}
@@ -1038,33 +1581,149 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                         setIsTyping(false);
                       }
                     }}
-                    placeholder="Type a message..."
+                    onFocus={() => setShowEmojiPicker(false)}
+                    placeholder="Aa"
                     style={{
                       flex: 1,
                       padding: '12px 16px',
                       border: '2px solid #e2e8f0',
-                      borderRadius: '10px',
+                      borderRadius: '20px',
                       fontSize: '14px',
                       outline: 'none'
                     }}
                   />
+
+                  {/* Emoji Picker Popup */}
+                  {showEmojiPicker && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        bottom: '60px',
+                        left: '0',
+                        background: 'white',
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                        zIndex: 10001,
+                        width: '360px',
+                        maxHeight: '320px',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column'
+                      }}
+                    >
+                      {/* Category Tabs */}
+                      <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        padding: '12px 12px 8px 12px',
+                        borderBottom: '1px solid #e2e8f0',
+                        overflowX: 'auto',
+                        scrollbarWidth: 'thin'
+                      }}>
+                        {Object.entries(emojiCategories).map(([key, category]) => (
+                          <button
+                            key={key}
+                            onClick={() => setEmojiCategory(key)}
+                            style={{
+                              background: emojiCategory === key ? '#e0f2fe' : 'transparent',
+                              border: 'none',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              fontSize: '20px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              whiteSpace: 'nowrap',
+                              color: emojiCategory === key ? '#0284c7' : '#64748b'
+                            }}
+                            onMouseOver={(e) => {
+                              if (emojiCategory !== key) {
+                                e.currentTarget.style.background = '#f1f5f9';
+                              }
+                            }}
+                            onMouseOut={(e) => {
+                              if (emojiCategory !== key) {
+                                e.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                            title={category.name}
+                          >
+                            {category.name.split(' ')[0]}
+                          </button>
+                        ))}
+                      </div>
+                      
+                      {/* Emoji Grid */}
+                      <div style={{
+                        padding: '12px',
+                        overflowY: 'auto',
+                        maxHeight: '240px'
+                      }}>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(8, 1fr)',
+                          gap: '4px'
+                        }}>
+                          {emojiCategories[emojiCategory as keyof typeof emojiCategories].emojis.map(emoji => (
+                            <button
+                              key={emoji}
+                              onClick={() => {
+                                setNewMessage(prev => prev + emoji);
+                                setShowEmojiPicker(false);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '28px',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                borderRadius: '8px',
+                                width: '40px',
+                                height: '40px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s ease'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.background = '#f1f5f9';
+                                e.currentTarget.style.transform = 'scale(1.2)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.background = 'none';
+                                e.currentTarget.style.transform = 'scale(1)';
+                              }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim()}
+                    disabled={!newMessage.trim() && !attachedFile || uploadingFile}
                     style={{
-                      padding: '12px 24px',
-                      background: newMessage.trim() 
+                      padding: '12px',
+                      background: (newMessage.trim() || attachedFile) && !uploadingFile
                         ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
                         : '#e2e8f0',
-                      color: newMessage.trim() ? 'white' : '#94a3b8',
+                      color: (newMessage.trim() || attachedFile) && !uploadingFile ? 'white' : '#94a3b8',
                       border: 'none',
-                      borderRadius: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: newMessage.trim() ? 'pointer' : 'not-allowed'
+                      borderRadius: '50%',
+                      fontSize: '18px',
+                      cursor: (newMessage.trim() || attachedFile) && !uploadingFile ? 'pointer' : 'not-allowed',
+                      width: '44px',
+                      height: '44px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
+                    title={uploadingFile ? 'Uploading...' : 'Send'}
                   >
-                    Send
+                    {uploadingFile ? '⏳' : '➤'}
                   </button>
                 </div>
               </div>
@@ -1110,6 +1769,30 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             minWidth: '160px'
           }}
         >
+          <button
+            onClick={() => {
+              setReplyingTo(contextMenu.message);
+              setContextMenu(null);
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: 'none',
+              border: 'none',
+              textAlign: 'left',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              fontSize: '14px',
+              color: '#1e293b'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+          >
+            <span>↩️</span> Reply
+          </button>
           <button
             onClick={() => {
               handleCopyMessage(contextMenu.message);

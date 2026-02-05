@@ -1,0 +1,330 @@
+/* MessagingCenter CSS - Facebook Messenger-like styles */
+
+/* Typing animation */
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+/* Message bubble hover effect */
+.message-bubble-container:hover .reaction-btn {
+  display: flex !important;
+}
+
+/* Smooth scrollbar for conversations */
+.conversation-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.conversation-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.conversation-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.conversation-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Mobile back button - only shown on mobile */
+.mobile-back-btn {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .mobile-back-btn {
+    display: block !important;
+  }
+  
+  .conversation-list.hide-mobile {
+    display: none !important;
+  }
+  
+  .messaging-container {
+    max-height: 100vh !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* Fade in animation for messages */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-bubble-container {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Pulse animation for unread badge */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Online status pulse */
+@keyframes online-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Custom emoji picker grid */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.emoji-picker-container {
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  padding: 16px;
+  z-index: 10001 !important;
+  max-width: 340px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+}
+
+.emoji-picker-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.emoji-picker-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.emoji-picker-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.emoji-picker-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Emoji category tabs */
+.emoji-category-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 12px 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.emoji-category-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.emoji-category-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.emoji-category-tabs::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+/* File attachment preview in message */
+.message-file-attachment {
+  max-width: 100%;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.message-file-attachment:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+/* Upload indicator animation */
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.uploading-indicator {
+  animation: rotate 1s linear infinite;
+}
+
+/* Hover effect for emoji buttons */
+.emoji-btn:hover {
+  transform: scale(1.2);
+  background: #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+/* File preview animation */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.file-preview {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Gradient text for "Active Now" */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Smooth hover for buttons */
+button:hover {
+  transition: all 0.2s ease;
+}
+
+/* Context menu animation */
+@keyframes contextMenuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Reaction picker animation */
+@keyframes reactionPopup {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Search input focus effect */
+input[type="text"]:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Message sent animation */
+@keyframes messageSent {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Pin icon wiggle animation */
+@keyframes wiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-10deg);
+  }
+  75% {
+    transform: rotate(10deg);
+  }
+}
+
+.pinned-icon {
+  animation: wiggle 0.5s ease-in-out;
+}
+
+/* Active Now scroll */
+.active-now-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.active-now-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.active-now-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.active-now-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+/* Delivery status icon */
+@keyframes checkMark {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.check-mark {
+  animation: checkMark 0.3s ease-out;
+}
