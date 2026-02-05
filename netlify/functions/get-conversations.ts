@@ -122,7 +122,8 @@ export const handler: Handler = async (event) => {
         conversationsMap.set(conversationKey, {
           userId: otherUserId,
           groupId: msg.groupId,
-          userName: otherUserNa(groupMap.get(msg.groupId)?.name || msg.groupId) : null,
+          userName: otherUserName,
+          groupName: isGroup ? (groupMap.get(msg.groupId)?.name || msg.groupId) : null,
           isGroup,
           lastMessage: msg.content,
           lastMessageTime: msg.timestamp,
@@ -136,14 +137,13 @@ export const handler: Handler = async (event) => {
       // Count unread messages
       if (msg.toUserId === userId && !msg.isRead) {
         const conv = conversationsMap.get(conversationKey);
-        conv.unreadCount++;
+        if (conv) conv.unreadCount++;
       }
       
       // Count unread group messages
       if (msg.groupId && msg.fromUserId !== userId && !msg.isRead) {
         const conv = conversationsMap.get(conversationKey);
-        if (conv) const conv = conversationsMap.get(conversationKey);
-        conv.unreadCount++;
+        if (conv) conv.unreadCount++;
       }
     }
 
