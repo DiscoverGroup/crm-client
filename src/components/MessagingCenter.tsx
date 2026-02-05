@@ -86,6 +86,13 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [conversationMenuId, setConversationMenuId] = useState<string | null>(null);
   const [currentConvIsPinned, setCurrentConvIsPinned] = useState(false);
   const [currentConvIsArchived, setCurrentConvIsArchived] = useState(false);
+  const [showChatInfo, setShowChatInfo] = useState(true);
+  const [conversationFilter, setConversationFilter] = useState<'all' | 'unread' | 'groups' | 'communities'>('all');
+  const [isMuted, setIsMuted] = useState(false);
+  const [chatMembers, setChatMembers] = useState<User[]>([]);
+  const [showCustomizeChat, setShowCustomizeChat] = useState(false);
+  const [editingChatName, setEditingChatName] = useState(false);
+  const [newChatName, setNewChatName] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -186,8 +193,20 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const filteredConversations = conversations.filter(conv => {
     const name = (conv.isGroup ? conv.groupName : conv.userName) || '';
     const lastMsg = conv.lastMessage || '';
-    return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = name.toLowerCase().includes(searchQuery.toLowerCase()) ||
            lastMsg.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Apply conversation filter
+    if (conversationFilter === 'unread') {
+      return matchesSearch && conv.unreadCount > 0;
+    } else if (conversationFilter === 'groups') {
+      return matchesSearch && conv.isGroup;
+    } else if (conversationFilter === 'communities') {
+      // Communities feature not implemented yet, return empty
+      return false;
+    }
+    
+    return matchesSearch;
   });
 
   const loadDirectMessage = async (userId: string, userName: string) => {
@@ -621,8 +640,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           backgroundColor: 'white',
           borderRadius: '16px',
           width: '100%',
-          maxWidth: '1200px',
-          height: 'min(80vh, 700px)',
+          maxWidth: '1600px',
+          height: 'min(85vh, 800px)',
           display: 'flex',
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
           overflow: 'hidden'
@@ -686,6 +705,41 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   backgroundColor: '#f1f5f9'
                 }}
               />
+            </div>
+
+            {/* Filter Tabs */}
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              marginBottom: '12px',
+              overflowX: 'auto',
+              paddingBottom: '4px'
+            }}>
+              {[
+                { key: 'all' as const, label: 'All' },
+                { key: 'unread' as const, label: 'Unread' },
+                { key: 'groups' as const, label: 'Groups' },
+                { key: 'communities' as const, label: 'Communities' }
+              ].map(filter => (
+                <button
+                  key={filter.key}
+                  onClick={() => setConversationFilter(filter.key)}
+                  style={{
+                    padding: '8px 16px',
+                    border: 'none',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    backgroundColor: conversationFilter === filter.key ? '#e0f2fe' : '#f1f5f9',
+                    color: conversationFilter === filter.key ? '#0284c7' : '#64748b',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </div>
 
             <button
@@ -1175,6 +1229,25 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   📹
+                </button>
+                
+                {/* Info Button */}
+                <button
+                  onClick={() => setShowChatInfo(!showChatInfo)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: showChatInfo ? '#3b82f6' : '#64748b',
+                    padding: '8px',
+                    borderRadius: '50%'
+                  }}
+                  title={showChatInfo ? 'Hide chat info' : 'Show chat info'}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  ℹ️
                 </button>
                 
                 {/* Menu Button */}
@@ -1918,7 +1991,623 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             </div>
           )}
         </div>
+
+        {/* Right Sidebar - Chat Info */}
+        {activeConversationId && showChatInfo && (
+          <div style={{
+            width: '320px',
+            borderLeft: '1px solid #e2e8f0',
+            backgroundColor: 'white',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}>
+            {/* Chat Info Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              {/* Chat Avatar */}
+              <div style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: isGroupChat ? 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '36px',
+                color: 'white',
+                fontWeight: '600',
+                position: 'relative'
+              }}>
+                {isGroupChat ? '👥' : (activeConversationName ? activeConversationName[0].toUpperCase() : '?')}
+                {!isGroupChat && onlineUsers.has(activeConversationId) && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '4px',
+                    right: '4px',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10b981',
+                    border: '2px solid white'
+                  }} />
+                )}
+              </div>
+
+              {/* Chat Name */}
+              <div>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#1e293b',
+                  textAlign: 'center'
+                }}>
+                  {activeConversationName}
+                </h3>
+                {!isGroupChat && onlineUsers.has(activeConversationId) && (
+                  <p style={{
+                    margin: '4px 0 0 0',
+                    fontSize: '12px',
+                    color: '#10b981',
+                    textAlign: 'center'
+                  }}>
+                    Active now
+                  </p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                marginTop: '8px'
+              }}>
+                <button
+                  onClick={() => setIsMuted(!isMuted)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '12px 16px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                >
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: '#f1f5f9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px'
+                  }}>
+                    {isMuted ? '🔕' : '🔔'}
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
+                    Mute
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => {/* TODO: Implement search in conversation */}}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '12px 16px',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                  title="Search"
+                >
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: '#f1f5f9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px'
+                  }}>
+                    🔍
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
+                    Search
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Content */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px 20px'
+            }}>
+              {/* Chat Info Section */}
+              <div style={{
+                marginBottom: '16px'
+              }}>
+                <button
+                  onClick={() => setShowCustomizeChat(!showCustomizeChat)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 0',
+                    background: 'none',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#1e293b'
+                  }}
+                >
+                  <span>Chat info</span>
+                  <span style={{
+                    transform: showCustomizeChat ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s'
+                  }}>
+                    ▼
+                  </span>
+                </button>
+              </div>
+
+              {/* Customize Chat Section */}
+              <div style={{
+                marginBottom: '16px'
+              }}>
+                <button
+                  onClick={() => setShowCustomizeChat(!showCustomizeChat)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 0',
+                    background: 'none',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#1e293b'
+                  }}
+                >
+                  <span>Customize chat</span>
+                  <span style={{
+                    transform: showCustomizeChat ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s'
+                  }}>
+                    ▼
+                  </span>
+                </button>
+
+                {showCustomizeChat && (
+                  <div style={{
+                    marginTop: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    {/* Change Chat Name */}
+                    <button
+                      onClick={() => {
+                        setEditingChatName(true);
+                        setNewChatName(activeConversationName);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '18px' }}>✏️</span>
+                      <span>Change chat name</span>
+                    </button>
+
+                    {/* Change Photo */}
+                    <button
+                      onClick={() => alert('Change photo feature coming soon!')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '18px' }}>📷</span>
+                      <span>Change photo</span>
+                    </button>
+
+                    {/* Change Theme */}
+                    <button
+                      onClick={() => alert('Change theme feature coming soon!')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '18px' }}>🎨</span>
+                      <span>Change theme</span>
+                    </button>
+
+                    {/* Change Emoji */}
+                    <button
+                      onClick={() => alert('Change emoji feature coming soon!')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '18px' }}>👍</span>
+                      <span>Change emoji</span>
+                    </button>
+
+                    {/* Edit Nicknames */}
+                    <button
+                      onClick={() => alert('Edit nicknames feature coming soon!')}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'none',
+                        border: 'none',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        color: '#1e293b',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <span style={{ fontSize: '18px' }}>Aa</span>
+                      <span>Edit nicknames</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Members Section (for groups) */}
+              {isGroupChat && (
+                <div style={{
+                  marginBottom: '16px'
+                }}>
+                  <button
+                    style={{
+                      width: '100%',
+                      padding: '12px 0',
+                      background: 'none',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1e293b'
+                    }}
+                  >
+                    <span>Chat members</span>
+                    <span>▼</span>
+                  </button>
+
+                  {/* Member List */}
+                  <div style={{
+                    marginTop: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}>
+                    {/* Current User */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                    onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '16px',
+                        color: 'white',
+                        fontWeight: '600'
+                      }}>
+                        {currentUser.fullName[0]}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#1e293b'
+                        }}>
+                          {currentUser.fullName}
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#64748b'
+                        }}>
+                          You
+                        </div>
+                      </div>
+                      <button style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '18px',
+                        cursor: 'pointer',
+                        color: '#64748b'
+                      }}>
+                        ⋮
+                      </button>
+                    </div>
+
+                    {/* Load chat members from conversation */}
+                    {conversations
+                      .find(c => c.isGroup && c.groupId === activeConversationId)
+                      ?.participants
+                      ?.filter(pid => pid !== currentUser.id)
+                      .map(participantId => {
+                        const conv = conversations.find(c => c.userId === participantId);
+                        return (
+                          <div
+                            key={participantId}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              transition: 'background 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+                          >
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '16px',
+                              color: 'white',
+                              fontWeight: '600',
+                              position: 'relative'
+                            }}>
+                              {conv?.userName?.[0] || '?'}
+                              {onlineUsers.has(participantId) && (
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: '0',
+                                  right: '0',
+                                  width: '10px',
+                                  height: '10px',
+                                  borderRadius: '50%',
+                                  backgroundColor: '#10b981',
+                                  border: '2px solid white'
+                                }} />
+                              )}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                color: '#1e293b'
+                              }}>
+                                {conv?.userName || 'Unknown User'}
+                              </div>
+                              {onlineUsers.has(participantId) && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: '#10b981'
+                                }}>
+                                  Active now
+                                </div>
+                              )}
+                            </div>
+                            <button style={{
+                              background: 'none',
+                              border: 'none',
+                              fontSize: '18px',
+                              cursor: 'pointer',
+                              color: '#64748b'
+                            }}>
+                              ⋮
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Edit Chat Name Modal */}
+      {editingChatName && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h3 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: '700',
+              color: '#1e293b'
+            }}>
+              Change chat name
+            </h3>
+            <input
+              type="text"
+              value={newChatName}
+              onChange={(e) => setNewChatName(e.target.value)}
+              placeholder="Enter new chat name"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                marginBottom: '16px'
+              }}
+              autoFocus
+            />
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => {
+                  setEditingChatName(false);
+                  setNewChatName('');
+                }}
+                style={{
+                  padding: '10px 20px',
+                  background: '#f1f5f9',
+                  color: '#64748b',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (newChatName.trim()) {
+                    setActiveConversationName(newChatName.trim());
+                    // TODO: Save to backend
+                    alert('Chat name updated! (Backend integration pending)');
+                  }
+                  setEditingChatName(false);
+                  setNewChatName('');
+                }}
+                style={{
+                  padding: '10px 20px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showNewMessageModal && (
         <NewMessageModal
