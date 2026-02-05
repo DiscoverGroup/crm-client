@@ -91,8 +91,12 @@ export const handler: Handler = async (event) => {
       .sort({ timestamp: -1 })
       .toArray();
 
-    // Combine all messages
-    const allMessages = [...messages, ...groupMessages];
+    // Combine all messages and sort by timestamp descending (newest first)
+    const allMessages = [...messages, ...groupMessages].sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return timeB - timeA; // Descending order
+    });
 
     // Get conversation metadata (pinned, archived status)
     const conversationMetas = await conversationMetaCol
@@ -120,7 +124,15 @@ export const handler: Handler = async (event) => {
         isGroup = true;
       } else {
         otherUserId = msg.fromUserId === userId ? msg.toUserId : msg.fromUserId;
+        // Normalize conversation key to ensure consistent grouping
         conversationKey = `user_${otherUserId}`;
+        
+        // Debug: Log to check for duplicate conversations
+        if (conversationsMap.has(conversationKey)) {
+          console.log(`Updating existing conversation: ${conversationKey}`);
+        } else {
+          console.log(`Creating new conversation: ${conversationKey}, fromUser: ${msg.fromUserId}, toUser: ${msg.toUserId}, currentUser: ${userId}`);
+        }
       }
 
       if (!conversationsMap.has(conversationKey)) {
@@ -151,6 +163,18 @@ export const handler: Handler = async (event) => {
           isArchived: meta.isArchived,
           participants: isGroup ? groupMap.get(msg.groupId)?.participants : undefined
         });
+      } else {
+        // Update unread count even if conversation exists
+        const conv = conversationsMap.get(conversationKey);
+        if (conv) {
+          // Update lastMessage if this message is newer (shouldn't happen due to sort, but safety check)
+          const existingTime = new Date(conv.lastMessageTime).getTime();
+          const currentTime = new Date(msg.timestamp).getTime();
+          if (currentTime > existingTime) {
+            conv.lastMessage = msg.content;
+            conv.lastMessageTime = msg.timestamp;
+          }
+        }
       }
 
       // Count unread messages

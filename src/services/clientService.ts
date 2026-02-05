@@ -56,6 +56,49 @@ export interface ClientSearchFilters {
 
 export class ClientService {
   private static STORAGE_KEY = 'crm_clients_data';
+  private static LAST_SYNC_KEY = 'crm_clients_last_sync';
+  private static SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+  // Load clients from MongoDB and sync to localStorage
+  static async syncFromMongoDB(): Promise<void> {
+    try {
+      console.log('🔄 Syncing clients from MongoDB...');
+      const response = await fetch('/.netlify/functions/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'clients',
+          operation: 'find',
+          filter: {}
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch clients from MongoDB');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Update localStorage with MongoDB data
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
+        localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+        console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+    }
+  }
+
+  // Check if sync is needed
+  static shouldSync(): boolean {
+    const lastSync = localStorage.getItem(this.LAST_SYNC_KEY);
+    if (!lastSync) return true;
+    
+    const lastSyncTime = new Date(lastSync).getTime();
+    const now = Date.now();
+    return (now - lastSyncTime) > this.SYNC_INTERVAL;
+  }
 
   static async saveClient(clientData: Omit<ClientData, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ clientId: string; isNewClient: boolean }> {
     try {
@@ -159,6 +202,15 @@ export class ClientService {
     }
   }
 
+  // Get all clients with MongoDB sync
+  static async getAllClientsWithSync(): Promise<ClientData[]> {
+    // Sync from MongoDB if needed
+    if (this.shouldSync()) {
+      await this.syncFromMongoDB();
+    }
+    return this.getAllClients();
+  }
+
   static getAllClientsIncludingDeleted(): ClientData[] {
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
@@ -214,6 +266,15 @@ export class ClientService {
 
       return true;
     });
+  }
+
+  // Search clients with MongoDB sync
+  static async searchClientsWithSync(filters: ClientSearchFilters): Promise<ClientData[]> {
+    // Sync from MongoDB if needed
+    if (this.shouldSync()) {
+      await this.syncFromMongoDB();
+    }
+    return this.searchClients(filters);
   }
 
   static deleteClient(clientId: string, deletedBy?: string): boolean {

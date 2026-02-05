@@ -60,7 +60,7 @@ const MainPage: React.FC = () => {
   const loadClients = useCallback(async () => {
     setLoading(true);
     try {
-      const allClients = await ClientService.searchClients({
+      const allClients = await ClientService.searchClientsWithSync({
         searchTerm: searchQuery,
         status: statusFilter || undefined
       });
