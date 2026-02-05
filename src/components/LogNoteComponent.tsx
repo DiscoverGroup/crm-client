@@ -511,6 +511,179 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 }}>
                   by {log.performedByUser}
                 </div>
+                
+                {/* Action Buttons for Activity Logs */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginTop: '6px',
+                  paddingTop: '6px',
+                  borderTop: '1px solid #f1f5f9'
+                }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setReplyingTo(replyingTo === log.id ? null : log.id);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#64748b',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px'
+                    }}
+                  >
+                    💬 Reply
+                  </button>
+                </div>
+
+                {/* Reply Form for Activity Logs */}
+                {replyingTo === log.id && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      marginTop: '8px',
+                      padding: '8px',
+                      background: 'white',
+                      borderRadius: '6px',
+                      border: '1px solid #e2e8f0'
+                    }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '6px'
+                    }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: '#3b82f6',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        fontWeight: '600'
+                      }}>
+                        {getInitials(currentUserName)}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <MentionInput
+                          value={replyText}
+                          onChange={setReplyText}
+                          placeholder="Write a reply... (Type @ to mention someone)"
+                          style={{
+                            width: '100%'
+                          }}
+                        />
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'flex-end',
+                          gap: '6px',
+                          marginTop: '6px'
+                        }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReplyingTo(null);
+                              setReplyText('');
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '11px',
+                              border: '1px solid #e2e8f0',
+                              background: 'white',
+                              color: '#64748b',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!replyText.trim()) return;
+                              
+                              // Create a new log note as a reply to the activity log
+                              const logNote = LogNoteService.addLogNote(
+                                clientId,
+                                currentUserId,
+                                currentUserName,
+                                'manual',
+                                `Reply to ${log.action.replace('_', ' ')}`,
+                                replyText,
+                                'pending'
+                              );
+                              
+                              // Check for mentions
+                              const mentionRegex = /@([\w-]+)/g;
+                              const mentions = replyText.match(mentionRegex);
+                              
+                              if (mentions) {
+                                const client = ClientService.getClientById(clientId);
+                                const clientName = client?.contactName || 'Unknown Client';
+                                const allUsersStr = localStorage.getItem('crm_users');
+                                const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+                                
+                                mentions.forEach(mention => {
+                                  const username = mention.substring(1);
+                                  
+                                  if (username.toLowerCase() === 'everyone') {
+                                    allUsers.forEach((user: any) => {
+                                      if (user.id !== currentUserId) {
+                                        NotificationService.createMentionNotification({
+                                          mentionedUsername: user.username,
+                                          fromUserId: currentUserId,
+                                          fromUserName: currentUserName,
+                                          clientId: clientId,
+                                          clientName: clientName,
+                                          logNoteId: logNote.id,
+                                          commentText: replyText
+                                        });
+                                      }
+                                    });
+                                  } else {
+                                    NotificationService.createMentionNotification({
+                                      mentionedUsername: username,
+                                      fromUserId: currentUserId,
+                                      fromUserName: currentUserName,
+                                      clientId: clientId,
+                                      clientName: clientName,
+                                      logNoteId: logNote.id,
+                                      commentText: replyText
+                                    });
+                                  }
+                                });
+                              }
+                              
+                              setLogNotes(prev => [logNote, ...prev]);
+                              setReplyText('');
+                              setReplyingTo(null);
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              fontSize: '11px',
+                              border: 'none',
+                              background: '#3b82f6',
+                              color: 'white',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Reply
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
