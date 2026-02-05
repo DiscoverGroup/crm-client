@@ -59,16 +59,16 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
     onClose();
   };
 
-  const handleCreateGroup = () => {
-    if (!groupName.trim() || selectedUsers.length === 0) {
-      alert('Please enter a group name and select at least one participant');
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedUsers.length < 1) {
+      alert('Please enter a group name and select at least one member');
       return;
     }
 
     const participantIds = [currentUser.id, ...selectedUsers.map(u => u.id)];
     const participantNames = [currentUser.fullName, ...selectedUsers.map(u => u.fullName)];
     
-    const group = MessagingService.createGroup(groupName, participantIds, participantNames, currentUser.id);
+    const group = await MessagingService.createGroup(groupName, participantIds, participantNames, currentUser.id);
     onStartGroupChat(group.id, group.name);
     onClose();
   };
