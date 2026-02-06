@@ -8,7 +8,6 @@ import OTPVerification from "./components/OTPVerification";
 import UserDirectory from "./components/UserDirectory";
 import UserProfileView from "./components/UserProfileView";
 import MessagingCenter from "./components/MessagingCenter";
-import ToastNotification from "./components/ToastNotification";
 import { MongoDBService } from "./services/mongoDBService";
 import { FileService } from "./services/fileService";
 import { MessagingService } from "./services/messagingService";

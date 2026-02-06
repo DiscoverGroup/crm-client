@@ -33,9 +33,9 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
     setLoading(false);
   };
 
-  const handleRecover = (client: ClientData) => {
+  const handleRecover = async (client: ClientData) => {
     if (window.confirm(`Recover client "${client.contactName}"?`)) {
-      const success = ClientService.recoverClient(client.id);
+      const success = await ClientService.recoverClient(client.id);
       if (success) {
         ActivityLogService.addLog({
           clientId: client.id,
