@@ -79,11 +79,17 @@ export const handler: Handler = async (event) => {
       };
     }
 
+    // TODO: Implement pagination for better performance
+    // For now, limit to 1000 messages. Future: use skip/limit with cursor-based pagination
+    const limit = 1000;
     const messages = await messagesCol
       .find(query)
-      .sort({ timestamp: 1 })
-      .limit(1000) // Limit to last 1000 messages for performance
+      .sort({ timestamp: -1 })
+      .limit(limit)
       .toArray();
+    
+    // Reverse to show oldest first in UI
+    messages.reverse();
 
     // Close connection in background
     client.close().catch(err => console.error('Error closing connection:', err));

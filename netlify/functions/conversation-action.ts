@@ -65,10 +65,14 @@ export const handler: Handler = async (event) => {
 
     switch (action) {
       case 'togglePin':
-        updateField = { isPinned: value !== undefined ? value : true };
+        // Get current state and toggle it
+        const currentPinDoc = await conversationMetaCol.findOne({ userId, conversationKey });
+        updateField = { isPinned: !(currentPinDoc?.isPinned || false) };
         break;
       case 'toggleArchive':
-        updateField = { isArchived: value !== undefined ? value : true };
+        // Get current state and toggle it
+        const currentArchiveDoc = await conversationMetaCol.findOne({ userId, conversationKey });
+        updateField = { isArchived: !(currentArchiveDoc?.isArchived || false) };
         break;
       case 'isPinned':
       case 'isArchived':

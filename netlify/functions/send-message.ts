@@ -47,12 +47,20 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // Must have either toUserId or groupId
+    // Must have either toUserId or groupId, but not both
     if (!message.toUserId && !message.groupId) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'Must specify either toUserId or groupId' })
+      };
+    }
+    
+    if (message.toUserId && message.groupId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Cannot specify both toUserId and groupId' })
       };
     }
 
@@ -83,11 +91,24 @@ export const handler: Handler = async (event) => {
       createdAt: new Date()
     };
 
-    // Insert and immediately return (don't wait for connection close)
+    // Insert message
     await messagesCol.insertOne(messageDoc);
     
-    // Close connection in background
-    client.close().catch(err => console.error('Error closing connection:', err));
+    // Close connection with timeout
+    try {
+      await Promise.race([
+        client.close(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
+      ]);
+    } catch (closeError) {
+      console.error('Error closing MongoDB connection:', closeError);
+      // Force close if graceful close failed
+      try {
+        await client.close(true);
+      } catch (e) {
+        console.error('Force close failed:', e);
+      }
+    }
 
     return {
       statusCode: 200,

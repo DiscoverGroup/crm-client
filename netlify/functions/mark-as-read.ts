@@ -60,10 +60,10 @@ export const handler: Handler = async (event) => {
     let query;
 
     if (groupId) {
-      // Mark group messages as read
+      // Mark group messages as read (group messages don't have toUserId, only fromUserId)
       query = {
         groupId,
-        toUserId: userId,
+        fromUserId: { $ne: userId }, // Not sent by current user
         isRead: false
       };
     } else if (otherUserId) {

@@ -14,6 +14,7 @@ export interface Message {
   editedAt?: Date;
   isDeleted?: boolean;
   replyTo?: string; // ID of message being replied to
+  deliveryStatus?: 'sending' | 'sent' | 'delivered' | 'failed'; // Message delivery status
 }
 
 export interface Conversation {
@@ -109,7 +110,7 @@ export class MessagingService {
         toUserId,
         toUserName,
         content,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(), // Use ISO string for consistency
         isRead: false,
         replyTo
       };
@@ -300,7 +301,7 @@ export class MessagingService {
         fromUserName,
         groupId,
         content,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(), // Use ISO string for consistency
         isRead: false,
         replyTo
       };
@@ -434,48 +435,72 @@ export class MessagingService {
   }
 
   // Add reaction to message
-  static addReaction(messageId: string, userId: string, emoji: string): void {
-    const messages = this.getAllMessages();
-    const message = messages.find(m => m.id === messageId);
-    if (message) {
-      if (!message.reactions) {
-        message.reactions = {};
+  static async addReaction(messageId: string, userId: string, emoji: string): Promise<void> {
+    try {
+      await this.apiCall('add-reaction', { messageId, userId, emoji });
+    } catch (error) {
+      // Fallback to localStorage
+      console.warn('Falling back to localStorage for addReaction');
+      const messages = this.getAllMessages();
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        if (!message.reactions) {
+          message.reactions = {};
+        }
+        message.reactions[userId] = emoji;
+        this.saveMessages(messages);
       }
-      message.reactions[userId] = emoji;
-      this.saveMessages(messages);
     }
   }
 
   // Remove reaction from message
-  static removeReaction(messageId: string, userId: string): void {
-    const messages = this.getAllMessages();
-    const message = messages.find(m => m.id === messageId);
-    if (message && message.reactions) {
-      delete message.reactions[userId];
-      this.saveMessages(messages);
+  static async removeReaction(messageId: string, userId: string): Promise<void> {
+    try {
+      await this.apiCall('remove-reaction', { messageId, userId });
+    } catch (error) {
+      // Fallback to localStorage
+      console.warn('Falling back to localStorage for removeReaction');
+      const messages = this.getAllMessages();
+      const message = messages.find(m => m.id === messageId);
+      if (message && message.reactions) {
+        delete message.reactions[userId];
+        this.saveMessages(messages);
+      }
     }
   }
 
   // Edit message
-  static editMessage(messageId: string, newText: string): void {
-    const messages = this.getAllMessages();
-    const message = messages.find(m => m.id === messageId);
-    if (message) {
-      message.content = newText;
-      message.isEdited = true;
-      message.editedAt = new Date();
-      this.saveMessages(messages);
+  static async editMessage(messageId: string, newText: string): Promise<void> {
+    try {
+      await this.apiCall('edit-message', { messageId, newText });
+    } catch (error) {
+      // Fallback to localStorage
+      console.warn('Falling back to localStorage for editMessage');
+      const messages = this.getAllMessages();
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        message.content = newText;
+        message.isEdited = true;
+        message.editedAt = new Date();
+        this.saveMessages(messages);
+      }
     }
   }
 
   // Delete message
-  static deleteMessage(messageId: string): void {
-    const messages = this.getAllMessages();
-    const message = messages.find(m => m.id === messageId);
-    if (message) {
-      message.isDeleted = true;
-      message.content = 'This message was deleted';
-      this.saveMessages(messages);
+  static async deleteMessage(messageId: string): Promise<void> {
+    try {
+      await this.apiCall('delete-message', { messageId });
+    } catch (error) {
+      // Fallback to localStorage
+      console.warn('Falling back to localStorage for deleteMessage');
+      const messages = this.getAllMessages();
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        message.isDeleted = true;
+        message.content = 'This message was deleted';
+        this.saveMessages(messages);
+      }
     }
   }
 

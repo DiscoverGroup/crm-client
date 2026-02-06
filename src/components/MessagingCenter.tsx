@@ -73,11 +73,11 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const [otherUserTyping] = useState(false); // TODO: Connect to real WebSocket for typing indicator
   const [longPressTimer, setLongPressTimer] = useState<number | null>(null);
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [onlineUsers] = useState<Set<string>>(new Set()); // TODO: Connect to real WebSocket for presence
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState<string>('smileys');
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -94,11 +94,16 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const [editingChatName, setEditingChatName] = useState(false);
   const [newChatName, setNewChatName] = useState('');
   const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [searchInConversation, setSearchInConversation] = useState('');
+  const [showSearchInChat, setShowSearchInChat] = useState(false);
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const conversationLoadTimeoutRef = useRef<number | null>(null);
   const messageLoadTimeoutRef = useRef<number | null>(null);
+  const messagePollingIntervalRef = useRef<number | null>(null);
+  const lastMessageLoadTimeRef = useRef<number>(0);
 
   const loadConversations = async () => {
     if (isLoadingConversations) return; // Prevent concurrent requests
@@ -106,33 +111,23 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setIsLoadingConversations(true);
     try {
       const allConvs = await MessagingService.getAllConversations(currentUser.id);
-      // Filter out archived conversations using Promise.all for async checks
-      const archivedChecks = await Promise.all(
-        allConvs.map(conv => 
-          MessagingService.isConversationArchived(
-            conv.isGroup ? undefined : conv.userId,
-            conv.isGroup ? conv.groupId : undefined
-          )
-        )
-      );
-      const nonArchivedConvs = allConvs.filter((_, index) => !archivedChecks[index]);
       
-      // Sort pinned conversations to top using Promise.all for async checks
-      const pinnedChecks = await Promise.all(
-        nonArchivedConvs.map(conv =>
-          MessagingService.isConversationPinned(
-            conv.isGroup ? undefined : conv.userId,
-            conv.isGroup ? conv.groupId : undefined
-          )
-        )
-      );
-      const sorted = nonArchivedConvs.map((conv, index) => ({ ...conv, isPinned: pinnedChecks[index] }));
-      sorted.sort((a, b) => {
+      // Backend now returns isPinned and isArchived, so we can use them directly
+      // Filter out archived conversations
+      const nonArchivedConvs = allConvs.filter(conv => !conv.isArchived);
+      
+      // Sort pinned conversations to top (isPinned already in conversation data)
+      nonArchivedConvs.sort((a, b) => {
+        // Pinned conversations first
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-        return 0;
+        // Then by last message time (newest first)
+        const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+        const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+        return timeB - timeA;
       });
-      setConversations(sorted);
+      
+      setConversations(nonArchivedConvs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
     } finally {
@@ -146,25 +141,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       loadDirectMessage(selectedUserId, selectedUserName || '');
     }
     
-    // Simulate online users (in production, this would come from WebSocket/API)
-    const simulateOnlineUsers = () => {
-      const usersData = localStorage.getItem('crm_users');
-      if (usersData) {
-        const allUsers = JSON.parse(usersData);
-        const randomOnline = allUsers
-          .filter((u: User) => u.id !== currentUser.id && Math.random() > 0.5)
-          .map((u: User) => u.id);
-        setOnlineUsers(new Set(randomOnline));
-      }
-    };
-    simulateOnlineUsers();
+    // TODO: Implement real online status from WebSocket/API
+    // For now, online status is disabled to avoid misleading users
+    // When implementing: subscribe to presence events and update onlineUsers state
     
-    // Refresh conversations every 15 seconds (reduced from 5 for stability)
+    // Refresh conversations every 15 seconds
     const interval = setInterval(() => {
       if (!isLoadingConversations) {
         loadConversations();
       }
-      simulateOnlineUsers();
     }, 15000);
     
     return () => {
@@ -181,26 +166,37 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   useEffect(() => {
     if (activeConversationId) {
+      // Clear any existing interval
+      if (messagePollingIntervalRef.current) {
+        clearInterval(messagePollingIntervalRef.current);
+      }
+      
       const interval = setInterval(() => {
-        // Only poll if not already loading to prevent race conditions
-        if (!isLoadingMessages) {
+        // Debounce: Only poll if not loading AND at least 8 seconds since last load
+        const now = Date.now();
+        const timeSinceLastLoad = now - lastMessageLoadTimeRef.current;
+        
+        if (!isLoadingMessages && timeSinceLastLoad >= 8000) {
+          lastMessageLoadTimeRef.current = now;
           if (isGroupChat) {
-            loadGroupChat(activeConversationId, activeConversationName);
+            loadGroupChat(activeConversationId, activeConversationName, true);
           } else {
-            loadDirectMessage(activeConversationId, activeConversationName);
+            loadDirectMessage(activeConversationId, activeConversationName, true);
           }
         }
-        // Simulate checking if other user is typing (would come from real-time backend)
-        // In production, this would be replaced with actual WebSocket/polling logic
-        const randomTyping = Math.random() < 0.05; // 5% chance
-        setOtherUserTyping(randomTyping);
-        if (randomTyping) {
-          setTimeout(() => setOtherUserTyping(false), 3000);
-        }
-      }, 10000); // Increased from 3s to 10s for stability
-      return () => clearInterval(interval);
+        
+        // TODO: Implement real typing indicator from WebSocket/API
+        // For now, typing indicator is disabled to avoid misleading users
+        // When implementing: listen for typing events and update otherUserTyping state
+      }, 10000); // Check every 10s, but debounce actual loads
+      
+      messagePollingIntervalRef.current = interval;
+      return () => {
+        clearInterval(interval);
+        messagePollingIntervalRef.current = null;
+      };
     }
-  }, [activeConversationId, isGroupChat, isLoadingMessages]);
+  }, [activeConversationId, isGroupChat]);
 
   useEffect(() => {
     scrollToBottom();
@@ -222,8 +218,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     } else if (conversationFilter === 'groups') {
       return matchesSearch && conv.isGroup;
     } else if (conversationFilter === 'communities') {
-      // Communities feature not implemented yet, return empty
-      return false;
+      // Communities are special group types with announcements, events, etc.
+      // Filter for groups with >10 participants or marked as community
+      return matchesSearch && conv.isGroup && conv.participants && conv.participants.length > 10;
     }
     
     return matchesSearch;
@@ -299,6 +296,13 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     
     // Upload file to R2 if attached
     if (attachedFile) {
+      // Validate file size (max 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB in bytes
+      if (attachedFile.size > maxSize) {
+        alert(`File size exceeds 50MB limit. Your file is ${(attachedFile.size / 1024 / 1024).toFixed(1)}MB.`);
+        return;
+      }
+      
       setUploadingFile(true);
       try {
         const bucketName = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-attachments';
@@ -308,13 +312,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           fileUrl = uploadResult.url;
           messageText = `📎 [${attachedFile.name}](${fileUrl})${messageText ? '\n' + messageText : ''}`;
         } else {
-          alert('Failed to upload file: ' + (uploadResult.error || 'Unknown error'));
+          const errorMsg = uploadResult.error || 'Unknown error';
+          alert(`Failed to upload file: ${errorMsg}\n\nFile: ${attachedFile.name}\nSize: ${(attachedFile.size / 1024).toFixed(1)} KB`);
           setUploadingFile(false);
           return;
         }
       } catch (error) {
         console.error('File upload error:', error);
-        alert('Failed to upload file. Please try again.');
+        const errorMsg = error instanceof Error ? error.message : 'Network error or timeout';
+        alert(`Failed to upload file: ${errorMsg}\n\nPlease check your connection and try again.\n\nFile: ${attachedFile.name}`);
         setUploadingFile(false);
         return;
       }
@@ -354,10 +360,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       clearAttachment();
       setShowEmojiPicker(false);
       
-      // Reload conversations after a short delay to ensure message is processed
-      conversationLoadTimeoutRef.current = window.setTimeout(() => {
-        loadConversations();
-      }, 500);
+      // Optimistically update conversation list without delay
+      loadConversations();
     } catch (error) {
       console.error('Failed to send message:', error);
       alert('Failed to send message. Please try again.');
@@ -381,14 +385,29 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const formatTime = (timestamp: Date) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffHours < 24) {
+    // Today: show time
+    if (diffHours < 24 && date.getDate() === now.getDate()) {
       return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    } else if (diffHours < 48) {
+    } 
+    // Yesterday: show "Yesterday"
+    else if (diffDays === 1 || (diffHours < 48 && date.getDate() === now.getDate() - 1)) {
       return 'Yesterday';
-    } else {
+    } 
+    // This week: show day name
+    else if (diffDays < 7) {
+      return date.toLocaleDateString('en-US', { weekday: 'short' });
+    } 
+    // This year: show month and day
+    else if (date.getFullYear() === now.getFullYear()) {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } 
+    // Other years: show full date
+    else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
   };
 
@@ -407,6 +426,12 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Revoke old preview URL to prevent memory leak
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      
       setAttachedFile(file);
       if (file.type.startsWith('image/')) {
         const url = URL.createObjectURL(file);
@@ -472,8 +497,8 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setContextMenu({ x: e.clientX, y: e.clientY, message });
   };
 
-  const handleReaction = (messageId: string, emoji: string) => {
-    MessagingService.addReaction(messageId, currentUser.id, emoji);
+  const handleReaction = async (messageId: string, emoji: string) => {
+    await MessagingService.addReaction(messageId, currentUser.id, emoji);
     if (isGroupChat) {
       loadGroupChat(activeConversationId!, activeConversationName);
     } else {
@@ -488,9 +513,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setContextMenu(null);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingMessageId && editText.trim()) {
-      MessagingService.editMessage(editingMessageId, editText.trim());
+      await MessagingService.editMessage(editingMessageId, editText.trim());
       setEditingMessageId(null);
       setEditText('');
       if (isGroupChat) {
@@ -503,7 +528,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   const handleDeleteMessage = async (messageId: string) => {
     if (confirm('Are you sure you want to delete this message?')) {
-      MessagingService.deleteMessage(messageId);
+      await MessagingService.deleteMessage(messageId);
       if (isGroupChat) {
         await loadGroupChat(activeConversationId!, activeConversationName);
       } else {
@@ -601,8 +626,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
 
   // Helper function to render message with file attachments
   const renderMessageContent = (messageText: string) => {
-    // Check if message contains file attachment link
-    const fileMatch = messageText.match(/📎 \[(.*?)\]\((.*?)\)/);
+    // Check if message contains file attachment link - flexible pattern
+    // Matches: 📎 [filename](url) with optional whitespace
+    const fileMatch = messageText.match(/📎\s*\[([^\]]+)\]\(([^)]+)\)/);
     
     if (fileMatch) {
       const fileName = fileMatch[1];
@@ -1672,9 +1698,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                                   {Object.entries(message.reactions).map(([userId, emoji]) => (
                                     <span
                                       key={userId}
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (userId === currentUser.id) {
-                                          MessagingService.removeReaction(message.id, currentUser.id);
+                                          await MessagingService.removeReaction(message.id, currentUser.id);
                                           if (isGroupChat) {
                                             loadGroupChat(activeConversationId!, activeConversationName);
                                           } else {
@@ -1750,10 +1776,18 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                           gap: '4px'
                         }}>
                           {formatTime(typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)}
-                          {isFromMe && message.isRead && message.seenAt && (
-                            <span style={{ fontSize: '10px' }} title={`Seen at ${formatFullTimestamp(message.seenAt)}`}>
-                              • Seen
-                            </span>
+                          {isFromMe && (
+                            <>
+                              {message.deliveryStatus === 'sending' && <span title="Sending...">⏳</span>}
+                              {message.deliveryStatus === 'sent' && <span title="Sent">✓</span>}
+                              {message.deliveryStatus === 'delivered' && <span title="Delivered">✓✓</span>}
+                              {message.deliveryStatus === 'failed' && <span title="Failed" style={{ color: '#ef4444' }}>⚠️</span>}
+                              {message.isRead && message.seenAt && (
+                                <span style={{ color: '#3b82f6' }} title={`Seen at ${formatFullTimestamp(message.seenAt)}`}>
+                                  ✓✓
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -2241,7 +2275,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 </button>
 
                 <button
-                  onClick={() => {/* TODO: Implement search in conversation */}}
+                  onClick={() => setShowSearchInChat(!showSearchInChat)}
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -2256,13 +2290,13 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                   }}
                   onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
                   onMouseOut={(e) => e.currentTarget.style.background = 'none'}
-                  title="Search"
+                  title="Search in conversation"
                 >
                   <div style={{
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    background: '#f1f5f9',
+                    background: showSearchInChat ? '#dbeafe' : '#f1f5f9',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2283,6 +2317,31 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
               overflowY: 'auto',
               padding: '16px 20px'
             }}>
+              {/* Search in Conversation */}
+              {showSearchInChat && (
+                <div style={{ marginBottom: '16px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search messages..."
+                    value={searchInConversation}
+                    onChange={(e) => setSearchInConversation(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                  />
+                  {searchInConversation && (
+                    <div style={{ marginTop: '8px', fontSize: '12px', color: '#64748b' }}>
+                      {messages.filter(m => m.content.toLowerCase().includes(searchInConversation.toLowerCase())).length} message(s) found
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Chat Info Section */}
               <div style={{
                 marginBottom: '16px'
@@ -2718,11 +2777,26 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 Cancel
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (newChatName.trim()) {
-                    setActiveConversationName(newChatName.trim());
-                    // TODO: Save to backend
-                    alert('Chat name updated! (Backend integration pending)');
+                    try {
+                      // TODO: Add API endpoint to update group name
+                      // For now, update locally and show warning
+                      setActiveConversationName(newChatName.trim());
+                      
+                      // Update in conversations list
+                      const updatedConvs = conversations.map(c => {
+                        if (isGroupChat && c.groupId === activeConversationId) {
+                          return { ...c, groupName: newChatName.trim() };
+                        }
+                        return c;
+                      });
+                      setConversations(updatedConvs);
+                      
+                      alert('Chat name updated locally. Note: This change will not persist after refresh until backend API is implemented.');
+                    } catch (error) {
+                      alert('Failed to update chat name.');
+                    }
                   }
                   setEditingChatName(false);
                   setNewChatName('');
@@ -2871,7 +2945,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           )}
           <button
             onClick={() => {
-              alert('Forward feature coming soon!');
+              setForwardingMessage(contextMenu.message);
               setContextMenu(null);
             }}
             style={{
@@ -2893,6 +2967,138 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           >
             <span>↪️</span> Forward
           </button>
+        </div>
+      )}
+      
+      {/* Forward Message Modal */}
+      {forwardingMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10002
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '70vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>
+              Forward Message
+            </h3>
+            <div style={{
+              padding: '12px',
+              background: '#f1f5f9',
+              borderRadius: '8px',
+              marginBottom: '16px',
+              fontSize: '14px',
+              color: '#1e293b'
+            }}>
+              {forwardingMessage.content.substring(0, 100)}{forwardingMessage.content.length > 100 ? '...' : ''}
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px' }}>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '12px' }}>Select conversation:</p>
+              {conversations.map(conv => (
+                <button
+                  key={conv.isGroup ? conv.groupId : conv.userId}
+                  onClick={async () => {
+                    const targetId = conv.isGroup ? conv.groupId! : conv.userId!;
+                    const targetName = conv.isGroup ? conv.groupName! : conv.userName!;
+                    try {
+                      if (conv.isGroup) {
+                        await MessagingService.sendGroupMessage(
+                          currentUser.id,
+                          currentUser.fullName,
+                          targetId,
+                          `🔁 Forwarded: ${forwardingMessage.content}`
+                        );
+                      } else {
+                        await MessagingService.sendMessage(
+                          currentUser.id,
+                          currentUser.fullName,
+                          targetId,
+                          targetName,
+                          `🔁 Forwarded: ${forwardingMessage.content}`
+                        );
+                      }
+                      alert('Message forwarded successfully!');
+                      setForwardingMessage(null);
+                      loadConversations();
+                    } catch (error) {
+                      alert('Failed to forward message.');
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    marginBottom: '8px',
+                    background: 'white',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    background: conv.isGroup ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: '600'
+                  }}>
+                    {conv.isGroup ? '👥' : getInitials(conv.userName || conv.groupName || '')}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>
+                      {conv.isGroup ? conv.groupName : conv.userName}
+                    </div>
+                    {conv.lastMessage && (
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        {conv.lastMessage.substring(0, 30)}...
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setForwardingMessage(null)}
+              style={{
+                padding: '10px 20px',
+                background: '#f1f5f9',
+                color: '#64748b',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

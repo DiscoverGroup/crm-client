@@ -125,16 +125,13 @@ export const handler: Handler = async (event) => {
         conversationKey = `group_${msg.groupId}`;
         isGroup = true;
       } else {
+        // Ensure consistent conversation key regardless of sender/receiver order
         otherUserId = msg.fromUserId === userId ? msg.toUserId : msg.fromUserId;
-        // Normalize conversation key to ensure consistent grouping
-        conversationKey = `user_${otherUserId}`;
+        if (!otherUserId) continue; // Skip if no valid other user
         
-        // Debug: Log to check for duplicate conversations
-        if (conversationsMap.has(conversationKey)) {
-          console.log(`Updating existing conversation: ${conversationKey}`);
-        } else {
-          console.log(`Creating new conversation: ${conversationKey}, fromUser: ${msg.fromUserId}, toUser: ${msg.toUserId}, currentUser: ${userId}`);
-        }
+        // Normalize conversation key with lexicographic ordering to prevent duplicates
+        const ids = [userId, otherUserId].sort();
+        conversationKey = `user_${ids[0]}_${ids[1]}`;
       }
 
       if (!conversationsMap.has(conversationKey)) {
@@ -165,28 +162,18 @@ export const handler: Handler = async (event) => {
           isArchived: meta.isArchived,
           participants: isGroup ? groupMap.get(msg.groupId)?.participants : undefined
         });
-      } else {
-        // Update unread count even if conversation exists
-        const conv = conversationsMap.get(conversationKey);
-        if (conv) {
-          // Update lastMessage if this message is newer (shouldn't happen due to sort, but safety check)
-          const existingTime = new Date(conv.lastMessageTime).getTime();
-          const currentTime = new Date(msg.timestamp).getTime();
-          if (currentTime > existingTime) {
-            conv.lastMessage = msg.content;
-            conv.lastMessageTime = msg.timestamp;
-          }
-        }
       }
+      // Note: We don't update lastMessage for existing conversations since messages are sorted DESC
+      // The first message we encounter IS the latest message
 
-      // Count unread messages
-      if (msg.toUserId === userId && !msg.isRead) {
+      // Count unread messages for direct conversations
+      if (!isGroup && msg.toUserId === userId && !msg.isRead) {
         const conv = conversationsMap.get(conversationKey);
         if (conv) conv.unreadCount++;
       }
       
-      // Count unread group messages
-      if (msg.groupId && msg.fromUserId !== userId && !msg.isRead) {
+      // Count unread group messages (messages not sent by current user)
+      if (isGroup && msg.fromUserId !== userId && !msg.isRead) {
         const conv = conversationsMap.get(conversationKey);
         if (conv) conv.unreadCount++;
       }
@@ -207,12 +194,20 @@ export const handler: Handler = async (event) => {
         })
         .toArray();
 
-      const userMap = new Map(users.map(u => [u.id || u.email, u.fullName || u.name || u.username]));
+      const userMap = new Map(users.map(u => [u.id || u.email, u.fullName || u.name || u.username || 'Unknown User']));
 
       for (const [key, conv] of conversationsMap.entries()) {
         if (!conv.isGroup && conv.userId) {
           const userName = userMap.get(conv.userId);
-          conv.userName = userName || conv.userName || 'Unknown User';
+          // Provide fallback chain: userMap -> existing userName -> userId -> Unknown User
+          conv.userName = userName || conv.userName || conv.userId || 'Unknown User';
+        }
+      }
+    } else {
+      // Ensure all direct conversations have a userName, even without user lookup
+      for (const [key, conv] of conversationsMap.entries()) {
+        if (!conv.isGroup && !conv.userName) {
+          conv.userName = conv.userId || 'Unknown User';
         }
       }
     }
