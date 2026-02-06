@@ -3488,7 +3488,7 @@ const MainPage: React.FC<MainPageProps> = ({
             />
           </div>
         </div>
-      ) : viewAdminPanel ? (
+      ) : viewAdminPanel && isAdmin() ? (
         <div style={{ display: 'flex' }}>
           <Sidebar 
             onNavigateToClientRecords={() => {
@@ -3507,7 +3507,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewAdminPanel(false);
               setViewActivityLog(true);
             }}
-            onNavigateToAdminPanel={() => setViewAdminPanel(true)}
+            onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />

@@ -8,6 +8,7 @@ import OTPVerification from "./components/OTPVerification";
 import UserDirectory from "./components/UserDirectory";
 import UserProfileView from "./components/UserProfileView";
 import MessagingCenter from "./components/MessagingCenter";
+import ToastNotification from "./components/ToastNotification";
 import { MongoDBService } from "./services/mongoDBService";
 import { FileService } from "./services/fileService";
 import { MessagingService } from "./services/messagingService";
@@ -36,6 +37,27 @@ const App: React.FC = () => {
     type: 'success' | 'error' | 'warning' | 'info';
     onConfirm?: () => void;
   }>({ isOpen: false, title: '', message: '', type: 'info' });
+  
+  // Toast notification state
+  const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'warning' | 'info'; message: string }>>([]);
+
+  // Handle toast notifications
+  useEffect(() => {
+    const handleShowToast = (event: Event) => {
+      const customEvent = event as CustomEvent<{ type: 'success' | 'error' | 'warning' | 'info'; message: string }>;
+      const { type, message } = customEvent.detail;
+      const id = Date.now().toString();
+      setToasts(prev => [...prev, { id, type, message }]);
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 5000);
+    };
+
+    window.addEventListener('showToast', handleShowToast as EventListener);
+    return () => window.removeEventListener('showToast', handleShowToast as EventListener);
+  }, []);
 
   // Handle navigation from notifications
   const handleNavigate = (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => {
@@ -811,6 +833,46 @@ const App: React.FC = () => {
           }}
         />
       )}
+      
+      {/* Toast Notifications */}
+      <div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {toasts.map(toast => (
+          <div
+            key={toast.id}
+            style={{
+              backgroundColor: toast.type === 'error' ? '#dc3545' : toast.type === 'warning' ? '#ffc107' : toast.type === 'success' ? '#28a745' : '#17a2b8',
+              color: 'white',
+              padding: '12px 20px',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              minWidth: '300px',
+              maxWidth: '500px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              animation: 'slideIn 0.3s ease-out'
+            }}
+          >
+            <span style={{ fontSize: '18px' }}>
+              {toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}
+            </span>
+            <span style={{ flex: 1 }}>{toast.message}</span>
+            <button
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '20px',
+                padding: '0 4px'
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

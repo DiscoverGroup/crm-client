@@ -35,17 +35,37 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  let client: MongoClient | null = null;
+
   try {
     const { userId, otherUserId, groupId } = JSON.parse(event.body || '{}');
 
-    if (!userId) {
+    // Input validation
+    if (!userId || typeof userId !== 'string' || userId.length > 100) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing required field: userId' })
+        headers,
+        body: JSON.stringify({ error: 'Invalid userId' })
       };
     }
 
-    const client = await MongoClient.connect(MONGODB_URI, {
+    if (otherUserId && (typeof otherUserId !== 'string' || otherUserId.length > 100)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid otherUserId' })
+      };
+    }
+
+    if (groupId && (typeof groupId !== 'string' || groupId.length > 100)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid groupId' })
+      };
+    }
+
+    client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000,
       tls: true,
@@ -91,9 +111,6 @@ export const handler: Handler = async (event) => {
     // Reverse to show oldest first in UI
     messages.reverse();
 
-    // Close connection in background
-    client.close().catch(err => console.error('Error closing connection:', err));
-
     return {
       statusCode: 200,
       headers,
@@ -109,5 +126,13 @@ export const handler: Handler = async (event) => {
         error: error.message || 'Failed to get messages' 
       })
     };
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+      } catch (e) {
+        console.error('Error closing connection:', e);
+      }
+    }
   }
 };

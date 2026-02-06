@@ -1,5 +1,6 @@
 import React from "react";
 import NotificationDropdown from "./NotificationDropdown";
+import SyncStatusIndicator from "./SyncStatusIndicator";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -99,6 +100,9 @@ const Navbar: React.FC<NavbarProps> = ({
         gap: "clamp(8px, 2vw, 16px)",
         flexWrap: "wrap"
       }}>
+        {/* Sync Status Indicator */}
+        <SyncStatusIndicator />
+        
         {/* User Directory Button */}
         {onOpenUserDirectory && (
           <button

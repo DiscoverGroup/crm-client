@@ -70,9 +70,10 @@ export class ClientService {
     }
     
     this.syncInProgress = true;
+    window.dispatchEvent(new Event('syncStart'));
     
     try {
-      console.log('🔄 Syncing clients from MongoDB...');
+      if (import.meta.env.DEV) console.log('🔄 Syncing clients from MongoDB...');
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,10 +94,12 @@ export class ClientService {
         // Update localStorage with MongoDB data
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
+        if (import.meta.env.DEV) console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
+        window.dispatchEvent(new Event('syncSuccess'));
       }
     } catch (error) {
       console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+      window.dispatchEvent(new Event('syncError'));
     } finally {
       this.syncInProgress = false;
     }
@@ -133,16 +136,20 @@ export class ClientService {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
         
         // Update in MongoDB
-        MongoDBService.updateClient(existingClient.id, {
-          ...clientData,
-          updatedAt: new Date().toISOString()
-        }).catch(err => {
+        try {
+          await MongoDBService.updateClient(existingClient.id, {
+            ...clientData,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (err) {
           console.error('MongoDB sync failed:', err);
-          // Show warning to user but don't block the operation
-          setTimeout(() => {
-            alert('Warning: Changes saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
-          }, 100);
-        });
+          window.dispatchEvent(new CustomEvent('showToast', {
+            detail: {
+              type: 'warning',
+              message: 'Changes saved locally but failed to sync with database. Will retry automatically.'
+            }
+          }));
+        }
         
         return { clientId: existingClient.id, isNewClient: false };
       } else {
@@ -161,13 +168,17 @@ export class ClientService {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
         
         // Save to MongoDB
-        MongoDBService.saveClient(newClient).catch(err => {
+        try {
+          await MongoDBService.saveClient(newClient);
+        } catch (err) {
           console.error('MongoDB sync failed:', err);
-          // Show warning to user but don't block the operation
-          setTimeout(() => {
-            alert('Warning: Client saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
-          }, 100);
-        });
+          window.dispatchEvent(new CustomEvent('showToast', {
+            detail: {
+              type: 'warning',
+              message: 'Client saved locally but failed to sync with database. Will retry automatically.'
+            }
+          }));
+        }
         
         return { clientId, isNewClient: true };
       }
@@ -197,15 +208,20 @@ export class ClientService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
       
       // Update in MongoDB
-      MongoDBService.updateClient(clientId, {
-        ...clientData,
-        updatedAt: new Date().toISOString()
-      }).catch(err => {
+      try {
+        await MongoDBService.updateClient(clientId, {
+          ...clientData,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
         console.error('MongoDB sync failed:', err);
-        setTimeout(() => {
-          alert('Warning: Changes saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
-        }, 100);
-      });
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: {
+            type: 'warning',
+            message: 'Changes saved locally but failed to sync with database. Will retry automatically.'
+          }
+        }));
+      }
       
       // Return old values for change tracking
       const oldValues: Record<string, any> = {};
@@ -339,7 +355,7 @@ export class ClientService {
     }
   }
 
-  static recoverClient(clientId: string): boolean {
+  static async recoverClient(clientId: string): Promise<boolean> {
     try {
       const clients = this.getAllClientsIncludingDeleted();
       const clientIndex = clients.findIndex(client => client.id === clientId);
@@ -357,17 +373,22 @@ export class ClientService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
       
       // Sync recovery to MongoDB
-      MongoDBService.updateClient(clientId, {
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        updatedAt: clients[clientIndex].updatedAt
-      }).catch(err => {
+      try {
+        await MongoDBService.updateClient(clientId, {
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+          updatedAt: clients[clientIndex].updatedAt
+        });
+      } catch (err) {
         console.error('MongoDB sync failed:', err);
-        setTimeout(() => {
-          alert('Warning: Client recovered locally but failed to sync with database. Changes will sync automatically when connection is restored.');
-        }, 100);
-      });
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: {
+            type: 'warning',
+            message: 'Client recovered locally but failed to sync with database. Will retry automatically.'
+          }
+        }));
+      }
       
       return true;
     } catch (error) {

@@ -35,15 +35,41 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  let client: MongoClient | null = null;
+
   try {
     const message = JSON.parse(event.body || '{}');
 
-    // Validate required fields
-    if (!message.fromUserId || !message.content) {
+    // Input validation to prevent NoSQL injection
+    if (!message.fromUserId || typeof message.fromUserId !== 'string' || message.fromUserId.length > 100) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Missing required fields: fromUserId, content' })
+        body: JSON.stringify({ error: 'Invalid fromUserId' })
+      };
+    }
+
+    if (!message.content || typeof message.content !== 'string' || message.content.length > 10000) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid content - must be 1-10000 characters' })
+      };
+    }
+
+    if (message.toUserId && (typeof message.toUserId !== 'string' || message.toUserId.length > 100)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid toUserId' })
+      };
+    }
+
+    if (message.groupId && (typeof message.groupId !== 'string' || message.groupId.length > 100)) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid groupId' })
       };
     }
 
@@ -64,7 +90,7 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    const client = await MongoClient.connect(MONGODB_URI, {
+    client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000,
       tls: true,
@@ -93,22 +119,6 @@ export const handler: Handler = async (event) => {
 
     // Insert message
     await messagesCol.insertOne(messageDoc);
-    
-    // Close connection with timeout
-    try {
-      await Promise.race([
-        client.close(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Close timeout')), 5000))
-      ]);
-    } catch (closeError) {
-      console.error('Error closing MongoDB connection:', closeError);
-      // Force close if graceful close failed
-      try {
-        await client.close(true);
-      } catch (e) {
-        console.error('Force close failed:', e);
-      }
-    }
 
     return {
       statusCode: 200,
@@ -125,5 +135,13 @@ export const handler: Handler = async (event) => {
         error: error.message || 'Failed to send message' 
       })
     };
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+      } catch (e) {
+        console.error('Error closing connection:', e);
+      }
+    }
   }
 };

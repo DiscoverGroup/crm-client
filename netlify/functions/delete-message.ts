@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient, ObjectId } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'crm_db';
+const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
   // CORS headers
