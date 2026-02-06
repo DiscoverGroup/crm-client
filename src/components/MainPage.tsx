@@ -431,6 +431,22 @@ const ClientRecords: React.FC<{
     const file = event?.target?.files?.[0];
     
     if (file) {
+      // Validation: File size (max 50MB)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        alert(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        event.target.value = ''; // Clear the input
+        return;
+      }
+
+      // Validation: File type (images and PDFs only)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type. Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed.\n\nYour file type: ${file.type}`);
+        event.target.value = ''; // Clear the input
+        return;
+      }
+
       try {
         // Save file to FileService with client ID (real or temporary)
         const currentClientId = clientId || tempClientId;
@@ -542,6 +558,20 @@ const ClientRecords: React.FC<{
     section: string
   ) => {
     try {
+      // Validation: File size (max 50MB)
+      const maxSize = 50 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        return;
+      }
+
+      // Validation: File type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`Invalid file type. Only images and PDF files are allowed.\n\nYour file type: ${file.type}`);
+        return;
+      }
+
       const currentClientId = clientId || tempClientId;
       await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName);
       
@@ -649,14 +679,85 @@ const ClientRecords: React.FC<{
   const handleSaveClientInfo = async () => {
     setIsSavingClient(true);
     try {
-      const generatedClientNo = clientNo || `CLT-${Date.now()}`;
+      // Validation: Required fields
+      if (!contactName || contactName.trim().length < 2) {
+        alert('Contact Name is required (minimum 2 characters)');
+        setIsSavingClient(false);
+        return;
+      }
+
+      // Validation: Email format
+      if (email && email.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          alert('Please enter a valid email address');
+          setIsSavingClient(false);
+          return;
+        }
+      }
+
+      // Validation: Phone number format (digits, spaces, dashes, parentheses only)
+      if (contactNo && contactNo.trim()) {
+        const phoneRegex = /^[0-9\s\-\(\)\+]+$/;
+        if (!phoneRegex.test(contactNo.trim()) || contactNo.replace(/[^0-9]/g, '').length < 7) {
+          alert('Please enter a valid contact number (minimum 7 digits)');
+          setIsSavingClient(false);
+          return;
+        }
+      }
+
+      // Validation: Date of Birth (cannot be future date)
+      if (dateOfBirth) {
+        const dob = new Date(dateOfBirth);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (dob > today) {
+          alert('Date of Birth cannot be in the future');
+          setIsSavingClient(false);
+          return;
+        }
+      }
+
+      // Validation: Travel Date (cannot be past date)
+      if (travelDate) {
+        const travel = new Date(travelDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (travel < today) {
+          alert('Travel Date cannot be in the past');
+          setIsSavingClient(false);
+          return;
+        }
+      }
+
+      // Validation: Number of Pax (must be positive)
+      if (numberOfPax < 1) {
+        alert('Number of Passengers must be at least 1');
+        setIsSavingClient(false);
+        return;
+      }
+
+      // Validation: Client number uniqueness (if manually entered)
+      if (clientNo && clientNo.trim()) {
+        const existingClients = ClientService.getAllClients();
+        const duplicate = existingClients.find(c => 
+          c.clientNo === clientNo.trim() && c.id !== clientId
+        );
+        if (duplicate) {
+          alert(`Client number "${clientNo.trim()}" is already in use. Please use a different number or leave blank for auto-generation.`);
+          setIsSavingClient(false);
+          return;
+        }
+      }
+
+      const generatedClientNo = clientNo || `CLT-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
       const clientData = {
         clientNo: generatedClientNo,
         status,
         agent,
-        contactNo,
-        contactName,
-        email,
+        contactNo: contactNo.trim(),
+        contactName: contactName.trim(),
+        email: email.trim(),
         dateOfBirth,
         packageName,
         travelDate,
@@ -696,10 +797,10 @@ const ClientRecords: React.FC<{
       saveSection('client-information', 'Client Information');
       
       // If this is a new client (no existing clientId), update file associations
-      if (!clientId && tempClientId !== generatedClientNo) {
-        FileService.updateClientIdForTempFiles(tempClientId, generatedClientNo);
+      if (!clientId && savedClientId && tempClientId !== savedClientId) {
+        FileService.updateClientIdForTempFiles(tempClientId, savedClientId);
         // Refresh attachments with new client ID
-        const clientAttachments = FileService.getFilesByClient(generatedClientNo);
+        const clientAttachments = FileService.getFilesByClient(savedClientId);
         setAttachments(clientAttachments);
       }
       
@@ -1064,20 +1165,51 @@ const ClientRecords: React.FC<{
   }
 
   function handleAddCompanion() {
-    if (newCompanion.name.trim()) {
-      setCompanions([...companions, newCompanion]);
-      logAction(
-        'Companion Added',
-        `Added companion: ${newCompanion.name}`,
-        'done'
-      );
-      setNewCompanion({ name: "", dob: "", address: "", occupation: "" });
+    const name = newCompanion.name.trim();
+    
+    // Validation: Minimum 2 characters
+    if (name.length < 2) {
+      alert('Companion name must be at least 2 characters');
+      return;
     }
+    
+    // Validation: Cannot be numbers only
+    if (/^[0-9]+$/.test(name)) {
+      alert('Companion name cannot be numbers only');
+      return;
+    }
+    
+    // Validation: Check for duplicate names
+    const isDuplicate = companions.some(c => c.name.trim().toLowerCase() === name.toLowerCase());
+    if (isDuplicate) {
+      alert(`Companion "${name}" already exists in the list.`);
+      return;
+    }
+    
+    setCompanions([...companions, { ...newCompanion, name }]);
+    logAction(
+      'Companion Added',
+      `Added companion: ${name}`,
+      'done'
+    );
+    setNewCompanion({ name: "", dob: "", address: "", occupation: "" });
   }
 
   function handleRemoveCompanion(idx: number) {
     const removedCompanion = companions[idx];
     setCompanions(companions.filter((_, i) => i !== idx));
+    
+    // Log activity
+    ActivityLogService.addLog({
+      clientId: clientId || tempClientId,
+      clientName: contactName || 'Unknown',
+      action: 'edited',
+      performedBy: currentUserName,
+      performedByUser: currentUserName,
+      profileImageR2Path: getCurrentUserProfileImagePath(),
+      details: `Removed companion: ${removedCompanion.name}`
+    });
+    
     logAction(
       'Companion Removed',
       `Removed companion: ${removedCompanion.name}`,
@@ -1231,7 +1363,8 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="text" 
-                  placeholder="Agent name"
+                  placeholder="Enter agent name"
+                  maxLength={100}
                   value={agent}
                   onChange={e => setAgentTracked(e.target.value)}
                 />
@@ -1241,7 +1374,8 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="text" 
-                  placeholder="Contact number"
+                  placeholder="Enter contact number (e.g., +63 912 345 6789)"
+                  maxLength={20}
                   value={contactNo}
                   onChange={e => setContactNoTracked(e.target.value)}
                 />
@@ -1253,17 +1387,19 @@ const ClientRecords: React.FC<{
                 <input 
                   style={{ ...modernInput, fontWeight: "bold" }} 
                   type="text" 
-                  placeholder="Full name"
+                  placeholder="Enter client full name"
+                  maxLength={100}
                   value={contactName}
                   onChange={e => setContactNameTracked(e.target.value)}
                 />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={label}>Email</label>
-                <input 
-                  style={modernInput} 
-                  type="email" 
-                  placeholder="Email address"
+                <input
+                  style={modernInput}
+                  type="email"
+                  placeholder="Enter email address (e.g., client@example.com)"
+                  maxLength={100}
                   value={email}
                   onChange={e => setEmailTracked(e.target.value)}
                 />
@@ -1273,6 +1409,7 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="date"
+                  max={new Date().toISOString().split('T')[0]}
                   value={dateOfBirth}
                   onChange={e => setDateOfBirthTracked(e.target.value)}
                 />
@@ -1315,7 +1452,8 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="text" 
-                  placeholder="Package name"
+                  placeholder="Enter tour/package name"
+                  maxLength={150}
                   value={packageName}
                   onChange={e => setPackageNameTracked(e.target.value)}
                 />
@@ -1325,6 +1463,7 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="date"
+                  min={new Date().toISOString().split('T')[0]}
                   value={travelDate}
                   onChange={e => setTravelDateTracked(e.target.value)}
                 />
@@ -1343,10 +1482,11 @@ const ClientRecords: React.FC<{
             <div style={{ display: "flex", gap: 32, marginTop: 18 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Booking Confirmation</label>
-                <input 
-                  style={modernInput} 
-                  type="text" 
-                  placeholder="Booking reference"
+                <input
+                  style={modernInput}
+                  type="text"
+                  placeholder="Enter booking confirmation number"
+                  maxLength={50}
                   value={bookingConfirmation}
                   onChange={e => setBookingConfirmationTracked(e.target.value)}
                 />
@@ -1356,7 +1496,8 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="url" 
-                  placeholder="URL"
+                  placeholder="Enter package URL (e.g., https://...)"
+                  maxLength={500}
                   value={packageLink}
                   onChange={e => setPackageLink(e.target.value)}
                 />

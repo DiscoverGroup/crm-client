@@ -1,4 +1,5 @@
 import { MongoDBService } from './mongoDBService';
+import { FileService } from './fileService';
 
 export interface ClientData {
   id: string;
@@ -58,9 +59,18 @@ export class ClientService {
   private static STORAGE_KEY = 'crm_clients_data';
   private static LAST_SYNC_KEY = 'crm_clients_last_sync';
   private static SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private static syncInProgress = false;
 
   // Load clients from MongoDB and sync to localStorage
   static async syncFromMongoDB(): Promise<void> {
+    // Prevent concurrent syncs
+    if (this.syncInProgress) {
+      console.log('Sync already in progress, skipping...');
+      return;
+    }
+    
+    this.syncInProgress = true;
+    
     try {
       console.log('🔄 Syncing clients from MongoDB...');
       const response = await fetch('/.netlify/functions/database', {
@@ -87,11 +97,16 @@ export class ClientService {
       }
     } catch (error) {
       console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+    } finally {
+      this.syncInProgress = false;
     }
   }
 
   // Check if sync is needed
   static shouldSync(): boolean {
+    // Prevent concurrent syncs
+    if (this.syncInProgress) return false;
+    
     const lastSync = localStorage.getItem(this.LAST_SYNC_KEY);
     if (!lastSync) return true;
     
@@ -121,7 +136,13 @@ export class ClientService {
         MongoDBService.updateClient(existingClient.id, {
           ...clientData,
           updatedAt: new Date().toISOString()
-        }).catch(err => console.error('MongoDB sync failed:', err));
+        }).catch(err => {
+          console.error('MongoDB sync failed:', err);
+          // Show warning to user but don't block the operation
+          setTimeout(() => {
+            alert('Warning: Changes saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
+          }, 100);
+        });
         
         return { clientId: existingClient.id, isNewClient: false };
       } else {
@@ -140,7 +161,13 @@ export class ClientService {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
         
         // Save to MongoDB
-        MongoDBService.saveClient(newClient).catch(err => console.error('MongoDB sync failed:', err));
+        MongoDBService.saveClient(newClient).catch(err => {
+          console.error('MongoDB sync failed:', err);
+          // Show warning to user but don't block the operation
+          setTimeout(() => {
+            alert('Warning: Client saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
+          }, 100);
+        });
         
         return { clientId, isNewClient: true };
       }
@@ -173,7 +200,12 @@ export class ClientService {
       MongoDBService.updateClient(clientId, {
         ...clientData,
         updatedAt: new Date().toISOString()
-      }).catch(err => console.error('MongoDB sync failed:', err));
+      }).catch(err => {
+        console.error('MongoDB sync failed:', err);
+        setTimeout(() => {
+          alert('Warning: Changes saved locally but failed to sync with database. Changes will sync automatically when connection is restored.');
+        }, 100);
+      });
       
       // Return old values for change tracking
       const oldValues: Record<string, any> = {};
@@ -323,6 +355,20 @@ export class ClientService {
       clients[clientIndex].updatedAt = new Date().toISOString();
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+      
+      // Sync recovery to MongoDB
+      MongoDBService.updateClient(clientId, {
+        isDeleted: false,
+        deletedAt: null,
+        deletedBy: null,
+        updatedAt: clients[clientIndex].updatedAt
+      }).catch(err => {
+        console.error('MongoDB sync failed:', err);
+        setTimeout(() => {
+          alert('Warning: Client recovered locally but failed to sync with database. Changes will sync automatically when connection is restored.');
+        }, 100);
+      });
+      
       return true;
     } catch (error) {
       console.error('Error recovering client:', error);
@@ -340,6 +386,18 @@ export class ClientService {
       }
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredClients));
+      
+      // Clean up orphaned files
+      try {
+        const clientFiles = FileService.getFilesByClient?.(clientId) || [];
+        clientFiles.forEach(file => {
+          FileService.deleteFile?.((file as any)._id || (file as any).fileId, 'System');
+        });
+        console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
+      } catch (err) {
+        console.warn('Failed to clean up client files:', err);
+      }
+      
       return true;
     } catch (error) {
       console.error('Error permanently deleting client:', error);
