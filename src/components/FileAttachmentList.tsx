@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { FileService, type StoredFile, type FileAttachment } from '../services/fileService';
-import FileViewer from './FileViewer';
 
 interface FileAttachmentListProps {
   attachments: FileAttachment[];
@@ -17,11 +16,39 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
   allowDelete = false,
   onFileDeleted
 }) => {
-  const [selectedFile, setSelectedFile] = useState<StoredFile | null>(null);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
-  const handleFileClick = (file: StoredFile) => {
-    setSelectedFile(file);
+  const handleFileClick = async (file: StoredFile) => {
+    // Direct download without preview
+    if (file.r2Path) {
+      // For R2 files, use the download function
+      try {
+        const response = await fetch('/.netlify/functions/download-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: file.r2Path })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.url) {
+            window.open(result.url, '_blank');
+          }
+        }
+      } catch (error) {
+        console.error('Download error:', error);
+        alert('Failed to download file');
+      }
+    } else {
+      // For base64 files
+      const downloadUrl = FileService.createDownloadUrl(file);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleFileDelete = async (fileId: string) => {
@@ -254,14 +281,6 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
           </div>
         ))}
       </div>
-
-      {/* File Viewer Modal */}
-      {selectedFile && (
-        <FileViewer
-          file={selectedFile}
-          onClose={() => setSelectedFile(null)}
-        />
-      )}
     </div>
   );
 };
