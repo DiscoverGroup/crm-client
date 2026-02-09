@@ -41,7 +41,7 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'warning' | 'info'; message: string }>>([]);
 
   // Check if current user is admin
-  const isAdmin = () => {
+  const isAdmin = React.useCallback(() => {
     if (!currentUser) return false;
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) return false;
@@ -52,7 +52,7 @@ const App: React.FC = () => {
     } catch {
       return false;
     }
-  };
+  }, [currentUser]);
 
   // Handle toast notifications
   useEffect(() => {
@@ -89,7 +89,7 @@ const App: React.FC = () => {
       const interval = setInterval(updateUnreadCount, 5000);
       return () => clearInterval(interval);
     }
-  }, [isLoggedIn, currentUser]);
+  }, [isLoggedIn, currentUser, isAdmin]);
 
   // Handle user actions
   const handleViewProfile = (user: any) => {
