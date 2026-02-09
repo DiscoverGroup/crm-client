@@ -42,6 +42,19 @@ const UserDirectory: React.FC<UserDirectoryProps> = ({
     }
   };
 
+  // Check if current user is admin
+  const isCurrentUserAdmin = () => {
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return false;
+    try {
+      const users = JSON.parse(usersData);
+      const user = users.find((u: User) => u.id === currentUser.id);
+      return user && user.role === 'admin';
+    } catch {
+      return false;
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -302,21 +315,23 @@ const UserDirectory: React.FC<UserDirectoryProps> = ({
                     >
                       View Profile
                     </button>
-                    <button
-                      onClick={() => onMessageUser(user)}
-                      style={{
-                        padding: '8px 12px',
-                        background: '#f1f5f9',
-                        color: '#3b82f6',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '18px',
-                        cursor: 'pointer'
-                      }}
-                      title="Message"
-                    >
-                      💬
-                    </button>
+                    {isCurrentUserAdmin() && (
+                      <button
+                        onClick={() => onMessageUser(user)}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#f1f5f9',
+                          color: '#3b82f6',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '18px',
+                          cursor: 'pointer'
+                        }}
+                        title="Message"
+                      >
+                        💬
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -30,6 +30,19 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Check if current user is admin
+  const isCurrentUserAdmin = () => {
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return false;
+    try {
+      const users = JSON.parse(usersData);
+      const user = users.find((u: any) => u.id === currentUser.id);
+      return user && user.role === 'admin';
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -275,7 +288,7 @@ const UserProfileView: React.FC<UserProfileViewProps> = ({
           </div>
 
           {/* Actions */}
-          {user.id !== currentUser.id && (
+          {user.id !== currentUser.id && isCurrentUserAdmin() && (
             <button
               onClick={() => onMessage(user)}
               style={{

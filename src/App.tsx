@@ -40,6 +40,20 @@ const App: React.FC = () => {
   // Toast notification state
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'warning' | 'info'; message: string }>>([]);
 
+  // Check if current user is admin
+  const isAdmin = () => {
+    if (!currentUser) return false;
+    const usersData = localStorage.getItem('crm_users');
+    if (!usersData) return false;
+    try {
+      const users = JSON.parse(usersData);
+      const user = users.find((u: any) => u.id === currentUser.id);
+      return user && user.role === 'admin';
+    } catch {
+      return false;
+    }
+  };
+
   // Handle toast notifications
   useEffect(() => {
     const handleShowToast = (event: Event) => {
@@ -63,9 +77,9 @@ const App: React.FC = () => {
     setNavigationRequest({ page, params });
   };
 
-  // Load unread message count
+  // Load unread message count (admin only)
   useEffect(() => {
-    if (isLoggedIn && currentUser) {
+    if (isLoggedIn && currentUser && isAdmin()) {
       const updateUnreadCount = async () => {
         const count = await MessagingService.getUnreadCount(currentUser.id);
         setUnreadMessageCount(count);
@@ -764,10 +778,10 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onNavigate={handleNavigate}
         onOpenUserDirectory={() => setShowUserDirectory(true)}
-        onOpenMessaging={() => {
+        onOpenMessaging={isAdmin() ? () => {
           setMessagingTargetUser(null);
           setShowMessaging(true);
-        }}
+        } : undefined}
         unreadMessageCount={unreadMessageCount}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
@@ -820,8 +834,8 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* Messaging Center Modal */}
-      {showMessaging && currentUser && (
+      {/* Messaging Center Modal (Admin Only) */}
+      {showMessaging && currentUser && isAdmin() && (
         <MessagingCenter
           currentUser={currentUser}
           selectedUserId={messagingTargetUser?.id}
