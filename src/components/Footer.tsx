@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 
 const Footer: React.FC = () => {
   const [version, setVersion] = useState<string>('');
-  const [lastCommit, setLastCommit] = useState<string>('');
+  const [lastCommitDate, setLastCommitDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,13 +25,12 @@ const Footer: React.FC = () => {
         
         if (commitResponse.ok) {
           const commitData = await commitResponse.json();
-          const commitHash = commitData.sha.substring(0, 7);
           const commitDate = new Date(commitData.commit.author.date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
             day: 'numeric'
           });
-          setLastCommit(`${commitHash} (${commitDate})`);
+          setLastCommitDate(commitDate);
         }
       } catch (error) {
         // Fallback to default version if fetch fails
@@ -61,7 +60,7 @@ const Footer: React.FC = () => {
       {!loading && (
         <small style={{ opacity: 0.7, fontSize: "0.75rem" }}>
           {version && `Version ${version}`}
-          {lastCommit && ` • ${lastCommit}`}
+          {lastCommitDate && ` • Updated ${lastCommitDate}`}
         </small>
       )}
     </footer>
