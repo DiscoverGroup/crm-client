@@ -182,6 +182,27 @@ export class MongoDBService {
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
+
+  // Permanently delete client from MongoDB
+  static async permanentlyDeleteClient(clientId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'clients',
+          operation: 'deleteOne',
+          filter: { id: clientId }
+        })
+      });
+
+      const result = await response.json();
+      return { success: result.success || response.ok, message: result.message };
+    } catch (error) {
+      // console.error('Error permanently deleting client from MongoDB:', error);
+      return { success: false, message: 'Failed to sync with MongoDB' };
+    }
+  }
   
   // Save payment data to MongoDB
   static async savePaymentData(clientId: string, paymentData: any): Promise<{ success: boolean; message?: string }> {

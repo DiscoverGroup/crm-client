@@ -399,7 +399,7 @@ export class ClientService {
     }
   }
 
-  static permanentlyDeleteClient(clientId: string): boolean {
+  static async permanentlyDeleteClient(clientId: string): Promise<boolean> {
     try {
       const clients = this.getAllClientsIncludingDeleted();
       const filteredClients = clients.filter(client => client.id !== clientId);
@@ -409,6 +409,19 @@ export class ClientService {
       }
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredClients));
+      
+      // Permanently delete from MongoDB
+      try {
+        await MongoDBService.permanentlyDeleteClient(clientId);
+      } catch {
+        // console.error('Failed to delete from MongoDB:', err);
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: {
+            type: 'warning',
+            message: 'Client deleted locally but failed to delete from database. May reappear on next sync.'
+          }
+        }));
+      }
       
       // Clean up orphaned files
       try {

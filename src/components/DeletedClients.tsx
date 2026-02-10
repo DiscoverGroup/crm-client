@@ -57,10 +57,10 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
     }
   };
 
-  const handlePermanentDelete = (client: ClientData) => {
+  const handlePermanentDelete = async (client: ClientData) => {
     if (window.confirm(`PERMANENTLY delete "${client.contactName}"? This action CANNOT be undone!`)) {
       if (window.confirm('Are you absolutely sure? This will delete all data permanently.')) {
-        const success = ClientService.permanentlyDeleteClient(client.id);
+        const success = await ClientService.permanentlyDeleteClient(client.id);
         if (success) {
           ActivityLogService.addLog({
             clientId: client.id,
