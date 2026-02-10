@@ -72,8 +72,11 @@
     display: block;
   }
   
+  /* Main content responsive */
   .main-content {
     margin-left: 0 !important;
+    width: 100% !important;
+    padding: 10px !important;
   }
   
   /* Hide navbar button text on small screens */
@@ -85,6 +88,14 @@
     .navbar-subtitle {
       display: none !important;
     }
+  }
+}
+
+/* Desktop styles for main content */
+@media (min-width: 1024px) {
+  .main-content {
+    margin-left: 300px;
+    width: calc(100% - 300px);
   }
 }
 

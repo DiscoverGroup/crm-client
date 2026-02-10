@@ -3410,8 +3410,6 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            marginLeft: '300px',
-            width: 'calc(100% - 300px)',
             minHeight: '100vh',
             backgroundColor: '#f5f5f5'
           }}>
@@ -3457,9 +3455,7 @@ const MainPage: React.FC<MainPageProps> = ({
           <div 
             className="main-content"
             style={{
-            marginLeft: '300px',
             padding: '20px',
-            width: 'calc(100% - 300px)',
             minHeight: '100vh',
             backgroundColor: '#f5f5f5'
           }}>
@@ -3498,9 +3494,7 @@ const MainPage: React.FC<MainPageProps> = ({
           <div 
             className="main-content"
             style={{
-            marginLeft: '300px',
             padding: '20px',
-            width: 'calc(100% - 300px)',
             minHeight: '100vh',
             backgroundColor: '#f5f5f5'
           }}>
@@ -3535,8 +3529,6 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            marginLeft: '300px',
-            width: 'calc(100% - 300px)',
             minHeight: '100vh'
           }}>
             <AdminPanel
@@ -3558,9 +3550,7 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            marginLeft: '300px',
             padding: '20px',
-            width: 'calc(100% - 300px)',
             minHeight: '100vh',
             backgroundColor: '#f5f5f5',
             display: 'flex',
