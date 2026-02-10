@@ -406,120 +406,168 @@ const App: React.FC = () => {
   };
 
   // Handle user login with validation
-  const handleLogin = (username: string, password: string) => {
-    console.log('🔐 handleLogin called');
-    console.log('   Username received:', username);
-    console.log('   Username length:', username.length);
-    console.log('   Username trimmed:', username.trim());
-    console.log('   Password length:', password.length);
-    console.log('   Password trimmed length:', password.trim().length);
+  const handleLogin = async (username: string, password: string) => {
+    console.log('🔐 handleLogin called - Using MongoDB API');
     
     // Validate input fields
     if (!username.trim() || !password.trim()) {
-      console.warn('⚠️ Missing username or password after trim');
       setModalConfig({
         isOpen: true,
         title: 'Missing Information',
-        message: 'Please enter both username and password',
+        message: 'Please enter both email/username and password',
         type: 'warning'
       });
       return;
     }
 
-    // Get registered users from localStorage
-    const registeredUsers = localStorage.getItem('crm_users');
-    console.log('📦 Checking localStorage for crm_users:', !!registeredUsers);
-    
-    if (!registeredUsers) {
-      setModalConfig({
-        isOpen: true,
-        title: 'No Users Found',
-        message: 'No registered users found. Please sign up first.',
-        type: 'info'
-      });
-      return;
-    }
-
     try {
-      const users = JSON.parse(registeredUsers);
-      console.log('👥 Total users in localStorage:', users.length);
-      
-      // Log all users for debugging
-      console.log('📋 All registered users:');
-      users.forEach((u: any, idx: number) => {
-        console.log(`   [${idx}] Email: ${u.email}, Username: ${u.username}`);
-      });
-      
-      console.log('🔍 Searching for user matching:', username.trim());
-      
-      // Find user by email (username field contains email from login form)
-      const user = users.find((u: any) => {
-        const emailMatch = u.email === username.trim();
-        const usernameMatch = u.username === username.trim();
-        const passwordMatch = u.password === password.trim();
-        if (emailMatch || usernameMatch) {
-          console.log(`   Found candidate ${u.email}:`);
-          console.log(`     Email match: ${emailMatch}`);
-          console.log(`     Username match: ${usernameMatch}`);
-          console.log(`     Password match: ${passwordMatch}`);
-        }
-        return (emailMatch || usernameMatch) && passwordMatch;
+      // Call MongoDB login API
+      const response = await fetch('/.netlify/functions/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: username.trim(),
+          password: password.trim()
+        })
       });
 
-      console.log('✓ User found:', !!user);
-      if (user) {
-        console.log('   User details: Email:', user.email, 'Full Name:', user.fullName);
-      }
+      const result = await response.json();
+      console.log('📡 Login API response:', result);
 
-      if (user) {
-        // Check if email is verified
-        if (user.isVerified === false) {
-          console.warn('⚠️ Email not verified');
-          setModalConfig({
-            isOpen: true,
-            title: 'Email Not Verified',
-            message: 'Please verify your email address before logging in. Check your inbox for the verification link.',
-            type: 'warning'
-          });
-          return;
+      if (result.success && result.user) {
+        // Sync user to localStorage for offline access
+        const usersData = localStorage.getItem('crm_users');
+        let users = [];
+        if (usersData) {
+          try {
+            users = JSON.parse(usersData);
+          } catch (e) {
+            users = [];
+          }
         }
+
+        // Update or add user to localStorage
+        const userIndex = users.findIndex((u: any) => u.email === result.user.email);
+        const localUser = {
+          ...result.user,
+          id: result.user.id || result.user.email,
+          password: password.trim() // Keep password in localStorage for offline access
+        };
+
+        if (userIndex >= 0) {
+          users[userIndex] = localUser;
+        } else {
+          users.push(localUser);
+        }
+        localStorage.setItem('crm_users', JSON.stringify(users));
 
         // Show success modal then login
-        console.log('✅ Login successful for user:', user.fullName);
+        console.log('✅ Login successful for user:', result.user.fullName);
         setModalConfig({
           isOpen: true,
           title: 'Login Successful!',
-          message: `Welcome back, ${user.fullName || user.username}!`,
+          message: `Welcome back, ${result.user.fullName || result.user.username}!`,
           type: 'success',
           onConfirm: () => {
             const userData = { 
-              fullName: user.fullName || user.username, 
-              username: user.username,
-              id: user.id || user.email,
-              email: user.email
+              fullName: result.user.fullName || result.user.username, 
+              username: result.user.username,
+              id: result.user.id || result.user.email,
+              email: result.user.email
             };
             setCurrentUser(userData);
             setIsLoggedIn(true);
             saveAuthState(true, userData);
           }
         });
+      } else if (result.needsVerification) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Email Not Verified',
+          message: 'Please verify your email address before logging in. Check your inbox for the verification link.',
+          type: 'warning'
+        });
       } else {
-        console.error('❌ Login failed: User not found or password mismatch');
+        console.error('❌ Login failed:', result.error);
         setModalConfig({
           isOpen: true,
           title: 'Login Failed',
-          message: 'Invalid email/username or password. Please try again or sign up.',
+          message: result.error || 'Invalid email/username or password. Please try again or sign up.',
           type: 'error'
         });
       }
     } catch (error) {
       console.error('❌ Error in handleLogin:', error);
-      setModalConfig({
-        isOpen: true,
-        title: 'Error',
-        message: 'An error occurred. Please try again.',
-        type: 'error'
-      });
+      
+      // Fallback to localStorage if API fails
+      console.log('⚠️ Falling back to localStorage authentication');
+      const registeredUsers = localStorage.getItem('crm_users');
+      
+      if (!registeredUsers) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Connection Error',
+          message: 'Cannot connect to server. Please check your internet connection.',
+          type: 'error'
+        });
+        return;
+      }
+
+      try {
+        const users = JSON.parse(registeredUsers);
+        const user = users.find((u: any) => {
+          const emailMatch = u.email === username.trim();
+          const usernameMatch = u.username === username.trim();
+          const passwordMatch = u.password === password.trim();
+          return (emailMatch || usernameMatch) && passwordMatch;
+        });
+
+        if (user) {
+          if (user.isVerified === false) {
+            setModalConfig({
+              isOpen: true,
+              title: 'Email Not Verified',
+              message: 'Please verify your email address before logging in.',
+              type: 'warning'
+            });
+            return;
+          }
+
+          setModalConfig({
+            isOpen: true,
+            title: 'Login Successful!',
+            message: `Welcome back, ${user.fullName || user.username}! (Offline mode)`,
+            type: 'success',
+            onConfirm: () => {
+              const userData = { 
+                fullName: user.fullName || user.username, 
+                username: user.username,
+                id: user.id || user.email,
+                email: user.email
+              };
+              setCurrentUser(userData);
+              setIsLoggedIn(true);
+              saveAuthState(true, userData);
+            }
+          });
+        } else {
+          setModalConfig({
+            isOpen: true,
+            title: 'Login Failed',
+            message: 'Invalid email/username or password.',
+            type: 'error'
+          });
+        }
+      } catch (err) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Error',
+          message: 'An error occurred. Please try again.',
+          type: 'error'
+        });
+      }
     }
   };
 
@@ -547,121 +595,197 @@ const App: React.FC = () => {
       return;
     }
 
-    // Get existing users from localStorage
-    const existingUsers = localStorage.getItem('crm_users');
-    let users = [];
-    
-    if (existingUsers) {
-      try {
-        users = JSON.parse(existingUsers);
-        // console.log('📋 Existing users in localStorage:', users.length);
-        // console.log('Existing emails:', users.map((u: any) => u.email));
-      } catch (error) {
-        // console.error('Error parsing existing users:', error);
-      }
-    }
-
-    // Check if email or username already exists
-    const emailExists = users.some((u: any) => u.email === form.email);
-    const usernameExists = users.some((u: any) => u.username === form.username);
-
-    // console.log(`Checking registration for: ${form.email}`);
-    // console.log(`Email exists: ${emailExists}, Username exists: ${usernameExists}`);
-
-    if (emailExists) {
-      // console.warn(`⚠️ Email ${form.email} is already registered`);
-      setModalConfig({
-        isOpen: true,
-        title: 'Email Already Registered',
-        message: 'This email is already registered. Please login or use a different email.',
-        type: 'warning'
-      });
-      return;
-    }
-
-    if (usernameExists) {
-      setModalConfig({
-        isOpen: true,
-        title: 'Username Taken',
-        message: 'This username is already taken. Please choose a different username.',
-        type: 'warning'
-      });
-      return;
-    }
-
-    // Generate 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Add new user (unverified)
-    const newUser = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
-      fullName: form.fullName,
-      username: form.username,
-      email: form.email,
-      password: form.password, // In production, this should be hashed!
-      department: form.department,
-      position: form.position,
-      profileImage: form.profileImage || '',
-      registeredAt: new Date().toISOString(),
-      isVerified: false,
-      verificationCode: verificationCode,
-      verificationCodeExpiry: Date.now() + (10 * 60 * 1000), // 10 minutes
-      role: 'user' // Default role
-    };
-
-    users.push(newUser);
-    localStorage.setItem('crm_users', JSON.stringify(users));
-    // console.log('✅ New user added to localStorage:', newUser.email);
-    // console.log('Total users now:', users.length);
-
-    // Save to MongoDB Atlas
     try {
-      const mongoResult = await MongoDBService.saveUser(newUser);
-      if (mongoResult.success) {
-        // console.log('✅ User saved to MongoDB Atlas');
-      } else {
-        // console.warn('⚠️ Failed to save user to MongoDB:', mongoResult.message);
-      }
-    } catch (err) {
-      // console.error('❌ MongoDB sync failed:', err);
-      // Continue even if MongoDB sync fails - localStorage is the primary storage
-    }
-
-    // Send verification email
-    try {
-      const response = await fetch('/.netlify/functions/send-verification-email', {
+      // Call MongoDB register API
+      const response = await fetch('/.netlify/functions/register', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: form.email,
-          fullName: form.fullName,
-          verificationCode: verificationCode
+          username: form.username.trim(),
+          email: form.email.trim(),
+          password: form.password.trim(),
+          fullName: form.fullName.trim(),
+          department: form.department.trim(),
+          position: form.position.trim(),
+          profileImage: form.profileImage || ''
         })
       });
 
-      const data = await response.json();
+      const result = await response.json();
+      console.log('📡 Register API response:', result);
 
-      if (response.ok && data.success) {
-        setPendingUserEmail(form.email);
-        setShowOTPVerification(true);
+      if (result.success && result.user) {
+        // Generate verification code
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Sync user to localStorage
+        const usersData = localStorage.getItem('crm_users');
+        let users = [];
+        if (usersData) {
+          try {
+            users = JSON.parse(usersData);
+          } catch (e) {
+            users = [];
+          }
+        }
+
+        const newUser = {
+          ...result.user,
+          id: result.user.id || result.user.email,
+          password: form.password.trim(), // Keep password in localStorage
+          verificationCode: verificationCode,
+          verificationCodeExpiry: Date.now() + (10 * 60 * 1000), // 10 minutes
+          registeredAt: new Date().toISOString(),
+          role: 'user'
+        };
+
+        users.push(newUser);
+        localStorage.setItem('crm_users', JSON.stringify(users));
+        console.log('✅ User synced to localStorage');
+
+        // Send verification email
+        try {
+          const emailResponse = await fetch('/.netlify/functions/send-verification-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: form.email,
+              fullName: form.fullName,
+              verificationCode: verificationCode
+            })
+          });
+
+          const emailData = await emailResponse.json();
+
+          if (emailResponse.ok && emailData.success) {
+            setPendingUserEmail(form.email);
+            setShowOTPVerification(true);
+          } else {
+            setModalConfig({
+              isOpen: true,
+              title: 'Registration Complete',
+              message: 'Registration successful, but failed to send verification code. Please contact support.',
+              type: 'warning'
+            });
+          }
+        } catch (error) {
+          setModalConfig({
+            isOpen: true,
+            title: 'Registration Complete',
+            message: 'Registration successful, but failed to send verification code. Please contact support.',
+            type: 'warning'
+          });
+        }
       } else {
         setModalConfig({
           isOpen: true,
-          title: 'Registration Complete',
-          message: 'Registration successful, but failed to send verification code. Please contact support.',
-          type: 'warning'
+          title: result.error === 'Email already registered' ? 'Email Already Registered' : 'Registration Failed',
+          message: result.error || 'Failed to register. Please try again.',
+          type: 'error'
         });
       }
     } catch (error) {
-      // console.error('Error sending verification email:', error);
-      setModalConfig({
-        isOpen: true,
-        title: 'Registration Complete',
-        message: 'Registration successful, but failed to send verification code. Please contact support.',
-        type: 'warning'
-      });
+      console.error('❌ Error in handleRegister:', error);
+      
+      // Fallback to localStorage if API fails
+      console.log('⚠️ Falling back to localStorage registration');
+      const existingUsers = localStorage.getItem('crm_users');
+      let users = [];
+      
+      if (existingUsers) {
+        try {
+          users = JSON.parse(existingUsers);
+        } catch (error) {
+          users = [];
+        }
+      }
+
+      // Check if email or username already exists
+      const emailExists = users.some((u: any) => u.email === form.email);
+      const usernameExists = users.some((u: any) => u.username === form.username);
+
+      if (emailExists) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Email Already Registered',
+          message: 'This email is already registered. Please login or use a different email.',
+          type: 'warning'
+        });
+        return;
+      }
+
+      if (usernameExists) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Username Taken',
+          message: 'This username is already taken. Please choose a different username.',
+          type: 'warning'
+        });
+        return;
+      }
+
+      // Generate 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Add new user (unverified)
+      const newUser = {
+        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        fullName: form.fullName,
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        department: form.department,
+        position: form.position,
+        profileImage: form.profileImage || '',
+        registeredAt: new Date().toISOString(),
+        isVerified: false,
+        verificationCode: verificationCode,
+        verificationCodeExpiry: Date.now() + (10 * 60 * 1000),
+        role: 'user'
+      };
+
+      users.push(newUser);
+      localStorage.setItem('crm_users', JSON.stringify(users));
+
+      // Try to send verification email
+      try {
+        const response = await fetch('/.netlify/functions/send-verification-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: form.email,
+            fullName: form.fullName,
+            verificationCode: verificationCode
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setPendingUserEmail(form.email);
+          setShowOTPVerification(true);
+        } else {
+          setModalConfig({
+            isOpen: true,
+            title: 'Registration Complete',
+            message: 'Registration successful (Offline mode). Please login.',
+            type: 'success'
+          });
+        }
+      } catch (error) {
+        setModalConfig({
+          isOpen: true,
+          title: 'Registration Complete',
+          message: 'Registration successful (Offline mode). Please login.',
+          type: 'success'
+        });
+      }
     }
   };
 
