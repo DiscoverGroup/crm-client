@@ -141,7 +141,7 @@ export class ClientService {
             ...clientData,
             updatedAt: new Date().toISOString()
           });
-        } catch (err) {
+        } catch {
           // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
             detail: {
@@ -170,7 +170,7 @@ export class ClientService {
         // Save to MongoDB
         try {
           await MongoDBService.saveClient(newClient);
-        } catch (err) {
+        } catch {
           // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
             detail: {
@@ -213,7 +213,7 @@ export class ClientService {
           ...clientData,
           updatedAt: new Date().toISOString()
         });
-      } catch (err) {
+      } catch {
         // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
@@ -346,7 +346,7 @@ export class ClientService {
       
       // Soft delete in MongoDB
       MongoDBService.deleteClient(clientId, deletedBy || 'Unknown')
-        .catch(err => {
+        .catch(() => {
           // console.error('MongoDB sync failed:', err)
         });
       
@@ -382,7 +382,7 @@ export class ClientService {
           deletedBy: null,
           updatedAt: clients[clientIndex].updatedAt
         });
-      } catch (err) {
+      } catch {
         // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
@@ -420,7 +420,7 @@ export class ClientService {
           }
         });
         // console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
-      } catch (err) {
+      } catch {
         // console.warn('Failed to clean up client files:', err);
       }
       
