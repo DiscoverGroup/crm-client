@@ -3297,12 +3297,22 @@ const MainPage: React.FC<MainPageProps> = ({
   // Check if current user is admin
   const isAdmin = () => {
     const usersData = localStorage.getItem('crm_users');
-    if (!usersData) return false;
+    if (!usersData) {
+      console.log('🔍 isAdmin check: No users data found');
+      return false;
+    }
     try {
       const users = JSON.parse(usersData);
       const user = users.find((u: any) => u.fullName === currentUser.fullName);
+      console.log('🔍 isAdmin check:', {
+        currentUserFullName: currentUser.fullName,
+        foundUser: user,
+        userRole: user?.role,
+        isAdmin: user && user.role === 'admin'
+      });
       return user && user.role === 'admin';
-    } catch {
+    } catch (error) {
+      console.error('🔍 isAdmin check error:', error);
       return false;
     }
   };
