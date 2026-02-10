@@ -160,6 +160,8 @@ export class MongoDBService {
   // Delete client in MongoDB (soft delete)
   static async deleteClient(clientId: string, deletedBy: string): Promise<{ success: boolean; message?: string }> {
     try {
+      console.log('🗑️ Attempting to soft delete client from MongoDB:', clientId, 'by:', deletedBy);
+      
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -175,17 +177,30 @@ export class MongoDBService {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+      }
+
       const result = await response.json();
-      return { success: result.success || response.ok, message: result.message };
+      
+      if (result.success) {
+        console.log('✅ Client soft deleted in MongoDB:', clientId, result);
+        return { success: true, message: 'Client soft deleted in MongoDB' };
+      } else {
+        console.error('❌ MongoDB soft delete failed:', clientId, result);
+        return { success: false, message: result.error || 'Failed to soft delete client' };
+      }
     } catch (error) {
-      // console.error('Error deleting client in MongoDB:', error);
-      return { success: false, message: 'Failed to sync with MongoDB' };
+      console.error('❌ Error soft deleting client in MongoDB:', clientId, error);
+      return { success: false, message: `Failed to sync with MongoDB: ${(error as Error).message}` };
     }
   }
 
   // Permanently delete client from MongoDB
   static async permanentlyDeleteClient(clientId: string): Promise<{ success: boolean; message?: string }> {
     try {
+      console.log('🗑️ Attempting to permanently delete client from MongoDB:', clientId);
+      
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,11 +211,22 @@ export class MongoDBService {
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+      }
+
       const result = await response.json();
-      return { success: result.success || response.ok, message: result.message };
+      
+      if (result.success) {
+        console.log('✅ Client permanently deleted from MongoDB:', clientId, result);
+        return { success: true, message: 'Client permanently deleted from MongoDB' };
+      } else {
+        console.error('❌ MongoDB permanent deletion failed:', clientId, result);
+        return { success: false, message: result.error || 'Failed to delete client from MongoDB' };
+      }
     } catch (error) {
-      // console.error('Error permanently deleting client from MongoDB:', error);
-      return { success: false, message: 'Failed to sync with MongoDB' };
+      console.error('❌ Error permanently deleting client from MongoDB:', clientId, error);
+      return { success: false, message: `Failed to sync with MongoDB: ${(error as Error).message}` };
     }
   }
   

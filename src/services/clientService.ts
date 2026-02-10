@@ -65,7 +65,7 @@ export class ClientService {
   static async syncFromMongoDB(): Promise<void> {
     // Prevent concurrent syncs
     if (this.syncInProgress) {
-      // console.log('Sync already in progress, skipping...');
+      console.log('⏳ Sync already in progress, skipping...');
       return;
     }
     
@@ -73,7 +73,7 @@ export class ClientService {
     window.dispatchEvent(new Event('syncStart'));
     
     try {
-      // if (import.meta.env.DEV) console.log('🔄 Syncing clients from MongoDB...');
+      console.log('🔄 Syncing clients from MongoDB...');
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -85,7 +85,7 @@ export class ClientService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch clients from MongoDB');
+        throw new Error(`Failed to fetch clients from MongoDB: HTTP ${response.status}`);
       }
 
       const result = await response.json();
@@ -94,11 +94,13 @@ export class ClientService {
         // Update localStorage with MongoDB data
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        // if (import.meta.env.DEV) console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
+        console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
         window.dispatchEvent(new Event('syncSuccess'));
+      } else {
+        throw new Error(result.error || 'No data returned from MongoDB');
       }
     } catch (error) {
-      // console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+      console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
       window.dispatchEvent(new Event('syncError'));
     } finally {
       this.syncInProgress = false;
@@ -331,28 +333,40 @@ export class ClientService {
       const clientIndex = clients.findIndex(client => client.id === clientId);
       
       if (clientIndex === -1) {
-        return false; // Client not found
+        console.warn('⚠️ Client not found for deletion:', clientId);
+        return false;
       }
 
       // Soft delete - mark as deleted instead of removing
+      const deletionTime = new Date().toISOString();
+      const deletedByUser = deletedBy || 'Unknown';
+      
       clients[clientIndex] = {
         ...clients[clientIndex],
         isDeleted: true,
-        deletedAt: new Date().toISOString(),
-        deletedBy: deletedBy || 'Unknown'
+        deletedAt: deletionTime,
+        deletedBy: deletedByUser
       };
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+      console.log('✅ Client soft deleted in localStorage:', clientId);
       
-      // Soft delete in MongoDB
-      MongoDBService.deleteClient(clientId, deletedBy || 'Unknown')
-        .catch(() => {
-          // console.error('MongoDB sync failed:', err)
+      // Soft delete in MongoDB (async)
+      MongoDBService.deleteClient(clientId, deletedByUser)
+        .then(result => {
+          if (result.success) {
+            console.log('✅ Client soft deleted in MongoDB:', clientId);
+          } else {
+            console.error('⚠️ MongoDB soft delete failed:', result.message);
+          }
+        })
+        .catch(error => {
+          console.error('❌ MongoDB soft delete error:', error);
         });
       
       return true;
     } catch (error) {
-      // console.error('Error deleting client:', error);
+      console.error('❌ Error deleting client:', error);
       return false;
     }
   }
@@ -405,41 +419,88 @@ export class ClientService {
       const filteredClients = clients.filter(client => client.id !== clientId);
       
       if (filteredClients.length === clients.length) {
-        return false; // Client not found
-      }
-
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredClients));
-      
-      // Permanently delete from MongoDB
-      try {
-        await MongoDBService.permanentlyDeleteClient(clientId);
-      } catch {
-        // console.error('Failed to delete from MongoDB:', err);
+        console.warn('⚠️ Client not found for permanent deletion:', clientId);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
-            type: 'warning',
-            message: 'Client deleted locally but failed to delete from database. May reappear on next sync.'
+            type: 'error',
+            message: 'Client not found. Cannot permanently delete.'
           }
         }));
+        return false;
+      }
+
+      // Save to localStorage immediately
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredClients));
+      console.log('✅ Client removed from localStorage:', clientId);
+
+      // Permanently delete from MongoDB
+      try {
+        const result = await MongoDBService.permanentlyDeleteClient(clientId);
+        if (result.success) {
+          console.log('✅ Client permanently deleted from MongoDB:', clientId);
+          window.dispatchEvent(new CustomEvent('showToast', {
+            detail: {
+              type: 'success',
+              message: 'Client permanently deleted successfully.'
+            }
+          }));
+        } else {
+          throw new Error(result.message || 'MongoDB deletion failed');
+        }
+      } catch (error) {
+        console.error('❌ Failed to delete from MongoDB:', error);
+        window.dispatchEvent(new CustomEvent('showToast', {
+          detail: {
+            type: 'error',
+            message: 'Client deleted locally but failed to delete from database. Retrying automatically...'
+          }
+        }));
+        
+        // Retry after 3 seconds
+        setTimeout(() => {
+          MongoDBService.permanentlyDeleteClient(clientId).then(result => {
+            if (result.success) {
+              console.log('✅ Retry successful - Client deleted from MongoDB:', clientId);
+              window.dispatchEvent(new CustomEvent('showToast', {
+                detail: {
+                  type: 'success',
+                  message: 'Database sync completed.'
+                }
+              }));
+            }
+          });
+        }, 3000);
       }
       
       // Clean up orphaned files
       try {
         const clientFiles = FileService.getFilesByClient?.(clientId) || [];
-        clientFiles.forEach(fileAttachment => {
-          // FileAttachment has a 'file' property which contains the StoredFile with 'id'
-          if (fileAttachment.file && fileAttachment.file.id) {
-            FileService.deleteFile?.(fileAttachment.file.id, 'System');
-          }
-        });
-        // console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
-      } catch {
-        // console.warn('Failed to clean up client files:', err);
+        if (clientFiles.length > 0) {
+          clientFiles.forEach(fileAttachment => {
+            if (fileAttachment.file && fileAttachment.file.id) {
+              FileService.deleteFile?.(fileAttachment.file.id, 'System');
+            }
+          });
+          console.log(`✅ Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to clean up client files:', error);
       }
+      
+      // Trigger sync to refresh data
+      this.syncFromMongoDB().catch(() => {
+        // Sync failed, but deletion already completed
+      });
       
       return true;
     } catch (error) {
-      // console.error('Error permanently deleting client:', error);
+      console.error('❌ Error permanently deleting client:', error);
+      window.dispatchEvent(new CustomEvent('showToast', {
+        detail: {
+          type: 'error',
+          message: 'Failed to permanently delete client.'
+        }
+      }));
       return false;
     }
   }
