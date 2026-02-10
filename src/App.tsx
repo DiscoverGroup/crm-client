@@ -407,8 +407,16 @@ const App: React.FC = () => {
 
   // Handle user login with validation
   const handleLogin = (username: string, password: string) => {
+    console.log('🔐 handleLogin called');
+    console.log('   Username received:', username);
+    console.log('   Username length:', username.length);
+    console.log('   Username trimmed:', username.trim());
+    console.log('   Password length:', password.length);
+    console.log('   Password trimmed length:', password.trim().length);
+    
     // Validate input fields
     if (!username.trim() || !password.trim()) {
+      console.warn('⚠️ Missing username or password after trim');
       setModalConfig({
         isOpen: true,
         title: 'Missing Information',
@@ -420,6 +428,7 @@ const App: React.FC = () => {
 
     // Get registered users from localStorage
     const registeredUsers = localStorage.getItem('crm_users');
+    console.log('📦 Checking localStorage for crm_users:', !!registeredUsers);
     
     if (!registeredUsers) {
       setModalConfig({
@@ -433,15 +442,39 @@ const App: React.FC = () => {
 
     try {
       const users = JSON.parse(registeredUsers);
+      console.log('👥 Total users in localStorage:', users.length);
+      
+      // Log all users for debugging
+      console.log('📋 All registered users:');
+      users.forEach((u: any, idx: number) => {
+        console.log(`   [${idx}] Email: ${u.email}, Username: ${u.username}`);
+      });
+      
+      console.log('🔍 Searching for user matching:', username.trim());
       
       // Find user by email (username field contains email from login form)
-      const user = users.find((u: any) => 
-        (u.email === username || u.username === username) && u.password === password
-      );
+      const user = users.find((u: any) => {
+        const emailMatch = u.email === username.trim();
+        const usernameMatch = u.username === username.trim();
+        const passwordMatch = u.password === password.trim();
+        if (emailMatch || usernameMatch) {
+          console.log(`   Found candidate ${u.email}:`);
+          console.log(`     Email match: ${emailMatch}`);
+          console.log(`     Username match: ${usernameMatch}`);
+          console.log(`     Password match: ${passwordMatch}`);
+        }
+        return (emailMatch || usernameMatch) && passwordMatch;
+      });
+
+      console.log('✓ User found:', !!user);
+      if (user) {
+        console.log('   User details: Email:', user.email, 'Full Name:', user.fullName);
+      }
 
       if (user) {
         // Check if email is verified
         if (user.isVerified === false) {
+          console.warn('⚠️ Email not verified');
           setModalConfig({
             isOpen: true,
             title: 'Email Not Verified',
@@ -452,6 +485,7 @@ const App: React.FC = () => {
         }
 
         // Show success modal then login
+        console.log('✅ Login successful for user:', user.fullName);
         setModalConfig({
           isOpen: true,
           title: 'Login Successful!',
@@ -470,6 +504,7 @@ const App: React.FC = () => {
           }
         });
       } else {
+        console.error('❌ Login failed: User not found or password mismatch');
         setModalConfig({
           isOpen: true,
           title: 'Login Failed',
@@ -478,7 +513,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      // console.error('Error parsing user data:', error);
+      console.error('❌ Error in handleLogin:', error);
       setModalConfig({
         isOpen: true,
         title: 'Error',

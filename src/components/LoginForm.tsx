@@ -93,7 +93,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(email, password);
+    console.log('📝 Login attempt triggered');
+    console.log('   Email value:', email);
+    console.log('   Email length:', email.length);
+    console.log('   Password length:', password.length);
+    console.log('   Email trimmed:', email.trim());
+    console.log('   Password trimmed:', password.trim());
+    
+    if (!email.trim() || !password.trim()) {
+      console.warn('⚠️ Email or password is empty after trim');
+      showWarningToast('Please enter both email and password');
+      return;
+    }
+    
+    console.log('✓ Calling onLogin with:', { email: email.trim(), passwordLength: password.trim().length });
+    onLogin(email.trim(), password.trim());
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -229,7 +243,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             placeholder="Email"
             value={email}
             required
-            onChange={e => setEmail(e.target.value)}
+            autoComplete="email"
+            onChange={e => {
+              console.log('📧 Email changed:', e.target.value);
+              setEmail(e.target.value);
+            }}
             style={{
               width: '100%',
               padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
@@ -259,7 +277,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             placeholder="Password"
             value={password}
             required
-            onChange={e => setPassword(e.target.value)}
+            autoComplete="current-password"
+            onChange={e => {
+              console.log('🔑 Password changed, length:', e.target.value.length);
+              setPassword(e.target.value);
+            }}
             style={{
               width: '100%',
               padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
