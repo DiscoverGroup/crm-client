@@ -41,7 +41,7 @@ export const handler: Handler = async (event) => {
     try {
       userList = users ? JSON.parse(users) : [];
     } catch (e) {
-      console.error('Error parsing users:', e);
+      // console.error('Error parsing users:', e);
     }
 
     // Find user by email
@@ -122,7 +122,7 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (error: any) {
-    console.error('Error sending reset email:', error);
+    // console.error('Error sending reset email:', error);
     
     // Return more detailed error for debugging
     const errorMessage = error?.response?.body?.errors 

@@ -43,7 +43,7 @@ export class FileRecoveryService {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('Error loading file recovery requests:', error);
+      // console.error('Error loading file recovery requests:', error);
       return [];
     }
   }
@@ -68,7 +68,7 @@ export class FileRecoveryService {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
     } catch (error) {
-      console.error('Error saving file recovery requests:', error);
+      // console.error('Error saving file recovery requests:', error);
       throw error;
     }
   }
@@ -101,7 +101,7 @@ export class FileRecoveryService {
     requests.push(request);
     this.saveRequests(requests);
 
-    console.log(`📝 File recovery request created: ${fileName} by ${requestedBy}`);
+    // console.log(`📝 File recovery request created: ${fileName} by ${requestedBy}`);
     return request;
   }
 
@@ -116,7 +116,7 @@ export class FileRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -125,7 +125,7 @@ export class FileRecoveryService {
       // Check if file exists and is deleted
       const file = FileService.getFileById(request.fileId);
       if (!file) {
-        console.error('File not found or already recovered');
+        // console.error('File not found or already recovered');
         return false;
       }
 
@@ -167,10 +167,10 @@ export class FileRecoveryService {
         }
       });
 
-      console.log(`✅ File recovery approved: ${request.fileName} by ${reviewedBy}`);
+      // console.log(`✅ File recovery approved: ${request.fileName} by ${reviewedBy}`);
       return true;
     } catch (error) {
-      console.error('Error approving recovery request:', error);
+      // console.error('Error approving recovery request:', error);
       return false;
     }
   }
@@ -186,7 +186,7 @@ export class FileRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -226,10 +226,10 @@ export class FileRecoveryService {
         clientName: request.clientName
       });
 
-      console.log(`❌ File recovery rejected: ${request.fileName} by ${reviewedBy}`);
+      // console.log(`❌ File recovery rejected: ${request.fileName} by ${reviewedBy}`);
       return true;
     } catch (error) {
-      console.error('Error rejecting recovery request:', error);
+      // console.error('Error rejecting recovery request:', error);
       return false;
     }
   }
@@ -241,7 +241,7 @@ export class FileRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -249,7 +249,7 @@ export class FileRecoveryService {
 
       // Only requester can cancel their own pending requests
       if (request.requestedBy !== username || request.status !== 'pending') {
-        console.error('Cannot cancel this request');
+        // console.error('Cannot cancel this request');
         return false;
       }
 
@@ -257,10 +257,10 @@ export class FileRecoveryService {
       requests.splice(requestIndex, 1);
       this.saveRequests(requests);
 
-      console.log(`🚫 File recovery request cancelled: ${request.fileName}`);
+      // console.log(`🚫 File recovery request cancelled: ${request.fileName}`);
       return true;
     } catch (error) {
-      console.error('Error cancelling recovery request:', error);
+      // console.error('Error cancelling recovery request:', error);
       return false;
     }
   }

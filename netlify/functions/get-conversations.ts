@@ -213,7 +213,7 @@ export const handler: Handler = async (event) => {
     }
 
     // Close connection in background
-    client.close().catch(err => console.error('Error closing connection:', err));
+    client.close().catch(err => { /* console.error('Error closing connection:', err) */ });
 
     const conversations = Array.from(conversationsMap.values());
 
@@ -223,7 +223,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: conversations })
     };
   } catch (error: any) {
-    console.error('Get conversations error:', error);
+    // console.error('Get conversations error:', error);
     return {
       statusCode: 500,
       headers,

@@ -65,7 +65,7 @@ export class ClientService {
   static async syncFromMongoDB(): Promise<void> {
     // Prevent concurrent syncs
     if (this.syncInProgress) {
-      console.log('Sync already in progress, skipping...');
+      // console.log('Sync already in progress, skipping...');
       return;
     }
     
@@ -73,7 +73,7 @@ export class ClientService {
     window.dispatchEvent(new Event('syncStart'));
     
     try {
-      if (import.meta.env.DEV) console.log('🔄 Syncing clients from MongoDB...');
+      // if (import.meta.env.DEV) console.log('🔄 Syncing clients from MongoDB...');
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,11 +94,11 @@ export class ClientService {
         // Update localStorage with MongoDB data
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        if (import.meta.env.DEV) console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
+        // if (import.meta.env.DEV) console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
         window.dispatchEvent(new Event('syncSuccess'));
       }
     } catch (error) {
-      console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+      // console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
       window.dispatchEvent(new Event('syncError'));
     } finally {
       this.syncInProgress = false;
@@ -142,7 +142,7 @@ export class ClientService {
             updatedAt: new Date().toISOString()
           });
         } catch (err) {
-          console.error('MongoDB sync failed:', err);
+          // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
             detail: {
               type: 'warning',
@@ -171,7 +171,7 @@ export class ClientService {
         try {
           await MongoDBService.saveClient(newClient);
         } catch (err) {
-          console.error('MongoDB sync failed:', err);
+          // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
             detail: {
               type: 'warning',
@@ -183,7 +183,7 @@ export class ClientService {
         return { clientId, isNewClient: true };
       }
     } catch (error) {
-      console.error('Error saving client:', error);
+      // console.error('Error saving client:', error);
       throw new Error('Failed to save client data');
     }
   }
@@ -214,7 +214,7 @@ export class ClientService {
           updatedAt: new Date().toISOString()
         });
       } catch (err) {
-        console.error('MongoDB sync failed:', err);
+        // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
             type: 'warning',
@@ -233,7 +233,7 @@ export class ClientService {
       
       return { success: true, oldValues };
     } catch (error) {
-      console.error('Error updating client:', error);
+      // console.error('Error updating client:', error);
       throw new Error('Failed to update client data');
     }
   }
@@ -245,7 +245,7 @@ export class ClientService {
       // Filter out deleted clients by default
       return allClients.filter((client: ClientData) => !client.isDeleted);
     } catch (error) {
-      console.error('Error loading clients:', error);
+      // console.error('Error loading clients:', error);
       return [];
     }
   }
@@ -264,7 +264,7 @@ export class ClientService {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('Error loading clients:', error);
+      // console.error('Error loading clients:', error);
       return [];
     }
   }
@@ -275,7 +275,7 @@ export class ClientService {
       const allClients = data ? JSON.parse(data) : [];
       return allClients.filter((client: ClientData) => client.isDeleted);
     } catch (error) {
-      console.error('Error loading deleted clients:', error);
+      // console.error('Error loading deleted clients:', error);
       return [];
     }
   }
@@ -346,11 +346,13 @@ export class ClientService {
       
       // Soft delete in MongoDB
       MongoDBService.deleteClient(clientId, deletedBy || 'Unknown')
-        .catch(err => console.error('MongoDB sync failed:', err));
+        .catch(err => {
+          // console.error('MongoDB sync failed:', err)
+        });
       
       return true;
     } catch (error) {
-      console.error('Error deleting client:', error);
+      // console.error('Error deleting client:', error);
       return false;
     }
   }
@@ -381,7 +383,7 @@ export class ClientService {
           updatedAt: clients[clientIndex].updatedAt
         });
       } catch (err) {
-        console.error('MongoDB sync failed:', err);
+        // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
             type: 'warning',
@@ -392,7 +394,7 @@ export class ClientService {
       
       return true;
     } catch (error) {
-      console.error('Error recovering client:', error);
+      // console.error('Error recovering client:', error);
       return false;
     }
   }
@@ -417,14 +419,14 @@ export class ClientService {
             FileService.deleteFile?.(fileAttachment.file.id, 'System');
           }
         });
-        console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
+        // console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
       } catch (err) {
-        console.warn('Failed to clean up client files:', err);
+        // console.warn('Failed to clean up client files:', err);
       }
       
       return true;
     } catch (error) {
-      console.error('Error permanently deleting client:', error);
+      // console.error('Error permanently deleting client:', error);
       return false;
     }
   }

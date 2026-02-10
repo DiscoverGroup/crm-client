@@ -94,7 +94,7 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (error: any) {
-    console.error('Error sending verification email:', error);
+    // console.error('Error sending verification email:', error);
     
     const errorMessage = error?.response?.body?.errors 
       ? JSON.stringify(error.response.body.errors)

@@ -87,7 +87,7 @@ export const handler: Handler = async (event) => {
       })
     };
   } catch (error: any) {
-    console.error('Create indexes error:', error);
+    // console.error('Create indexes error:', error);
     return {
       statusCode: 500,
       headers,

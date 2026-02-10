@@ -41,7 +41,7 @@ export class ClientRecoveryService {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('Error loading client recovery requests:', error);
+      // console.error('Error loading client recovery requests:', error);
       return [];
     }
   }
@@ -61,7 +61,7 @@ export class ClientRecoveryService {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
     } catch (error) {
-      console.error('Error saving client recovery requests:', error);
+      // console.error('Error saving client recovery requests:', error);
       throw error;
     }
   }
@@ -90,7 +90,7 @@ export class ClientRecoveryService {
     requests.push(request);
     this.saveRequests(requests);
 
-    console.log(`📝 Client recovery request created: ${clientName} by ${requestedBy}`);
+    // console.log(`📝 Client recovery request created: ${clientName} by ${requestedBy}`);
     return request;
   }
 
@@ -104,7 +104,7 @@ export class ClientRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -113,7 +113,7 @@ export class ClientRecoveryService {
       // Recover the client
       const success = await ClientService.recoverClient(request.clientId);
       if (!success) {
-        console.error('Failed to recover client');
+        // console.error('Failed to recover client');
         return false;
       }
 
@@ -154,10 +154,10 @@ export class ClientRecoveryService {
         }
       });
 
-      console.log(`✅ Client recovery approved: ${request.clientName} by ${reviewedBy}`);
+      // console.log(`✅ Client recovery approved: ${request.clientName} by ${reviewedBy}`);
       return true;
     } catch (error) {
-      console.error('Error approving recovery request:', error);
+      // console.error('Error approving recovery request:', error);
       return false;
     }
   }
@@ -173,7 +173,7 @@ export class ClientRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -213,10 +213,10 @@ export class ClientRecoveryService {
         clientName: request.clientName
       });
 
-      console.log(`❌ Client recovery rejected: ${request.clientName} by ${reviewedBy}`);
+      // console.log(`❌ Client recovery rejected: ${request.clientName} by ${reviewedBy}`);
       return true;
     } catch (error) {
-      console.error('Error rejecting recovery request:', error);
+      // console.error('Error rejecting recovery request:', error);
       return false;
     }
   }
@@ -228,7 +228,7 @@ export class ClientRecoveryService {
       const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        console.error('Recovery request not found');
+        // console.error('Recovery request not found');
         return false;
       }
 
@@ -236,7 +236,7 @@ export class ClientRecoveryService {
 
       // Only requester can cancel their own pending requests
       if (request.requestedBy !== username || request.status !== 'pending') {
-        console.error('Cannot cancel this request');
+        // console.error('Cannot cancel this request');
         return false;
       }
 
@@ -244,10 +244,10 @@ export class ClientRecoveryService {
       requests.splice(requestIndex, 1);
       this.saveRequests(requests);
 
-      console.log(`🚫 Client recovery request cancelled: ${request.clientName}`);
+      // console.log(`🚫 Client recovery request cancelled: ${request.clientName}`);
       return true;
     } catch (error) {
-      console.error('Error cancelling recovery request:', error);
+      // console.error('Error cancelling recovery request:', error);
       return false;
     }
   }

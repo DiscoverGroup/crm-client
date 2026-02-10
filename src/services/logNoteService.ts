@@ -25,7 +25,7 @@ export class LogNoteService {
         return new Map(Object.entries(data));
       }
     } catch (error) {
-      console.error('Error loading log notes from storage:', error);
+      // console.error('Error loading log notes from storage:', error);
     }
     return new Map();
   }
@@ -36,7 +36,7 @@ export class LogNoteService {
       const data = Object.fromEntries(logNotes);
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
-      console.error('Error saving log notes to storage:', error);
+      // console.error('Error saving log notes to storage:', error);
     }
   }
 

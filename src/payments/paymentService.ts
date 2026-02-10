@@ -121,13 +121,13 @@ export class PaymentService {
       // Sync to MongoDB if clientId is provided
       if (clientId) {
         MongoDBService.savePaymentData(clientId, serializedData).catch(err => {
-          console.error('MongoDB sync failed:', err);
+          // console.error('MongoDB sync failed:', err);
         });
       }
       
       return true;
     } catch (error) {
-      console.error('Error saving payment data:', error);
+      // console.error('Error saving payment data:', error);
       return false;
     }
   }
@@ -142,7 +142,7 @@ export class PaymentService {
       const fileId = await FileService.saveFileAttachment(namedFile as File, category, clientId, paymentIndex, paymentType);
       return fileId;
     } catch (error) {
-      console.error('Error saving file:', error);
+      // console.error('Error saving file:', error);
       return null;
     }
   }
@@ -158,7 +158,7 @@ export class PaymentService {
       }
       return parsed;
     } catch (error) {
-      console.error('Error loading payment data:', error);
+      // console.error('Error loading payment data:', error);
       return {};
     }
   }
@@ -169,7 +169,7 @@ export class PaymentService {
       const key = clientId || 'default';
       return allPayments[key] || null;
     } catch (error) {
-      console.error('Error loading payment data:', error);
+      // console.error('Error loading payment data:', error);
       return null;
     }
   }

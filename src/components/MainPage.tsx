@@ -401,7 +401,7 @@ const ClientRecords: React.FC<{
           setAttachments([]);
         }
       } catch (error) {
-        console.error('Error loading attachments:', error);
+        // console.error('Error loading attachments:', error);
       }
     };
     
@@ -476,7 +476,7 @@ const ClientRecords: React.FC<{
         // Trigger file update event
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
-        console.error('Error uploading file:', error);
+        // console.error('Error uploading file:', error);
         alert('Failed to upload file. Please try again.');
       }
     } else {
@@ -500,12 +500,12 @@ const ClientRecords: React.FC<{
     }
 
     try {
-      console.log('🗑️ Removing file:', fileId);
+      // console.log('🗑️ Removing file:', fileId);
       
       // Delete file from FileService
       const success = await FileService.deleteFile(fileId, currentUserName);
       
-      console.log('Delete result:', success);
+      // console.log('Delete result:', success);
       
       if (success) {
         // Clear from local state
@@ -519,7 +519,7 @@ const ClientRecords: React.FC<{
         // Refresh attachments immediately with a new array reference to force re-render
         const currentClientId = clientId || tempClientId;
         const clientAttachments = FileService.getFilesByClient(currentClientId);
-        console.log('Refreshed attachments after deletion:', clientAttachments.length);
+        // console.log('Refreshed attachments after deletion:', clientAttachments.length);
         setAttachments([...clientAttachments]); // Create new array to ensure state update
         
         // Clear the file input element
@@ -540,12 +540,12 @@ const ClientRecords: React.FC<{
         // Trigger file update event
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
         
-        console.log('✅ File removed successfully');
+        // console.log('✅ File removed successfully');
       } else {
         alert('Failed to remove file. Please try again.');
       }
     } catch (error) {
-      console.error('❌ Error removing file:', error);
+      // console.error('❌ Error removing file:', error);
       alert('Failed to remove file. Please try again.');
     }
   };
@@ -582,7 +582,7 @@ const ClientRecords: React.FC<{
       
       window.dispatchEvent(new Event('fileAttachmentUpdated'));
     } catch (error) {
-      console.error('Error uploading file:', error);
+      // console.error('Error uploading file:', error);
       alert('Failed to upload file. Please try again.');
     }
   };
@@ -594,7 +594,7 @@ const ClientRecords: React.FC<{
     }
 
     try {
-      console.log('🗑️ Removing file:', fileId);
+      // console.log('🗑️ Removing file:', fileId);
       const success = await FileService.deleteFile(fileId, currentUserName);
       
       if (success) {
@@ -605,12 +605,12 @@ const ClientRecords: React.FC<{
         logAttachment(section, 'deleted', 'File removed', fileType);
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
         
-        console.log('✅ File removed successfully');
+        // console.log('✅ File removed successfully');
       } else {
         alert('Failed to remove file. Please try again.');
       }
     } catch (error) {
-      console.error('❌ Error removing file:', error);
+      // console.error('❌ Error removing file:', error);
       alert('Failed to remove file. Please try again.');
     }
   };
@@ -663,7 +663,7 @@ const ClientRecords: React.FC<{
         alert('Failed to save payment details. Please try again.');
       }
     } catch (error) {
-      console.error('Error saving payment details:', error);
+      // console.error('Error saving payment details:', error);
       logSectionAction(
         'payment-terms-schedule',
         'Save Error',
@@ -814,7 +814,7 @@ const ClientRecords: React.FC<{
         setTimeout(() => onNavigateBack(), 500);
       }
     } catch (error) {
-      console.error('Error saving client info:', error);
+      // console.error('Error saving client info:', error);
       logSectionAction(
         'client-information',
         'Save Failed',
@@ -882,7 +882,7 @@ const ClientRecords: React.FC<{
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
     } catch (error) {
-      console.error('Error saving package info:', error);
+      // console.error('Error saving package info:', error);
       logSectionAction(
         'package-information',
         'Save Failed',
@@ -902,7 +902,7 @@ const ClientRecords: React.FC<{
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Visa information saved successfully!');
     } catch (error) {
-      console.error('Error saving visa info:', error);
+      // console.error('Error saving visa info:', error);
       alert('An error occurred while saving visa information.');
     } finally {
       setIsSavingVisa(false);
@@ -920,7 +920,7 @@ const ClientRecords: React.FC<{
       
       alert('Embassy information saved successfully!');
     } catch (error) {
-      console.error('Error saving embassy info:', error);
+      // console.error('Error saving embassy info:', error);
       logSectionAction(
         'embassy-information',
         'Save Failed',
@@ -982,7 +982,7 @@ const ClientRecords: React.FC<{
         // Trigger file update event
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
-        console.error('Error uploading visa payment file:', error);
+        // console.error('Error uploading visa payment file:', error);
         alert('Failed to upload file. Please try again.');
       }
     } else {
@@ -1050,7 +1050,7 @@ const ClientRecords: React.FC<{
         setAttachments(clientAttachments);
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
-        console.error('Error uploading insurance payment file:', error);
+        // console.error('Error uploading insurance payment file:', error);
         alert('Failed to upload file. Please try again.');
       }
     } else {
@@ -1117,7 +1117,7 @@ const ClientRecords: React.FC<{
         setAttachments(clientAttachments);
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
-        console.error('Error uploading ETA payment file:', error);
+        // console.error('Error uploading ETA payment file:', error);
         alert('Failed to upload file. Please try again.');
       }
     } else {
@@ -3082,7 +3082,7 @@ const ClientRecords: React.FC<{
               attachments={attachments}
               allowDelete={true}
               onFileDeleted={(fileId: string) => {
-                console.log('File deleted:', fileId);
+                // console.log('File deleted:', fileId);
                 // Reload client-specific attachments after deletion
                 const currentClientId = clientId || tempClientId;
                 if (currentClientId) {
@@ -3305,7 +3305,7 @@ const MainPage: React.FC<MainPageProps> = ({
       });
       setClients(allClients);
     } catch (error) {
-      console.error('Error loading clients:', error);
+      // console.error('Error loading clients:', error);
     } finally {
       setLoading(false);
     }

@@ -39,42 +39,42 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
     const imageCache: Record<string, string> = {};
     const uniqueUsers = new Map<string, string>();
     
-    console.log('📸 Loading profile images for logs:', logs.length);
+    // console.log('📸 Loading profile images for logs:', logs.length);
     
     // Collect unique users with R2 paths
     logs.forEach(log => {
-      console.log('👤 Log entry:', {
-        user: log.performedByUser,
-        performedBy: log.performedBy,
-        profileImageR2Path: log.profileImageR2Path,
-        hasPath: !!log.profileImageR2Path
-      });
+      // console.log('👤 Log entry:', {
+      //   user: log.performedByUser,
+      //   performedBy: log.performedBy,
+      //   profileImageR2Path: log.profileImageR2Path,
+      //   hasPath: !!log.profileImageR2Path
+      // });
       
       if (log.profileImageR2Path && !uniqueUsers.has(log.performedBy)) {
         uniqueUsers.set(log.performedBy, log.profileImageR2Path);
       }
     });
     
-    console.log('🎯 Unique users with images:', uniqueUsers.size, Array.from(uniqueUsers.entries()));
+    // console.log('🎯 Unique users with images:', uniqueUsers.size, Array.from(uniqueUsers.entries()));
     
     // Load images for each unique user
     for (const [userId, r2Path] of uniqueUsers) {
       try {
-        console.log('⬇️ Fetching image for:', userId, 'from:', r2Path);
+        // console.log('⬇️ Fetching image for:', userId, 'from:', r2Path);
         const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
         const result = await response.json();
         
-        console.log('✅ Image fetch result for', userId, ':', result);
+        // console.log('✅ Image fetch result for', userId, ':', result);
         
         if (result.success && result.url) {
           imageCache[userId] = result.url;
         }
       } catch (error) {
-        console.error(`Error loading profile image for ${userId}:`, error);
+        // console.error(`Error loading profile image for ${userId}:`, error);
       }
     }
     
-    console.log('💾 Final image cache:', imageCache);
+    // console.log('💾 Final image cache:', imageCache);
     setProfileImages(imageCache);
   };
 

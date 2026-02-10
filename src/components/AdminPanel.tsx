@@ -55,14 +55,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (usersData) {
       try {
         const parsedUsers = JSON.parse(usersData);
-        console.log('📋 AdminPanel loaded users:', parsedUsers.length);
-        console.log('Users:', parsedUsers.map((u: User) => ({ email: u.email, verified: u.isVerified, role: u.role })));
+        // console.log('📋 AdminPanel loaded users:', parsedUsers.length);
+        // console.log('Users:', parsedUsers.map((u: User) => ({ email: u.email, verified: u.isVerified, role: u.role })));
         setUsers(parsedUsers);
       } catch (error) {
-        console.error('Error loading users:', error);
+        // console.error('Error loading users:', error);
       }
     } else {
-      console.warn('⚠️ No users found in localStorage');
+      // console.warn('⚠️ No users found in localStorage');
     }
   };
 

@@ -123,7 +123,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true })
     };
   } catch (error: any) {
-    console.error('Conversation action error:', error);
+    // console.error('Conversation action error:', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },

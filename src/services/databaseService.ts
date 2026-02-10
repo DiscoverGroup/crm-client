@@ -26,7 +26,7 @@ class DatabaseService {
 
       return result.data;
     } catch (error) {
-      console.error('Database query error:', error);
+      // console.error('Database query error:', error);
       throw error;
     }
   }
@@ -130,14 +130,14 @@ class DatabaseService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ Data successfully migrated to MongoDB');
+        // console.log('✅ Data successfully migrated to MongoDB');
         return true;
       } else {
-        console.error('❌ Migration failed:', result.error);
+        // console.error('❌ Migration failed:', result.error);
         return false;
       }
     } catch (error) {
-      console.error('Migration error:', error);
+      // console.error('Migration error:', error);
       return false;
     }
   }

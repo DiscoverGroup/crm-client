@@ -129,7 +129,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       
       setConversations(nonArchivedConvs);
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      // console.error('Failed to load conversations:', error);
     } finally {
       setIsLoadingConversations(false);
     }
@@ -251,7 +251,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         await loadConversations();
       }
     } catch (error) {
-      console.error('Failed to load direct message:', error);
+      // console.error('Failed to load direct message:', error);
     } finally {
       setIsLoadingMessages(false);
     }
@@ -282,7 +282,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         await loadConversations();
       }
     } catch (error) {
-      console.error('Failed to load group chat:', error);
+      // console.error('Failed to load group chat:', error);
     } finally {
       setIsLoadingMessages(false);
     }
@@ -318,7 +318,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           return;
         }
       } catch (error) {
-        console.error('File upload error:', error);
+        // console.error('File upload error:', error);
         const errorMsg = error instanceof Error ? error.message : 'Network error or timeout';
         alert(`Failed to upload file: ${errorMsg}\n\nPlease check your connection and try again.\n\nFile: ${attachedFile.name}`);
         setUploadingFile(false);
@@ -363,7 +363,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       // Optimistically update conversation list without delay
       loadConversations();
     } catch (error) {
-      console.error('Failed to send message:', error);
+      // console.error('Failed to send message:', error);
       alert('Failed to send message. Please try again.');
     }
   };
@@ -461,7 +461,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       setShowChatMenu(false);
       await loadConversations();
     } catch (error) {
-      console.error('Failed to pin conversation:', error);
+      // console.error('Failed to pin conversation:', error);
     }
   };
 
@@ -477,7 +477,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         // Force reload conversations
         await loadConversations();
       } catch (error) {
-        console.error('Failed to delete conversation:', error);
+        // console.error('Failed to delete conversation:', error);
       }
     }
   };
@@ -488,7 +488,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       setConversationMenuId(null);
       await loadConversations();
     } catch (error) {
-      console.error('Failed to archive conversation:', error);
+      // console.error('Failed to archive conversation:', error);
     }
   };
 
@@ -558,7 +558,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         setShowChatMenu(false);
         await loadConversations();
       } catch (error) {
-        console.error('Failed to delete conversation:', error);
+        // console.error('Failed to delete conversation:', error);
       }
     }
   };
@@ -580,7 +580,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
       
       alert(wasArchived ? 'Conversation unarchived' : 'Conversation archived');
     } catch (error) {
-      console.error('Failed to archive conversation:', error);
+      // console.error('Failed to archive conversation:', error);
     }
   };
 

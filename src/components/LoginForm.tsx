@@ -85,7 +85,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       
       alert('Email verified successfully! You can now login to your account.');
     } catch (error) {
-      console.error('Error verifying email:', error);
+      // console.error('Error verifying email:', error);
       alert('An error occurred during verification. Please try again.');
     }
   };
@@ -119,8 +119,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
       const data = await response.json();
       
-      console.log('Response status:', response.status);
-      console.log('Response data:', data);
+      // console.log('Response status:', response.status);
+      // console.log('Response data:', data);
 
       if (response.ok && data.success) {
         alert(`Password reset email sent to ${resetEmail}!\n\nPlease check your inbox and follow the instructions.`);
@@ -128,11 +128,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         setResetEmail('');
       } else {
         const errorDetails = data.details ? `\n\nDetails: ${data.details}` : '';
-        console.error('Failed to send email:', data);
+        // console.error('Failed to send email:', data);
         alert(`Failed to send reset email. Please try again.\n\nError: ${data.error || 'Unknown error'}${errorDetails}`);
       }
     } catch (error) {
-      console.error('Error sending reset email:', error);
+      // console.error('Error sending reset email:', error);
       alert('An error occurred. Please try again later.');
     }
   };
@@ -181,7 +181,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       setConfirmNewPassword('');
       setResetUserEmail('');
     } catch (error) {
-      console.error('Error resetting password:', error);
+      // console.error('Error resetting password:', error);
       alert('An error occurred. Please try again.');
     }
   };

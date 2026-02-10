@@ -18,7 +18,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error saving user to MongoDB:', error);
+      // console.error('Error saving user to MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
@@ -40,7 +40,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error updating user in MongoDB:', error);
+      // console.error('Error updating user in MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
@@ -61,7 +61,7 @@ export class MongoDBService {
       const result = await response.json();
       return result.success ? result.data : null;
     } catch (error) {
-      console.error('Error finding user in MongoDB:', error);
+      // console.error('Error finding user in MongoDB:', error);
       return null;
     }
   }
@@ -85,7 +85,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error saving client to MongoDB:', error);
+      // console.error('Error saving client to MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
@@ -110,7 +110,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error updating client in MongoDB:', error);
+      // console.error('Error updating client in MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
@@ -131,7 +131,7 @@ export class MongoDBService {
       const result = await response.json();
       return result.success ? result.data : null;
     } catch (error) {
-      console.error('Error finding client in MongoDB:', error);
+      // console.error('Error finding client in MongoDB:', error);
       return null;
     }
   }
@@ -152,7 +152,7 @@ export class MongoDBService {
       const result = await response.json();
       return result.success ? result.data : [];
     } catch (error) {
-      console.error('Error getting clients from MongoDB:', error);
+      // console.error('Error getting clients from MongoDB:', error);
       return [];
     }
   }
@@ -178,7 +178,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error deleting client in MongoDB:', error);
+      // console.error('Error deleting client in MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }
@@ -205,7 +205,7 @@ export class MongoDBService {
       const result = await response.json();
       return { success: result.success || response.ok, message: result.message };
     } catch (error) {
-      console.error('Error saving payment data to MongoDB:', error);
+      // console.error('Error saving payment data to MongoDB:', error);
       return { success: false, message: 'Failed to sync with MongoDB' };
     }
   }

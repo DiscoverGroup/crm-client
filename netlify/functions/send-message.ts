@@ -126,7 +126,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: messageDoc })
     };
   } catch (error: any) {
-    console.error('Send message error:', error);
+    // console.error('Send message error:', error);
     return {
       statusCode: 500,
       headers,
@@ -140,7 +140,7 @@ export const handler: Handler = async (event) => {
       try {
         await client.close();
       } catch (e) {
-        console.error('Error closing connection:', e);
+        // console.error('Error closing connection:', e);
       }
     }
   }

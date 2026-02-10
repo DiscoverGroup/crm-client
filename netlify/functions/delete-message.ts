@@ -78,7 +78,7 @@ export const handler: Handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error('Delete message error:', error);
+    // console.error('Delete message error:', error);
     return {
       statusCode: 500,
       headers,

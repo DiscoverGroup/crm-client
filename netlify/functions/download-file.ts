@@ -65,7 +65,7 @@ export const handler: Handler = async (event) => {
       })
     };
   } catch (error: any) {
-    console.error('Error generating signed URL:', error);
+    // console.error('Error generating signed URL:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

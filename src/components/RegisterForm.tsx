@@ -98,20 +98,20 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log('Profile image selected:', file.name, file.type, file.size);
+    // console.log('Profile image selected:', file.name, file.type, file.size);
     setUploading(true);
     try {
       const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
-      console.log('Uploading to bucket:', bucket, 'folder: profile-images');
+      // console.log('Uploading to bucket:', bucket, 'folder: profile-images');
       const result = await uploadFileToR2(file, bucket, 'profile-images');
       
-      console.log('Upload result:', result);
+      // console.log('Upload result:', result);
       
       if (result.success && result.url) {
         setProfileImage(result.url);
-        console.log('Profile image URL set:', result.url);
+        // console.log('Profile image URL set:', result.url);
       } else {
-        console.error('Upload failed:', result.error);
+        // console.error('Upload failed:', result.error);
         setModalConfig({
           isOpen: true,
           title: 'Upload Failed',
@@ -120,7 +120,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         });
       }
     } catch (error) {
-      console.error('Error uploading profile image:', error);
+      // console.error('Error uploading profile image:', error);
       setModalConfig({
         isOpen: true,
         title: 'Upload Error',

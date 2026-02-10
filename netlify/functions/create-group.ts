@@ -75,7 +75,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: groupDoc })
     };
   } catch (error: any) {
-    console.error('Create group error:', error);
+    // console.error('Create group error:', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },

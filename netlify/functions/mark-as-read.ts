@@ -97,7 +97,7 @@ export const handler: Handler = async (event) => {
       })
     };
   } catch (error: any) {
-    console.error('Mark as read error:', error);
+    // console.error('Mark as read error:', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },

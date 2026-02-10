@@ -83,7 +83,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
-    console.error('Database error:', error);
+    // console.error('Database error:', error);
     
     let hint = 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0';
     

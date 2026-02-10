@@ -31,7 +31,7 @@ export const handler: Handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('Error in verify-otp function:', error);
+    // console.error('Error in verify-otp function:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

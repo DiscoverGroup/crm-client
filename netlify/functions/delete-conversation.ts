@@ -100,7 +100,7 @@ export const handler: Handler = async (event) => {
       })
     };
   } catch (error: any) {
-    console.error('Delete conversation error:', error);
+    // console.error('Delete conversation error:', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },

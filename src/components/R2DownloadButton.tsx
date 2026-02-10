@@ -30,7 +30,7 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
     }
 
     try {
-      console.log('📥 Generating secure download URL...');
+      // console.log('📥 Generating secure download URL...');
       setIsGeneratingUrl(true);
       
       // Use Netlify function to generate signed URL (more reliable than public URL)
@@ -38,13 +38,13 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
       const result = await functionResponse.json();
       
       if (result.success && result.url) {
-        console.log('✅ Download URL generated, opening file...');
+        // console.log('✅ Download URL generated, opening file...');
         window.open(result.url, '_blank');
       } else {
         throw new Error(result.error || 'Failed to generate download URL');
       }
     } catch (error) {
-      console.error('❌ Download failed:', error);
+      // console.error('❌ Download failed:', error);
       alert('Failed to download file. Please ensure R2 credentials are configured in Netlify.\n\nContact administrator if the issue persists.');
     } finally {
       setIsGeneratingUrl(false);

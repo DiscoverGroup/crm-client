@@ -89,7 +89,7 @@ export const handler: Handler = async (event) => {
       })
     };
   } catch (error: any) {
-    console.error('Migration error:', error);
+    // console.error('Migration error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

@@ -91,7 +91,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   useEffect(() => {
     const loadNotes = () => {
       const notes = LogNoteService.getLogNotes(clientId);
-      console.log('Loading notes for client:', clientId, notes);
+      // console.log('Loading notes for client:', clientId, notes);
       setLogNotes(notes);
     };
     loadNotes();
@@ -231,12 +231,12 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   const handleStatusChange = (logNoteId: string, newStatus: 'pending' | 'done' | 'on hold') => {
-    console.log('Status change called:', { logNoteId, newStatus, clientId });
+    // console.log('Status change called:', { logNoteId, newStatus, clientId });
     const success = LogNoteService.updateLogNoteStatus(logNoteId, clientId, newStatus);
-    console.log('Update success:', success);
+    // console.log('Update success:', success);
     if (success) {
       const notes = LogNoteService.getLogNotes(clientId);
-      console.log('Updated notes:', notes);
+      // console.log('Updated notes:', notes);
       setLogNotes(notes);
     }
   };
@@ -816,15 +816,15 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   value={note.status}
                   onChange={(e) => {
                     e.stopPropagation();
-                    console.log('Dropdown changed to:', e.target.value);
+                    // console.log('Dropdown changed to:', e.target.value);
                     handleStatusChange(note.id, e.target.value as 'pending' | 'done' | 'on hold');
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    console.log('Dropdown clicked for note:', note.id);
+                    // console.log('Dropdown clicked for note:', note.id);
                   }}
                   onFocus={() => {
-                    console.log('Dropdown focused for note:', note.id);
+                    // console.log('Dropdown focused for note:', note.id);
                   }}
                   style={{
                     padding: '2px 6px',

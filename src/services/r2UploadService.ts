@@ -23,7 +23,7 @@ function getR2PublicUrl(): string {
   }
 
   // Fallback - but you should always set VITE_R2_PUBLIC_URL in .env
-  console.warn('VITE_R2_PUBLIC_URL not set, using fallback. This may not work correctly.');
+  // console.warn('VITE_R2_PUBLIC_URL not set, using fallback. This may not work correctly.');
   return 'https://pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev';
 }
 

@@ -211,7 +211,7 @@ const MainPage: React.FC = () => {
         alert('Failed to save payment details. Please try again.');
       }
     } catch (error) {
-      console.error('Error saving payment details:', error);
+      // console.error('Error saving payment details:', error);
       alert('An error occurred while saving payment details.');
     } finally {
       setIsSaving(false);
@@ -257,7 +257,7 @@ const MainPage: React.FC = () => {
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
     } catch (error) {
-      console.error('Error saving client info:', error);
+      // console.error('Error saving client info:', error);
       alert('An error occurred while saving client information.');
     } finally {
       setIsSavingClient(false);
@@ -280,7 +280,7 @@ const MainPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Package & companions information saved successfully!');
     } catch (error) {
-      console.error('Error saving package info:', error);
+      // console.error('Error saving package info:', error);
       alert('An error occurred while saving package information.');
     } finally {
       setIsSavingPackage(false);
@@ -294,7 +294,7 @@ const MainPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Visa services saved successfully!');
     } catch (error) {
-      console.error('Error saving visa services:', error);
+      // console.error('Error saving visa services:', error);
       alert('An error occurred while saving visa services.');
     } finally {
       setIsSavingVisa(false);
@@ -308,7 +308,7 @@ const MainPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Passport information saved successfully!');
     } catch (error) {
-      console.error('Error saving passport info:', error);
+      // console.error('Error saving passport info:', error);
       alert('An error occurred while saving passport information.');
     } finally {
       setIsSavingPassports(false);
@@ -322,7 +322,7 @@ const MainPage: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       alert('Embassy information saved successfully!');
     } catch (error) {
-      console.error('Error saving embassy info:', error);
+      // console.error('Error saving embassy info:', error);
       alert('An error occurred while saving embassy information.');
     } finally {
       setIsSavingEmbassy(false);

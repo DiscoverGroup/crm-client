@@ -36,7 +36,7 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
           }
         }
       } catch (error) {
-        console.error('Download error:', error);
+        // console.error('Download error:', error);
         alert('Failed to download file');
       }
     } else {
@@ -62,7 +62,7 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
           alert('Failed to delete file. Please try again.');
         }
       } catch (error) {
-        console.error('Error deleting file:', error);
+        // console.error('Error deleting file:', error);
         alert('Error deleting file. Please try again.');
       } finally {
         setDeletingFileId(null);

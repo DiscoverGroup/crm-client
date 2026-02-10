@@ -117,7 +117,7 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: messages })
     };
   } catch (error: any) {
-    console.error('Get messages error:', error);
+    // console.error('Get messages error:', error);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -131,7 +131,7 @@ export const handler: Handler = async (event) => {
       try {
         await client.close();
       } catch (e) {
-        console.error('Error closing connection:', e);
+        // console.error('Error closing connection:', e);
       }
     }
   }

@@ -127,10 +127,10 @@ const App: React.FC = () => {
           
           if (needsUpdate) {
             localStorage.setItem('crm_users', JSON.stringify(updatedUsers));
-            console.log('✅ User data migrated - IDs added to existing users');
+            // console.log('✅ User data migrated - IDs added to existing users');
           }
         } catch (error) {
-          console.error('Error migrating user data:', error);
+          // console.error('Error migrating user data:', error);
         }
       }
     };
@@ -149,12 +149,12 @@ const App: React.FC = () => {
                         window.location.hostname.includes('netlify.com');
       
       if (!isNetlify) {
-        console.log('📦 Running in development mode - using localStorage');
+        // console.log('📦 Running in development mode - using localStorage');
         return;
       }
 
-      console.log('🚀 Running on Netlify - Production Mode');
-      console.log('─────────────────────────────────────');
+      // console.log('🚀 Running on Netlify - Production Mode');
+      // console.log('─────────────────────────────────────');
 
       // Check MongoDB Atlas connection
       try {
@@ -166,19 +166,19 @@ const App: React.FC = () => {
         
         if (!response.ok) {
           const errorText = await response.text();
-          console.log('❌ MongoDB Atlas: Function error');
-          console.log(`   • Status: ${response.status}`);
-          console.log(`   • Response: ${errorText.substring(0, 200)}`);
+          // console.log('❌ MongoDB Atlas: Function error');
+          // console.log(`   • Status: ${response.status}`);
+          // console.log(`   • Response: ${errorText.substring(0, 200)}`);
         } else {
           const result = await response.json();
           if (result.success) {
-            console.log('✅ MongoDB Atlas: Connected');
+            // console.log('✅ MongoDB Atlas: Connected');
           } else {
-            console.log('❌ MongoDB Atlas: Connection issue -', result.error);
+            // console.log('❌ MongoDB Atlas: Connection issue -', result.error);
           }
         }
       } catch (error) {
-        console.error('❌ MongoDB Atlas: Connection failed -', error);
+        // console.error('❌ MongoDB Atlas: Connection failed -', error);
       }
 
       // Check Cloudflare R2 configuration
@@ -189,19 +189,19 @@ const App: React.FC = () => {
       const r2Bucket = import.meta.env.VITE_R2_BUCKET_NAME;
 
       if (r2AccountId && r2AccessKey && r2SecretKey && r2PublicUrl && r2Bucket) {
-        console.log('✅ Cloudflare R2: Configured');
-        console.log(`   • Bucket: ${r2Bucket}`);
-        console.log(`   • Public URL: ${r2PublicUrl}`);
+        // console.log('✅ Cloudflare R2: Configured');
+        // console.log(`   • Bucket: ${r2Bucket}`);
+        // console.log(`   • Public URL: ${r2PublicUrl}`);
       } else {
-        console.log('❌ Cloudflare R2: Not configured or missing credentials');
-        if (!r2AccountId) console.log('   • Missing: VITE_R2_ACCOUNT_ID');
-        if (!r2AccessKey) console.log('   • Missing: VITE_R2_ACCESS_KEY_ID');
-        if (!r2SecretKey) console.log('   • Missing: VITE_R2_SECRET_ACCESS_KEY');
-        if (!r2PublicUrl) console.log('   • Missing: VITE_R2_PUBLIC_URL');
-        if (!r2Bucket) console.log('   • Missing: VITE_R2_BUCKET_NAME');
+        // console.log('❌ Cloudflare R2: Not configured or missing credentials');
+        // if (!r2AccountId) console.log('   • Missing: VITE_R2_ACCOUNT_ID');
+        // if (!r2AccessKey) console.log('   • Missing: VITE_R2_ACCESS_KEY_ID');
+        // if (!r2SecretKey) console.log('   • Missing: VITE_R2_SECRET_ACCESS_KEY');
+        // if (!r2PublicUrl) console.log('   • Missing: VITE_R2_PUBLIC_URL');
+        // if (!r2Bucket) console.log('   • Missing: VITE_R2_BUCKET_NAME');
       }
       
-      console.log('─────────────────────────────────────');
+      // console.log('─────────────────────────────────────');
     };
     checkConnections();
   }, []);
@@ -216,7 +216,7 @@ const App: React.FC = () => {
         try {
           users = JSON.parse(usersData);
         } catch (error) {
-          console.error('Error parsing users:', error);
+          // console.error('Error parsing users:', error);
         }
       }
 
@@ -247,10 +247,10 @@ const App: React.FC = () => {
         // Save admin account to MongoDB
         MongoDBService.saveUser(adminAccount).then(result => {
           if (result.success) {
-            console.log('✅ Admin account synced to MongoDB');
+            // console.log('✅ Admin account synced to MongoDB');
           }
         }).catch(err => {
-          console.error('Failed to sync admin to MongoDB:', err);
+          // console.error('Failed to sync admin to MongoDB:', err);
         });
       }
     };
@@ -266,7 +266,7 @@ const App: React.FC = () => {
 
       try {
         const users = JSON.parse(usersData);
-        console.log(`🔄 Syncing ${users.length} users to MongoDB...`);
+        // console.log(`🔄 Syncing ${users.length} users to MongoDB...`);
 
         let successCount = 0;
         let failCount = 0;
@@ -281,28 +281,28 @@ const App: React.FC = () => {
               const result = await MongoDBService.saveUser(user);
               if (result.success) {
                 successCount++;
-                console.log(`✅ Synced user: ${user.fullName} (${user.email})`);
+                // console.log(`✅ Synced user: ${user.fullName} (${user.email})`);
               } else {
                 failCount++;
-                console.warn(`⚠️ Failed to sync user: ${user.email}`);
+                // console.warn(`⚠️ Failed to sync user: ${user.email}`);
               }
             } else {
               // User exists, update if needed
               const result = await MongoDBService.updateUser(user.email, user);
               if (result.success) {
                 successCount++;
-                console.log(`✅ Updated user: ${user.fullName} (${user.email})`);
+                // console.log(`✅ Updated user: ${user.fullName} (${user.email})`);
               }
             }
           } catch (error) {
             failCount++;
-            console.error(`❌ Error syncing user ${user.email}:`, error);
+            // console.error(`❌ Error syncing user ${user.email}:`, error);
           }
         }
 
-        console.log(`✅ MongoDB sync complete: ${successCount} successful, ${failCount} failed`);
+        // console.log(`✅ MongoDB sync complete: ${successCount} successful, ${failCount} failed`);
       } catch (error) {
-        console.error('Error syncing users to MongoDB:', error);
+        // console.error('Error syncing users to MongoDB:', error);
       }
     };
 
@@ -318,12 +318,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const syncClientsFromMongoDB = async () => {
       try {
-        console.log('🔄 Loading clients from MongoDB on app startup...');
+        // console.log('🔄 Loading clients from MongoDB on app startup...');
         // Import ClientService dynamically to avoid circular dependency
         const { ClientService } = await import('./services/clientService');
         await ClientService.syncFromMongoDB();
       } catch (error) {
-        console.error('Error syncing clients from MongoDB:', error);
+        // console.error('Error syncing clients from MongoDB:', error);
       }
     };
 
@@ -353,7 +353,7 @@ const App: React.FC = () => {
           localStorage.removeItem('crm_auth');
         }
       } catch (error) {
-        console.error('Error parsing saved auth data:', error);
+        // console.error('Error parsing saved auth data:', error);
         localStorage.removeItem('crm_auth');
       }
     }
@@ -450,7 +450,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error parsing user data:', error);
+      // console.error('Error parsing user data:', error);
       setModalConfig({
         isOpen: true,
         title: 'Error',
@@ -491,10 +491,10 @@ const App: React.FC = () => {
     if (existingUsers) {
       try {
         users = JSON.parse(existingUsers);
-        console.log('📋 Existing users in localStorage:', users.length);
-        console.log('Existing emails:', users.map((u: any) => u.email));
+        // console.log('📋 Existing users in localStorage:', users.length);
+        // console.log('Existing emails:', users.map((u: any) => u.email));
       } catch (error) {
-        console.error('Error parsing existing users:', error);
+        // console.error('Error parsing existing users:', error);
       }
     }
 
@@ -502,11 +502,11 @@ const App: React.FC = () => {
     const emailExists = users.some((u: any) => u.email === form.email);
     const usernameExists = users.some((u: any) => u.username === form.username);
 
-    console.log(`Checking registration for: ${form.email}`);
-    console.log(`Email exists: ${emailExists}, Username exists: ${usernameExists}`);
+    // console.log(`Checking registration for: ${form.email}`);
+    // console.log(`Email exists: ${emailExists}, Username exists: ${usernameExists}`);
 
     if (emailExists) {
-      console.warn(`⚠️ Email ${form.email} is already registered`);
+      // console.warn(`⚠️ Email ${form.email} is already registered`);
       setModalConfig({
         isOpen: true,
         title: 'Email Already Registered',
@@ -548,19 +548,19 @@ const App: React.FC = () => {
 
     users.push(newUser);
     localStorage.setItem('crm_users', JSON.stringify(users));
-    console.log('✅ New user added to localStorage:', newUser.email);
-    console.log('Total users now:', users.length);
+    // console.log('✅ New user added to localStorage:', newUser.email);
+    // console.log('Total users now:', users.length);
 
     // Save to MongoDB Atlas
     try {
       const mongoResult = await MongoDBService.saveUser(newUser);
       if (mongoResult.success) {
-        console.log('✅ User saved to MongoDB Atlas');
+        // console.log('✅ User saved to MongoDB Atlas');
       } else {
-        console.warn('⚠️ Failed to save user to MongoDB:', mongoResult.message);
+        // console.warn('⚠️ Failed to save user to MongoDB:', mongoResult.message);
       }
     } catch (err) {
-      console.error('❌ MongoDB sync failed:', err);
+      // console.error('❌ MongoDB sync failed:', err);
       // Continue even if MongoDB sync fails - localStorage is the primary storage
     }
 
@@ -592,7 +592,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      // console.error('Error sending verification email:', error);
       setModalConfig({
         isOpen: true,
         title: 'Registration Complete',
@@ -653,12 +653,12 @@ const App: React.FC = () => {
         try {
           const result = await MongoDBService.updateUser(user.email, updates);
           if (result.success) {
-            console.log('✅ User verification synced to MongoDB');
+            // console.log('✅ User verification synced to MongoDB');
           } else {
-            console.warn('⚠️ Failed to sync verification to MongoDB:', result.message);
+            // console.warn('⚠️ Failed to sync verification to MongoDB:', result.message);
           }
         } catch (err) {
-          console.error('❌ MongoDB sync failed:', err);
+          // console.error('❌ MongoDB sync failed:', err);
         }
         
         setShowOTPVerification(false);
@@ -677,7 +677,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error verifying OTP:', error);
+      // console.error('Error verifying OTP:', error);
       setModalConfig({
         isOpen: true,
         title: 'Error',
@@ -723,7 +723,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error resending code:', error);
+      // console.error('Error resending code:', error);
       setModalConfig({
         isOpen: true,
         title: 'Error',

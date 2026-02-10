@@ -59,7 +59,7 @@ export class MessagingService {
       }
       return result.data;
     } catch (error) {
-      console.error(`API call to ${endpoint} failed:`, error);
+      // console.error(`API call to ${endpoint} failed:`, error);
       throw error;
     }
   }
@@ -101,7 +101,7 @@ export class MessagingService {
       return result;
     } catch (error) {
       // Fallback to localStorage if API fails
-      console.warn('Falling back to localStorage for sendMessage');
+      // console.warn('Falling back to localStorage for sendMessage');
       const messages = this.getAllMessages();
       const newMessage: Message = {
         id: Date.now().toString(),
@@ -132,7 +132,7 @@ export class MessagingService {
       );
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for getConversation');
+      // console.warn('Falling back to localStorage for getConversation');
       const messages = this.getAllMessages();
       return messages
         .filter(m => 
@@ -154,7 +154,7 @@ export class MessagingService {
       });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for getConversations');
+      // console.warn('Falling back to localStorage for getConversations');
       const messages = this.getAllMessages();
       const conversationMap = new Map<string, Conversation>();
 
@@ -210,7 +210,7 @@ export class MessagingService {
       await this.apiCall('mark-as-read', { userId, otherUserId });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for markAsRead');
+      // console.warn('Falling back to localStorage for markAsRead');
       const messages = this.getAllMessages();
       const now = new Date();
       messages.forEach(message => {
@@ -259,7 +259,7 @@ export class MessagingService {
       return result;
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for createGroup');
+      // console.warn('Falling back to localStorage for createGroup');
       const groups = this.getAllGroups();
       const newGroup: GroupChat = {
         id: Date.now().toString(),
@@ -293,7 +293,7 @@ export class MessagingService {
       return result;
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for sendGroupMessage');
+      // console.warn('Falling back to localStorage for sendGroupMessage');
       const messages = this.getAllMessages();
       const newMessage: Message = {
         id: Date.now().toString(),
@@ -323,7 +323,7 @@ export class MessagingService {
       );
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for getGroupMessages');
+      // console.warn('Falling back to localStorage for getGroupMessages');
       const messages = this.getAllMessages();
       return messages
         .filter(m => m.groupId === groupId)
@@ -348,7 +348,7 @@ export class MessagingService {
       });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for getAllConversations');
+      // console.warn('Falling back to localStorage for getAllConversations');
       const messages = this.getAllMessages();
       const conversationMap = new Map<string, Conversation>();
 
@@ -421,7 +421,7 @@ export class MessagingService {
       await this.apiCall('mark-as-read', { userId, groupId });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for markGroupAsRead');
+      // console.warn('Falling back to localStorage for markGroupAsRead');
       const messages = this.getAllMessages();
       const now = new Date();
       messages.forEach(message => {
@@ -440,7 +440,7 @@ export class MessagingService {
       await this.apiCall('add-reaction', { messageId, userId, emoji });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for addReaction');
+      // console.warn('Falling back to localStorage for addReaction');
       const messages = this.getAllMessages();
       const message = messages.find(m => m.id === messageId);
       if (message) {
@@ -459,7 +459,7 @@ export class MessagingService {
       await this.apiCall('remove-reaction', { messageId, userId });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for removeReaction');
+      // console.warn('Falling back to localStorage for removeReaction');
       const messages = this.getAllMessages();
       const message = messages.find(m => m.id === messageId);
       if (message && message.reactions) {
@@ -475,7 +475,7 @@ export class MessagingService {
       await this.apiCall('edit-message', { messageId, newText });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for editMessage');
+      // console.warn('Falling back to localStorage for editMessage');
       const messages = this.getAllMessages();
       const message = messages.find(m => m.id === messageId);
       if (message) {
@@ -493,7 +493,7 @@ export class MessagingService {
       await this.apiCall('delete-message', { messageId });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for deleteMessage');
+      // console.warn('Falling back to localStorage for deleteMessage');
       const messages = this.getAllMessages();
       const message = messages.find(m => m.id === messageId);
       if (message) {
@@ -515,7 +515,7 @@ export class MessagingService {
       await this.apiCall('delete-conversation', { userId, otherUserId, groupId });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for deleteConversation');
+      // console.warn('Falling back to localStorage for deleteConversation');
       let messages = this.getAllMessages();
       
       if (groupId) {
@@ -554,7 +554,7 @@ export class MessagingService {
       });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for toggleArchiveConversation');
+      // console.warn('Falling back to localStorage for toggleArchiveConversation');
       const ARCHIVE_KEY = 'crm_archived_conversations';
       const archived = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
       const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;
@@ -610,7 +610,7 @@ export class MessagingService {
       });
     } catch (error) {
       // Fallback to localStorage
-      console.warn('Falling back to localStorage for togglePinConversation');
+      // console.warn('Falling back to localStorage for togglePinConversation');
       const PIN_KEY = 'crm_pinned_conversations';
       const pinned = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
       const conversationKey = groupId ? `group_${groupId}` : `user_${otherUserId}`;

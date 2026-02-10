@@ -40,7 +40,7 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
       // For now, we'll show all attachments since we don't have client-specific linking yet
       setAttachments(allAttachments);
     } catch (error) {
-      console.error('Error loading client attachments:', error);
+      // console.error('Error loading client attachments:', error);
     } finally {
       setLoading(false);
     }

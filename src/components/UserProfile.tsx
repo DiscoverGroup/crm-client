@@ -137,7 +137,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
         setProfileImageSignedUrl(result.url);
       }
     } catch (error) {
-      console.error('Error loading profile image:', error);
+      // console.error('Error loading profile image:', error);
     } finally {
       setLoadingImage(false);
     }
@@ -171,10 +171,10 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     setUploading(true);
     try {
       const bucket = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
-      console.log('Uploading to bucket:', bucket, 'folder: profile-images');
+      // console.log('Uploading to bucket:', bucket, 'folder: profile-images');
       const result = await uploadFileToR2(file, bucket, 'profile-images');
       
-      console.log('Upload result:', result);
+      // console.log('Upload result:', result);
       
       if (result.success && result.url && result.path) {
         const updatedUserData = {
@@ -206,11 +206,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
         
         alert('Profile image uploaded and saved successfully!');
       } else {
-        console.error('Upload failed:', result.error);
+        // console.error('Upload failed:', result.error);
         alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error uploading profile image:', error);
+      // console.error('Error uploading profile image:', error);
       alert('Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setUploading(false);

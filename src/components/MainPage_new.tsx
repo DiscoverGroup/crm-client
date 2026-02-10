@@ -77,7 +77,7 @@ const MainPage: React.FC = () => {
         cancelled: clientStats.statusCounts['Cancelled'] || 0
       });
     } catch (error) {
-      console.error('Error loading clients:', error);
+      // console.error('Error loading clients:', error);
     } finally {
       setLoading(false);
     }
