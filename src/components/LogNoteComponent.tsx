@@ -259,7 +259,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       padding: '20px',
       boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)',
       border: '1px solid rgba(147, 197, 253, 0.3)',
-      height: 'fit-content'
+      height: 'fit-content',
+      width: '100%',
+      minWidth: 0
     }}>
       <h3 style={{
         margin: '0 0 16px 0',
