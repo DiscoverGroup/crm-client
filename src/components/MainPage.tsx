@@ -150,6 +150,9 @@ const ClientRecords: React.FC<{
   // Log refresh state
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   
+  // Mobile Activity Log toggle state
+  const [showMobileActivityLog, setShowMobileActivityLog] = useState(false);
+  
   // Field tracking setup
   const currentClientId = clientId || tempClientId;
   const currentUserId = "user_1"; // In a real app, get from auth context
@@ -1247,7 +1250,8 @@ const ClientRecords: React.FC<{
     <div style={{
       flex: 1,
       overflowY: 'auto',
-      background: "linear-gradient(135deg, #e1f4fd 0%, #cde9fb 50%, #b8ddf9 100%)"
+      background: "linear-gradient(135deg, #e1f4fd 0%, #cde9fb 50%, #b8ddf9 100%)",
+      position: 'relative'
     }}>
       <div style={{
         maxWidth: 1400,
@@ -1255,7 +1259,8 @@ const ClientRecords: React.FC<{
         padding: "0 20px",
         display: 'flex',
         gap: '24px',
-        alignItems: 'flex-start'
+        alignItems: 'flex-start',
+        position: 'relative'
       }}>
         {/* Main Content - Left Side */}
         <div style={{
@@ -3113,51 +3118,178 @@ const ClientRecords: React.FC<{
         </form>
       </div>
 
-      {/* Right Sidebar - Activity Log */}
-      <div style={{
-        width: '400px',
-        flexShrink: 0,
-        position: 'sticky',
-        top: '20px',
-        height: 'fit-content',
-        maxHeight: 'calc(100vh - 80px)',
-        overflowY: 'auto'
-      }}>
-        {currentClientId ? (
-          <LogNoteComponent
-            key={logRefreshKey}
-            clientId={currentClientId}
-            currentUserId={currentUserId}
-            currentUserName={currentUserName}
-          />
-        ) : (
-          <div style={{
-            background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
-            borderRadius: '16px',
-            padding: '20px',
-            boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)',
-            border: '1px solid rgba(147, 197, 253, 0.3)',
-            height: 'fit-content'
-          }}>
-            <h3 style={{
-              margin: '0 0 16px 0',
-              color: '#1e293b',
-              fontSize: '1.25rem',
-              fontWeight: '600'
+      {/* Right Sidebar - Activity Log - Hidden on mobile, shown on desktop */}
+      {window.innerWidth >= 768 && (
+        <div style={{
+          width: '400px',
+          flexShrink: 0,
+          position: 'sticky',
+          top: '20px',
+          height: 'fit-content',
+          maxHeight: 'calc(100vh - 80px)',
+          overflowY: 'auto'
+        }}>
+          {currentClientId ? (
+            <LogNoteComponent
+              key={logRefreshKey}
+              clientId={currentClientId}
+              currentUserId={currentUserId}
+              currentUserName={currentUserName}
+            />
+          ) : (
+            <div style={{
+              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
+              borderRadius: '16px',
+              padding: '20px',
+              boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)',
+              border: '1px solid rgba(147, 197, 253, 0.3)',
+              height: 'fit-content'
             }}>
-              Activity Log
-            </h3>
-            <p style={{
-              color: '#64748b',
-              fontSize: '13px',
-              textAlign: 'center',
-              padding: '24px 16px'
-            }}>
-              Activity log will appear when a client is selected.
-            </p>
-          </div>
-        )}
-      </div>
+              <h3 style={{
+                margin: '0 0 16px 0',
+                color: '#1e293b',
+                fontSize: '1.25rem',
+                fontWeight: '600'
+              }}>
+                Activity Log
+              </h3>
+              <p style={{
+                color: '#64748b',
+                fontSize: '13px',
+                textAlign: 'center',
+                padding: '24px 16px'
+              }}>
+                Activity log will appear when a client is selected.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile Activity Log Floating Button */}
+      {window.innerWidth < 768 && (
+        <>
+          {/* Floating Button */}
+          <button
+            onClick={() => setShowMobileActivityLog(!showMobileActivityLog)}
+            style={{
+              position: 'fixed',
+              right: '20px',
+              bottom: '20px',
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              fontSize: '28px',
+              cursor: 'pointer',
+              boxShadow: '0 8px 16px rgba(59, 130, 246, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              zIndex: 40,
+              transform: showMobileActivityLog ? 'scale(0.9)' : 'scale(1)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.boxShadow = '0 12px 24px rgba(59, 130, 246, 0.6)';
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.4)';
+              e.currentTarget.style.transform = showMobileActivityLog ? 'scale(0.9)' : 'scale(1)';
+            }}
+            title="Toggle Activity Log"
+          >
+            📋
+          </button>
+
+          {/* Mobile Activity Log Modal */}
+          {showMobileActivityLog && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 50,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                display: 'flex',
+                alignItems: 'flex-end'
+              }}
+              onClick={() => setShowMobileActivityLog(false)}
+            >
+              <div
+                style={{
+                  width: '100%',
+                  maxHeight: '80vh',
+                  backgroundColor: 'white',
+                  borderRadius: '20px 20px 0 0',
+                  boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.15)',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div
+                  style={{
+                    padding: '16px',
+                    borderBottom: '1px solid #e5e7eb',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    position: 'sticky',
+                    top: 0,
+                    backgroundColor: 'white',
+                    zIndex: 51
+                  }}
+                >
+                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '16px', fontWeight: '600' }}>
+                    Activity Log
+                  </h3>
+                  <button
+                    onClick={() => setShowMobileActivityLog(false)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '24px',
+                      cursor: 'pointer',
+                      color: '#6b7280'
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Modal Content */}
+                <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
+                  {currentClientId ? (
+                    <LogNoteComponent
+                      key={logRefreshKey}
+                      clientId={currentClientId}
+                      currentUserId={currentUserId}
+                      currentUserName={currentUserName}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        color: '#7f8c8d',
+                        padding: '40px 20px'
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: '14px' }}>
+                        Select a client to view activity log
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
       </div>
     </div>
   );
