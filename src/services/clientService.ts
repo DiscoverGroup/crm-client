@@ -411,8 +411,11 @@ export class ClientService {
       // Clean up orphaned files
       try {
         const clientFiles = FileService.getFilesByClient?.(clientId) || [];
-        clientFiles.forEach(file => {
-          FileService.deleteFile?.((file as any)._id || (file as any).fileId, 'System');
+        clientFiles.forEach(fileAttachment => {
+          // FileAttachment has a 'file' property which contains the StoredFile with 'id'
+          if (fileAttachment.file && fileAttachment.file.id) {
+            FileService.deleteFile?.(fileAttachment.file.id, 'System');
+          }
         });
         console.log(`Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
       } catch (err) {
