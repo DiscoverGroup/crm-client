@@ -475,7 +475,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 {log.action === 'file_uploaded' && '📎'}
                 {log.action === 'file_deleted' && '🗑️'}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -492,7 +492,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   </span>
                   <span style={{
                     fontSize: '11px',
-                    color: '#64748b'
+                    color: '#64748b',
+                    whiteSpace: 'nowrap',
+                    marginLeft: '8px'
                   }}>
                     {formatTimestamp(new Date(log.timestamp))}
                   </span>
@@ -501,7 +503,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   fontSize: '12px',
                   color: '#475569',
                   margin: '4px 0',
-                  lineHeight: '1.4'
+                  lineHeight: '1.4',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word'
                 }}>
                   {log.details}
                 </p>
