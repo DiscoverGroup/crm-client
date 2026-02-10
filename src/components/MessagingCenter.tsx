@@ -750,10 +750,12 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
           className={`conversation-list ${!showConversationList ? 'hide-mobile' : ''}`}
           style={{
             width: '320px',
+            minWidth: '320px',
             borderRight: '1px solid #e2e8f0',
-            display: showConversationList || !activeConversationId ? 'flex' : 'none',
+            display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#f8fafc'
+            backgroundColor: '#f8fafc',
+            flexShrink: 0
           }}>
           {/* Header */}
           <div style={{

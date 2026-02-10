@@ -57,6 +57,11 @@
   .conversation-list.hide-mobile {
     display: none !important;
   }
+
+  .conversation-list {
+    min-width: 100% !important;
+    width: 100% !important;
+  }
   
   .messaging-container {
     max-height: 100vh !important;
