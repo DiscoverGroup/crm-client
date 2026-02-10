@@ -46,40 +46,90 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
       {/* Main container */}
       <div style={{
         background: 'white',
-        borderRadius: '24px',
+        borderRadius: window.innerWidth < 640 ? '16px' : '24px',
         boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
-        overflow: 'hidden',
-        width: 'min(95vw, 1300px)',
-        height: 'min(85vh, 800px)',
-        minHeight: '500px',
+        overflow: window.innerWidth < 768 ? 'auto' : 'hidden',
+        width: window.innerWidth < 640 ? '95vw' : 'min(95vw, 1300px)',
+        height: window.innerWidth < 768 ? 'auto' : 'min(85vh, 800px)',
+        maxHeight: window.innerWidth < 768 ? '90vh' : '800px',
+        minHeight: window.innerWidth < 768 ? '600px' : '500px',
         position: 'relative',
         display: 'flex',
         flexDirection: window.innerWidth < 768 ? 'column' : 'row'
       }}>
         
+        {/* Mobile Header with Logo and Navigation */}
+        {window.innerWidth < 768 && (
+          <div style={{
+            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+            padding: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: window.innerWidth < 640 ? '16px 16px 0 0' : '24px 24px 0 0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img 
+                src="/DG.jpg" 
+                alt="Discover Group Logo" 
+                style={{
+                  width: '45px',
+                  height: '45px',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3))'
+                }}
+              />
+              <div style={{ color: 'white' }}>
+                <div style={{ fontSize: '18px', fontWeight: '600', letterSpacing: '0.5px' }}>DG-CRM</div>
+                <div style={{ fontSize: '10px', opacity: 0.9 }}>Discover Group</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowRegister(!showRegister)}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: 'white',
+                padding: '8px 20px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {showRegister ? 'Sign In' : 'Sign Up'}
+            </button>
+          </div>
+        )}
+        
         {/* Form Container */}
         <div style={{
           width: window.innerWidth < 768 ? '100%' : '50%',
-          height: window.innerWidth < 768 ? 'auto' : '100%',
+          height: window.innerWidth < 768 ? '100%' : '100%',
           position: 'relative',
           overflow: 'hidden',
           flex: window.innerWidth < 768 ? '1' : 'none'
         }}>
           {/* Forms Wrapper */}
           <div style={{
-            width: '200%',
+            width: window.innerWidth < 768 ? '100%' : '200%',
             height: '100%',
             display: 'flex',
-            transform: showRegister ? 'translateX(-50%)' : 'translateX(0%)',
-            transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            transform: window.innerWidth < 768 
+              ? 'translateX(0)' 
+              : (showRegister ? 'translateX(-50%)' : 'translateX(0%)'),
+            transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+            position: 'relative'
           }}>
             {/* Login Form */}
             <div style={{
-              width: '50%',
+              width: window.innerWidth < 768 ? '100%' : '50%',
               height: '100%',
-              display: 'flex',
+              display: window.innerWidth < 768 ? (showRegister ? 'none' : 'flex') : 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center',
               padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
               overflowY: 'auto'
             }}>
@@ -91,11 +141,11 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
 
             {/* Register Form */}
             <div style={{
-              width: '50%',
+              width: window.innerWidth < 768 ? '100%' : '50%',
               height: '100%',
-              display: 'flex',
+              display: window.innerWidth < 768 ? (showRegister ? 'flex' : 'none') : 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center',
               padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
               overflowY: 'auto'
             }}>

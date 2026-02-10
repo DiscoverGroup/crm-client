@@ -170,13 +170,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       alignItems: 'center',
       justifyContent: 'flex-start',
       flexDirection: 'column',
-      padding: '40px 32px',
+      padding: window.innerWidth < 640 ? '24px 20px' : '40px 32px',
       height: '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
       width: '100%',
-      borderRadius: '0 20px 20px 0',
-      boxShadow: '5px 0 15px rgba(0,0,0,0.05)',
+      borderRadius: window.innerWidth < 768 ? '0' : '0 20px 20px 0',
+      boxShadow: window.innerWidth < 768 ? 'none' : '5px 0 15px rgba(0,0,0,0.05)',
       overflowY: 'auto'
     }}>
       <Modal
@@ -186,9 +186,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         message={modalConfig.message}
         type={modalConfig.type}
       />
-      <div style={{ marginBottom: '36px' }}>
+      <div style={{ marginBottom: window.innerWidth < 640 ? '24px' : '36px' }}>
         <h1 style={{
-          fontSize: '32px',
+          fontSize: window.innerWidth < 640 ? '26px' : '32px',
           fontWeight: '700',
           marginBottom: '12px',
           color: '#1e3a8a',
@@ -198,7 +198,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
           Create Account
         </h1>
         <p style={{
-          fontSize: '15px',
+          fontSize: window.innerWidth < 640 ? '14px' : '15px',
           color: '#6b7280',
           margin: '8px 0 0 0'
         }}>
@@ -206,7 +206,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '340px' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: window.innerWidth < 640 ? '100%' : '340px' }}>
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
@@ -216,10 +216,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
             onChange={e => setFullName(e.target.value)}
             style={{
               width: '100%',
-              padding: '12px 14px',
+              padding: window.innerWidth < 640 ? '10px 12px' : '12px 14px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: '14px',
+              fontSize: window.innerWidth < 640 ? '13px' : '14px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -246,7 +246,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
             onChange={e => setUsername(e.target.value)}
             style={{
               width: '100%',
-              padding: '12px 14px',
+              padding: window.innerWidth < 640 ? '10px 12px' : '12px 14px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
               fontSize: '14px',

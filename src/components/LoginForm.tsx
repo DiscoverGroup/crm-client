@@ -193,17 +193,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'column',
-      padding: '48px 40px',
+      padding: window.innerWidth < 640 ? '24px 20px' : '48px 40px',
       height: '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
       width: '100%',
-      borderRadius: '20px 0 0 20px',
-      boxShadow: '-5px 0 15px rgba(0,0,0,0.05)'
+      borderRadius: window.innerWidth < 768 ? '0' : '20px 0 0 20px',
+      boxShadow: window.innerWidth < 768 ? 'none' : '-5px 0 15px rgba(0,0,0,0.05)'
     }}>
-      <div style={{ marginBottom: '40px' }}>
+      <div style={{ marginBottom: window.innerWidth < 640 ? '24px' : '40px' }}>
         <h1 style={{
-          fontSize: '32px',
+          fontSize: window.innerWidth < 640 ? '26px' : '32px',
           fontWeight: '700',
           marginBottom: '12px',
           color: '#0d47a1',
@@ -213,7 +213,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           Welcome Back
         </h1>
         <p style={{
-          fontSize: '15px',
+          fontSize: window.innerWidth < 640 ? '14px' : '15px',
           color: '#6b7280',
           margin: '8px 0 0 0'
         }}>
@@ -221,7 +221,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '360px' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: window.innerWidth < 640 ? '100%' : '360px' }}>
         <div style={{ marginBottom: '16px' }}>
           <input
             type="email"
@@ -231,10 +231,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             onChange={e => setEmail(e.target.value)}
             style={{
               width: '100%',
-              padding: '14px 16px',
+              padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: '15px',
+              fontSize: window.innerWidth < 640 ? '14px' : '15px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -261,11 +261,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             onChange={e => setPassword(e.target.value)}
             style={{
               width: '100%',
-              padding: '14px 16px',
+              padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
               paddingRight: '48px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: '15px',
+              fontSize: window.innerWidth < 640 ? '14px' : '15px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -292,7 +292,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontSize: '20px',
+              fontSize: window.innerWidth < 640 ? '18px' : '20px',
               padding: '4px 8px',
               color: '#6b7280'
             }}
@@ -305,12 +305,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '24px'
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+          gap: '8px'
         }}>
           <label style={{
             display: 'flex',
             alignItems: 'center',
-            fontSize: '14px',
+            fontSize: window.innerWidth < 640 ? '13px' : '14px',
             color: '#6b7280',
             cursor: 'pointer'
           }}>
