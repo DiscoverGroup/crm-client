@@ -39,6 +39,16 @@ const App: React.FC = () => {
   
   // Toast notification state
   const [toasts, setToasts] = useState<Array<{ id: string; type: 'success' | 'error' | 'warning' | 'info'; message: string }>>([]);
+  
+  // Confirm modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'warning' | 'error' | 'info';
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  }>({ isOpen: false, title: '', message: '', type: 'warning' });
 
   // Check if current user is admin
   const isAdmin = React.useCallback(() => {
@@ -70,6 +80,24 @@ const App: React.FC = () => {
 
     window.addEventListener('showToast', handleShowToast as EventListener);
     return () => window.removeEventListener('showToast', handleShowToast as EventListener);
+  }, []);
+
+  // Handle confirm modal
+  useEffect(() => {
+    const handleShowConfirmModal = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        title: string;
+        message: string;
+        type: 'warning' | 'error' | 'info';
+        onConfirm: () => void;
+        onCancel: () => void;
+      }>;
+      const { title, message, type, onConfirm, onCancel } = customEvent.detail;
+      setConfirmModal({ isOpen: true, title, message, type, onConfirm, onCancel });
+    };
+
+    window.addEventListener('showConfirmModal', handleShowConfirmModal as EventListener);
+    return () => window.removeEventListener('showConfirmModal', handleShowConfirmModal as EventListener);
   }, []);
 
   // Handle navigation from notifications
@@ -846,6 +874,24 @@ const App: React.FC = () => {
           }}
         />
       )}
+      
+      {/* Confirm Modal */}
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => {
+          if (confirmModal.onCancel) confirmModal.onCancel();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        onConfirm={() => {
+          if (confirmModal.onConfirm) confirmModal.onConfirm();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+        confirmText="OK"
+        cancelText="Cancel"
+      />
       
       {/* Toast Notifications */}
       <div style={{ position: 'fixed', top: '80px', right: '20px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '10px' }}>

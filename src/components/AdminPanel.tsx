@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
-import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
 
 interface User {
   fullName: string;
@@ -117,11 +117,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     showSuccessToast('User deleted successfully!');
   };
 
-  const handleApproveRecovery = (requestId: string) => {
+  const handleApproveRecovery = async (requestId: string) => {
     const request = recoveryRequests.find(r => r.id === requestId);
     if (!request) return;
 
-    if (window.confirm(`Approve file recovery for "${request.fileName}"?`)) {
+    const confirmed = await showConfirmDialog(
+      'Approve File Recovery',
+      `Approve file recovery for "${request.fileName}"?`,
+      'warning'
+    );
+    if (confirmed) {
       const success = FileRecoveryService.approveRequest(requestId, getCurrentAdmin());
       if (success) {
         showSuccessToast('File recovery approved successfully!');
@@ -152,7 +157,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     const request = clientRecoveryRequests.find(r => r.id === requestId);
     if (!request) return;
 
-    if (window.confirm(`Approve client recovery for "${request.clientName}"?`)) {
+    const confirmed = await showConfirmDialog(
+      'Approve Client Recovery',
+      `Approve client recovery for "${request.clientName}"?`,
+      'warning'
+    );
+    if (confirmed) {
       const success = await ClientRecoveryService.approveRequest(requestId, getCurrentAdmin());
       if (success) {
         showSuccessToast('Client recovery approved successfully!');

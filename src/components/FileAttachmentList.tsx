@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FileService, type StoredFile, type FileAttachment } from '../services/fileService';
-import { showErrorToast } from '../utils/toast';
+import { showErrorToast, showConfirmDialog } from '../utils/toast';
 
 interface FileAttachmentListProps {
   attachments: FileAttachment[];
@@ -53,7 +53,12 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
   };
 
   const handleFileDelete = async (fileId: string) => {
-    if (window.confirm('Are you sure you want to delete this file?')) {
+    const confirmed = await showConfirmDialog(
+      'Delete File',
+      'Are you sure you want to delete this file?',
+      'error'
+    );
+    if (confirmed) {
       setDeletingFileId(fileId);
       try {
         const success = await FileService.deleteFile(fileId);

@@ -4,7 +4,7 @@ import { ActivityLogService } from '../services/activityLogService';
 import { FileService, type FileAttachment } from '../services/fileService';
 import { FileRecoveryService } from '../services/fileRecoveryService';
 import { ClientRecoveryService } from '../services/clientRecoveryService';
-import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
 
 interface DeletedClientsProps {
   currentUser: string;
@@ -41,7 +41,13 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
   };
 
   const handleRecover = async (client: ClientData) => {
-    if (window.confirm(`Request recovery for client "${client.contactName}"?`)) {
+    const confirmed = await showConfirmDialog(
+      'Request Recovery',
+      `Request recovery for client "${client.contactName}"?`,
+      'info'
+    );
+    
+    if (confirmed) {
       const request = ClientRecoveryService.createRecoveryRequest(
         client.id,
         client.contactName || 'Unknown',
@@ -59,8 +65,20 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
   };
 
   const handlePermanentDelete = async (client: ClientData) => {
-    if (window.confirm(`PERMANENTLY delete "${client.contactName}"? This action CANNOT be undone!`)) {
-      if (window.confirm('Are you absolutely sure? This will delete all data permanently.')) {
+    const confirmed = await showConfirmDialog(
+      'Permanently Delete Client',
+      `PERMANENTLY delete "${client.contactName}"? This action CANNOT be undone!`,
+      'error'
+    );
+    
+    if (confirmed) {
+      const doubleConfirmed = await showConfirmDialog(
+        'Final Confirmation',
+        'Are you absolutely sure? This will delete all data permanently.',
+        'error'
+      );
+      
+      if (doubleConfirmed) {
         const success = await ClientService.permanentlyDeleteClient(client.id);
         if (success) {
           ActivityLogService.addLog({
@@ -88,10 +106,16 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
     setShowFilesModal(true);
   };
 
-  const handleRequestFileRecovery = (file: FileAttachment) => {
+  const handleRequestFileRecovery = async (file: FileAttachment) => {
     if (!selectedClient) return;
     
-    if (window.confirm(`Request recovery for file "${file.file.name}"?`)) {
+    const confirmed = await showConfirmDialog(
+      'Request File Recovery',
+      `Request recovery for file "${file.file.name}"?`,
+      'info'
+    );
+    
+    if (confirmed) {
       const request = FileRecoveryService.createRecoveryRequest(
         file.file.id,
         file.file.name,

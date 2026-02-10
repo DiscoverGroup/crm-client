@@ -14,7 +14,7 @@ import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
-import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
 
 // Utility for modern UI
 const modernInput = {
@@ -496,7 +496,12 @@ const ClientRecords: React.FC<{
     idx: number,
     field: "depositSlip" | "receipt"
   ) => {
-    if (!window.confirm('Are you sure you want to remove this file?')) {
+    const confirmed = await showConfirmDialog(
+      'Remove File',
+      'Are you sure you want to remove this file?',
+      'warning'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -590,7 +595,12 @@ const ClientRecords: React.FC<{
 
   // Generic file removal handler
   const handleGenericFileRemove = async (fileId: string, fileType: string, section: string) => {
-    if (!window.confirm('Are you sure you want to remove this file?')) {
+    const confirmed = await showConfirmDialog(
+      'Remove File',
+      'Are you sure you want to remove this file?',
+      'warning'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -3916,9 +3926,14 @@ const MainPage: React.FC<MainPageProps> = ({
                             ✏️ Edit
                           </button>
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`)) {
+                              const confirmed = await showConfirmDialog(
+                                'Delete Client',
+                                `Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`,
+                                'error'
+                              );
+                              if (confirmed) {
                                 const success = ClientService.deleteClient(client.id, currentUser.fullName);
                                 if (success) {
                                   ActivityLogService.addLog({

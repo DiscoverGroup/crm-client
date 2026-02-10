@@ -45,3 +45,27 @@ export const showWarningToast = (message: string) => {
 export const showInfoToast = (message: string) => {
   showToast(message, 'info');
 };
+
+/**
+ * Show a confirmation modal
+ * Returns a Promise that resolves to true if confirmed, false if cancelled
+ */
+export const showConfirmDialog = (
+  title: string,
+  message: string,
+  type: 'warning' | 'error' | 'info' = 'warning'
+): Promise<boolean> => {
+  return new Promise((resolve) => {
+    window.dispatchEvent(
+      new CustomEvent('showConfirmModal', {
+        detail: {
+          title,
+          message,
+          type,
+          onConfirm: () => resolve(true),
+          onCancel: () => resolve(false)
+        }
+      })
+    );
+  });
+};
