@@ -3081,7 +3081,7 @@ const ClientRecords: React.FC<{
             <FileAttachmentList
               attachments={attachments}
               allowDelete={true}
-              onFileDeleted={(fileId: string) => {
+              onFileDeleted={() => {
                 // console.log('File deleted:', fileId);
                 // Reload client-specific attachments after deletion
                 const currentClientId = clientId || tempClientId;

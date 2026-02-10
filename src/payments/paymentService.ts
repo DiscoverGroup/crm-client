@@ -120,7 +120,7 @@ export class PaymentService {
       
       // Sync to MongoDB if clientId is provided
       if (clientId) {
-        MongoDBService.savePaymentData(clientId, serializedData).catch(err => {
+        MongoDBService.savePaymentData(clientId, serializedData).catch(() => {
           // console.error('MongoDB sync failed:', err);
         });
       }

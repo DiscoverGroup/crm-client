@@ -165,7 +165,7 @@ const App: React.FC = () => {
         });
         
         if (!response.ok) {
-          const errorText = await response.text();
+          await response.text();
           // console.log('❌ MongoDB Atlas: Function error');
           // console.log(`   • Status: ${response.status}`);
           // console.log(`   • Response: ${errorText.substring(0, 200)}`);
@@ -249,7 +249,7 @@ const App: React.FC = () => {
           if (result.success) {
             // console.log('✅ Admin account synced to MongoDB');
           }
-        }).catch(err => {
+        }).catch(() => {
           // console.error('Failed to sync admin to MongoDB:', err);
         });
       }

@@ -214,7 +214,7 @@ export class FileService {
       
       // Verify the save
       const verification = localStorage.getItem(this.STORAGE_KEY);
-      const verifiedAttachments = JSON.parse(verification || '[]');
+      JSON.parse(verification || '[]');
       // console.log('✓ Verification - attachments in storage:', verifiedAttachments.length);
       
       // Delete from R2 in the background (non-blocking)
@@ -224,7 +224,7 @@ export class FileService {
           .then(() => {
             // console.log('✅ R2 deletion successful')
           })
-          .catch(error => {
+          .catch(() => {
             // console.error('❌ R2 deletion failed (file already removed from UI):', error)
           });
       }
