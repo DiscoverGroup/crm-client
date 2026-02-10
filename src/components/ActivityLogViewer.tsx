@@ -163,18 +163,22 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
 
   return (
     <div style={{
-      padding: '20px',
+      padding: window.innerWidth < 640 ? '10px' : '20px',
       maxWidth: '1400px',
-      margin: '0 auto'
+      margin: '0 auto',
+      width: '100%',
+      overflowX: 'hidden'
     }}>
       {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '10px',
         marginBottom: '30px',
         backgroundColor: 'white',
-        padding: '20px',
+        padding: window.innerWidth < 640 ? '15px' : '20px',
         borderRadius: '12px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>

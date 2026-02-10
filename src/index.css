@@ -1,4 +1,17 @@
 @import "tailwindcss";
+@import "./mobile-responsive.css";
+
+/* Global box-sizing and viewport constraints */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
 
 /* DG-CRM Design System - Discover Group Branding */
 :root {

@@ -56,8 +56,8 @@ const sectionStyle = {
   background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
   borderRadius: "16px",
   boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)",
-  padding: "32px",
-  marginBottom: "32px",
+  padding: window.innerWidth < 640 ? "16px" : "32px",
+  marginBottom: window.innerWidth < 640 ? "16px" : "32px",
   border: "1px solid rgba(147, 197, 253, 0.3)",
   position: "relative" as const,
   overflow: "hidden" as const
