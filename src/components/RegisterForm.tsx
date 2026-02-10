@@ -171,13 +171,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       justifyContent: 'flex-start',
       flexDirection: 'column',
       padding: window.innerWidth < 640 ? '24px 20px' : '40px 32px',
-      height: '100%',
+      height: window.innerWidth < 768 ? 'auto' : '100%',
+      minHeight: window.innerWidth < 768 ? '0' : '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
       width: '100%',
       borderRadius: window.innerWidth < 768 ? '0' : '0 20px 20px 0',
       boxShadow: window.innerWidth < 768 ? 'none' : '5px 0 15px rgba(0,0,0,0.05)',
-      overflowY: 'auto'
+      overflowY: window.innerWidth < 768 ? 'visible' : 'auto'
     }}>
       <Modal
         isOpen={modalConfig.isOpen}

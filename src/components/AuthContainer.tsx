@@ -107,31 +107,36 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
         {/* Form Container */}
         <div style={{
           width: window.innerWidth < 768 ? '100%' : '50%',
-          height: window.innerWidth < 768 ? '100%' : '100%',
+          height: window.innerWidth < 768 ? 'auto' : '100%',
           position: 'relative',
-          overflow: 'hidden',
-          flex: window.innerWidth < 768 ? '1' : 'none'
+          overflow: window.innerWidth < 768 ? 'visible' : 'hidden',
+          flex: window.innerWidth < 768 ? '1' : 'none',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
           {/* Forms Wrapper */}
           <div style={{
             width: window.innerWidth < 768 ? '100%' : '200%',
-            height: '100%',
+            height: window.innerWidth < 768 ? 'auto' : '100%',
+            flex: window.innerWidth < 768 ? '1' : 'none',
             display: 'flex',
             transform: window.innerWidth < 768 
               ? 'translateX(0)' 
               : (showRegister ? 'translateX(-50%)' : 'translateX(0%)'),
             transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-            position: 'relative'
+            position: 'relative',
+            overflow: window.innerWidth < 768 ? 'visible' : 'hidden'
           }}>
             {/* Login Form */}
             <div style={{
               width: window.innerWidth < 768 ? '100%' : '50%',
-              height: '100%',
+              height: window.innerWidth < 768 ? 'auto' : '100%',
               display: window.innerWidth < 768 ? (showRegister ? 'none' : 'flex') : 'flex',
               flexDirection: 'column',
               justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center',
               padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
-              overflowY: 'auto'
+              paddingBottom: window.innerWidth < 768 ? '2rem' : '1.5rem',
+              overflowY: window.innerWidth < 768 ? 'visible' : 'auto'
             }}>
               <LoginForm 
                 onLogin={handleLogin} 
@@ -142,12 +147,13 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
             {/* Register Form */}
             <div style={{
               width: window.innerWidth < 768 ? '100%' : '50%',
-              height: '100%',
+              height: window.innerWidth < 768 ? 'auto' : '100%',
               display: window.innerWidth < 768 ? (showRegister ? 'flex' : 'none') : 'flex',
               flexDirection: 'column',
               justifyContent: window.innerWidth < 768 ? 'flex-start' : 'center',
               padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
-              overflowY: 'auto'
+              paddingBottom: window.innerWidth < 768 ? '2rem' : '1.5rem',
+              overflowY: window.innerWidth < 768 ? 'visible' : 'auto'
             }}>
               <RegisterForm onRegister={handleRegister} />
               <button
