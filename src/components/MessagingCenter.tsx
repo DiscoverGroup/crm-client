@@ -749,13 +749,15 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         <div 
           className={`conversation-list ${!showConversationList ? 'hide-mobile' : ''}`}
           style={{
-            width: '320px',
-            minWidth: '320px',
-            borderRight: '1px solid #e2e8f0',
+            width: showConversationList ? '320px' : '0px',
+            minWidth: showConversationList ? '320px' : '0px',
+            borderRight: showConversationList ? '1px solid #e2e8f0' : 'none',
             display: 'flex',
             flexDirection: 'column',
             backgroundColor: '#f8fafc',
-            flexShrink: 0
+            flexShrink: 0,
+            overflow: 'hidden',
+            transition: 'width 0.3s ease, min-width 0.3s ease'
           }}>
           {/* Header */}
           <div style={{
@@ -1244,6 +1246,34 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                 alignItems: 'center',
                 gap: '12px'
               }}>
+                {/* Sidebar Toggle Button */}
+                <button
+                  onClick={() => setShowConversationList(!showConversationList)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.color = '#1e293b';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  title={showConversationList ? "Hide sidebar" : "Show sidebar"}
+                >
+                  {showConversationList ? '◀' : '▶'}
+                </button>
                 {/* Back Button */}
                 <button
                   onClick={() => {
@@ -1265,6 +1295,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
                     borderRadius: '50%',
                     transition: 'all 0.2s'
                   }}
+                  className="mobile-back-btn"
                   onMouseOver={(e) => {
                     e.currentTarget.style.background = '#f1f5f9';
                     e.currentTarget.style.color = '#1e293b';
@@ -2152,14 +2183,60 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
             <div style={{
               flex: 1,
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#64748b',
-              flexDirection: 'column',
-              gap: '16px'
+              flexDirection: 'column'
             }}>
-              <div style={{ fontSize: '64px' }}>💬</div>
-              <p style={{ margin: 0, fontSize: '16px' }}>Select a conversation to start messaging</p>
+              {/* Header with toggle button */}
+              <div style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid #e2e8f0',
+                background: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => setShowConversationList(!showConversationList)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.color = '#1e293b';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'none';
+                    e.currentTarget.style.color = '#64748b';
+                  }}
+                  title={showConversationList ? "Hide sidebar" : "Show sidebar"}
+                >
+                  {showConversationList ? '◀' : '▶'}
+                </button>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>
+                  Messaging
+                </h3>
+              </div>
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#64748b',
+                flexDirection: 'column',
+                gap: '16px'
+              }}>
+                <div style={{ fontSize: '64px' }}>💬</div>
+                <p style={{ margin: 0, fontSize: '16px' }}>Select a conversation to start messaging</p>
+              </div>
             </div>
           )}
         </div>
