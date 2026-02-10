@@ -95,9 +95,9 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              justifyCowindow.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
-              overflowY: 'autoer',
-              padding: '2rem 1.5rem'
+              justifyContent: 'center',
+              padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
+              overflowY: 'auto'
             }}>
               <RegisterForm onRegister={handleRegister} />
               <button
@@ -121,7 +121,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
         </div>
 
         {/* Side Panel */}
-        <div stylwindow.innerWidth < 768 ? '100%' : '50%',
+        <div style={{
+          width: window.innerWidth < 768 ? '100%' : '50%',
           height: window.innerWidth < 768 ? 'auto' : '100%',
           minHeight: window.innerWidth < 768 ? '200px' : 'auto',
           background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
@@ -130,8 +131,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
           justifyContent: 'center',
           alignItems: 'center',
           color: 'white',
-          padding: window.innerWidth < 768 ? '2rem 1.5rem' 'white',
-          padding: '3rem',
+          padding: window.innerWidth < 768 ? '2rem 1.5rem' : '3rem',
           position: 'relative',
           overflow: 'hidden'
         }}>
