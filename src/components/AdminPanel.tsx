@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
+import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 
 interface User {
   fullName: string;
@@ -27,9 +28,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
+  const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
+  const [filterClientRecoveryStatus, setFilterClientRecoveryStatus] = useState<string>('pending');
 
   // Get current admin user from localStorage
   const getCurrentAdmin = (): string => {
@@ -44,6 +47,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   useEffect(() => {
     loadUsers();
     loadRecoveryRequests();
+    loadClientRecoveryRequests();
   }, []);
 
   const loadUsers = () => {
@@ -65,6 +69,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const loadRecoveryRequests = () => {
     const requests = FileRecoveryService.getAllRequests();
     setRecoveryRequests(requests);
+  };
+
+  const loadClientRecoveryRequests = () => {
+    const requests = ClientRecoveryService.getAllRequests();
+    setClientRecoveryRequests(requests);
   };
 
   const saveUsers = (updatedUsers: User[]) => {
@@ -138,6 +147,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
+  const handleApproveClientRecovery = async (requestId: string) => {
+    const request = clientRecoveryRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    if (window.confirm(`Approve client recovery for "${request.clientName}"?`)) {
+      const success = await ClientRecoveryService.approveRequest(requestId, getCurrentAdmin());
+      if (success) {
+        alert('Client recovery approved successfully!');
+        loadClientRecoveryRequests();
+      } else {
+        alert('Failed to approve client recovery request.');
+      }
+    }
+  };
+
+  const handleRejectClientRecovery = (requestId: string) => {
+    const request = clientRecoveryRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const reason = prompt('Enter rejection reason (optional):');
+    if (reason !== null) { // User didn't cancel
+      const success = ClientRecoveryService.rejectRequest(requestId, getCurrentAdmin(), reason || undefined);
+      if (success) {
+        alert('Client recovery request rejected.');
+        loadClientRecoveryRequests();
+      } else {
+        alert('Failed to reject client recovery request.');
+      }
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -157,7 +197,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     return request.status === filterRecoveryStatus;
   });
 
+  const filteredClientRecoveryRequests = clientRecoveryRequests.filter(request => {
+    if (filterClientRecoveryStatus === 'all') return true;
+    return request.status === filterClientRecoveryStatus;
+  });
+
   const recoveryStats = FileRecoveryService.getStatistics();
+  const clientRecoveryStats = ClientRecoveryService.getStatistics();
 
   return (
     <div style={{
@@ -179,7 +225,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             color: '#1e293b',
             margin: '0 0 8px 0'
           }}>
-            {activeTab === 'users' ? '👥 User Management' : '📁 File Recovery Requests'}
+            {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : '👤 Client Recovery Requests'}
           </h1>
           <p style={{
             fontSize: '14px',
@@ -188,7 +234,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}>
             {activeTab === 'users' 
               ? 'Manage user accounts, roles, and permissions' 
-              : 'Review and approve file recovery requests'}
+              : activeTab === 'file-recovery'
+              ? 'Review and approve file recovery requests'
+              : 'Review and approve client recovery requests'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -196,6 +244,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             onClick={() => {
               loadUsers();
               loadRecoveryRequests();
+              loadClientRecoveryRequests();
             }}
             style={{
               padding: '10px 20px',
@@ -255,6 +304,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           👥 Users
+        </button>
+        <button
+          onClick={() => setActiveTab('client-recovery')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'client-recovery' ? 'white' : 'transparent',
+            color: activeTab === 'client-recovery' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'client-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            position: 'relative'
+          }}
+        >
+          👤 Client Recovery
+          {clientRecoveryStats.pending > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '6px',
+              right: '6px',
+              background: '#ef4444',
+              color: 'white',
+              borderRadius: '10px',
+              padding: '2px 6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              minWidth: '18px',
+              textAlign: 'center'
+            }}>
+              {clientRecoveryStats.pending}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('file-recovery')}
@@ -546,6 +630,213 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* Client Recovery Tab */}
+      {activeTab === 'client-recovery' && (
+        <>
+          {/* Client Recovery Stats Cards */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '16px',
+            marginBottom: '24px'
+          }}>
+            <div style={{
+              background: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Total Requests</p>
+              <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#1e293b' }}>{clientRecoveryStats.total}</p>
+            </div>
+            <div style={{
+              background: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Pending</p>
+              <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#f59e0b' }}>{clientRecoveryStats.pending}</p>
+            </div>
+            <div style={{
+              background: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Approved</p>
+              <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#10b981' }}>{clientRecoveryStats.approved}</p>
+            </div>
+            <div style={{
+              background: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Rejected</p>
+              <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#ef4444' }}>{clientRecoveryStats.rejected}</p>
+            </div>
+          </div>
+
+          {/* Filter */}
+          <div style={{
+            background: 'white',
+            padding: '20px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            marginBottom: '24px'
+          }}>
+            <select
+              value={filterClientRecoveryStatus}
+              onChange={(e) => setFilterClientRecoveryStatus(e.target.value)}
+              style={{
+                padding: '10px 16px',
+                border: '2px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                width: '250px'
+              }}
+            >
+              <option value="all">All Requests</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          {/* Client Recovery Requests Table */}
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            overflow: 'hidden'
+          }}>
+            {filteredClientRecoveryRequests.length === 0 ? (
+              <div style={{
+                padding: '48px',
+                textAlign: 'center',
+                color: '#64748b'
+              }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.3 }}>📭</div>
+                <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>No client recovery requests</p>
+                <p style={{ fontSize: '14px', margin: 0 }}>
+                  {filterClientRecoveryStatus === 'pending' 
+                    ? 'No pending client recovery requests at this time'
+                    : 'Try adjusting your filter'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse'
+                }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Client Name</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Client No.</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Requested By</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Requested At</th>
+                      <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                      <th style={{ padding: '16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredClientRecoveryRequests.map((request) => (
+                      <tr key={request.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '16px', color: '#1e293b', fontSize: '14px', fontWeight: '500' }}>
+                          👤 {request.clientName}
+                        </td>
+                        <td style={{ padding: '16px', color: '#64748b', fontSize: '14px' }}>
+                          {request.clientNo || 'N/A'}
+                        </td>
+                        <td style={{ padding: '16px', color: '#64748b', fontSize: '14px' }}>
+                          {request.requestedBy}
+                        </td>
+                        <td style={{ padding: '16px', color: '#64748b', fontSize: '13px' }}>
+                          {new Date(request.requestedAt).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: 
+                              request.status === 'pending' ? '#fef3c7' :
+                              request.status === 'approved' ? '#d1fae5' : '#fecaca',
+                            color: 
+                              request.status === 'pending' ? '#92400e' :
+                              request.status === 'approved' ? '#065f46' : '#991b1b'
+                          }}>
+                            {request.status === 'pending' && '⏳ '}
+                            {request.status === 'approved' && '✓ '}
+                            {request.status === 'rejected' && '✗ '}
+                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '16px' }}>
+                          {request.status === 'pending' ? (
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                              <button
+                                onClick={() => handleApproveClientRecovery(request.id)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer'
+                                }}
+                                title="Approve Recovery"
+                              >
+                                ✓ Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectClientRecovery(request.id)}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer'
+                                }}
+                                title="Reject Recovery"
+                              >
+                                ✗ Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                              {request.reviewedBy && (
+                                <div>
+                                  <div>By: {request.reviewedBy}</div>
+                                  {request.reviewedAt && (
+                                    <div style={{ fontSize: '11px', marginTop: '2px' }}>
+                                      {new Date(request.reviewedAt).toLocaleDateString()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
 

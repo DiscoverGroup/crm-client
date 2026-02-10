@@ -3,6 +3,7 @@ import { ClientService, type ClientData } from '../services/clientService';
 import { ActivityLogService } from '../services/activityLogService';
 import { FileService, type FileAttachment } from '../services/fileService';
 import { FileRecoveryService } from '../services/fileRecoveryService';
+import { ClientRecoveryService } from '../services/clientRecoveryService';
 
 interface DeletedClientsProps {
   currentUser: string;
@@ -39,22 +40,19 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
   };
 
   const handleRecover = async (client: ClientData) => {
-    if (window.confirm(`Recover client "${client.contactName}"?`)) {
-      const success = await ClientService.recoverClient(client.id);
-      if (success) {
-        ActivityLogService.addLog({
-          clientId: client.id,
-          clientName: client.contactName || 'Unknown',
-          action: 'recovered',
-          performedBy: currentUser,
-          performedByUser: currentUser,
-          profileImageR2Path: getCurrentUserProfileImagePath(),
-          details: 'Client recovered from trash'
-        });
-        alert('Client recovered successfully!');
-        loadDeletedClients();
+    if (window.confirm(`Request recovery for client "${client.contactName}"?`)) {
+      const request = ClientRecoveryService.createRecoveryRequest(
+        client.id,
+        client.contactName || 'Unknown',
+        client.clientNo,
+        currentUser,
+        'Client recovery requested from deleted clients'
+      );
+
+      if (request) {
+        alert(`Recovery request submitted for "${client.contactName}". An admin will review your request.`);
       } else {
-        alert('Failed to recover client.');
+        alert('Failed to create recovery request.');
       }
     }
   };
@@ -370,7 +368,7 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
                         onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
                       >
-                        ♻️ Recover
+                        📤 Request Recovery
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(client)}

@@ -4,7 +4,7 @@ export interface ActivityLog {
   id: string;
   clientId: string;
   clientName: string;
-  action: 'created' | 'edited' | 'deleted' | 'recovered' | 'permanently_deleted' | 'file_uploaded' | 'file_deleted' | 'file_recovered' | 'file_recovery_rejected';
+  action: 'created' | 'edited' | 'deleted' | 'recovered' | 'permanently_deleted' | 'file_uploaded' | 'file_deleted' | 'file_recovered' | 'file_recovery_rejected' | 'client_recovery_rejected';
   performedBy: string;
   performedByUser: string; // Full name
   profileImageR2Path?: string; // R2 path for user profile image

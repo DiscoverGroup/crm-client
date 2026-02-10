@@ -1,14 +1,12 @@
-import { FileService } from './fileService';
+import { ClientService } from './clientService';
 import { ActivityLogService } from './activityLogService';
 import { NotificationService } from './notificationService';
 
-export interface FileRecoveryRequest {
+export interface ClientRecoveryRequest {
   id: string;
-  fileId: string;
-  fileName: string;
-  fileCategory: string;
   clientId: string;
   clientName: string;
+  clientNo?: string;
   requestedBy: string;
   requestedByUserId: string;
   requestedAt: string;
@@ -18,12 +16,12 @@ export interface FileRecoveryRequest {
   notes?: string;
 }
 
-export class FileRecoveryService {
-  private static STORAGE_KEY = 'crm_file_recovery_requests';
+export class ClientRecoveryService {
+  private static STORAGE_KEY = 'crm_client_recovery_requests';
 
   // Generate unique ID for recovery request
   private static generateRequestId(): string {
-    return `recovery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `client_recovery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
   // Get current user ID from localStorage
@@ -38,58 +36,49 @@ export class FileRecoveryService {
   }
 
   // Get all recovery requests
-  static getAllRequests(): FileRecoveryRequest[] {
+  static getAllRequests(): ClientRecoveryRequest[] {
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
-      console.error('Error loading file recovery requests:', error);
+      console.error('Error loading client recovery requests:', error);
       return [];
     }
   }
 
   // Get pending recovery requests
-  static getPendingRequests(): FileRecoveryRequest[] {
+  static getPendingRequests(): ClientRecoveryRequest[] {
     return this.getAllRequests().filter(req => req.status === 'pending');
   }
 
   // Get requests by user
-  static getRequestsByUser(username: string): FileRecoveryRequest[] {
+  static getRequestsByUser(username: string): ClientRecoveryRequest[] {
     return this.getAllRequests().filter(req => req.requestedBy === username);
   }
 
-  // Get requests by client
-  static getRequestsByClient(clientId: string): FileRecoveryRequest[] {
-    return this.getAllRequests().filter(req => req.clientId === clientId);
-  }
-
   // Save all recovery requests
-  private static saveRequests(requests: FileRecoveryRequest[]): void {
+  private static saveRequests(requests: ClientRecoveryRequest[]): void {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
     } catch (error) {
-      console.error('Error saving file recovery requests:', error);
+      console.error('Error saving client recovery requests:', error);
       throw error;
     }
   }
 
   // Create a new recovery request
   static createRecoveryRequest(
-    fileId: string,
-    fileName: string,
-    fileCategory: string,
     clientId: string,
     clientName: string,
+    clientNo: string | undefined,
     requestedBy: string,
     notes?: string
-  ): FileRecoveryRequest {
-    const request: FileRecoveryRequest = {
+  ): ClientRecoveryRequest {
+    const request: ClientRecoveryRequest = {
       id: this.generateRequestId(),
-      fileId,
-      fileName,
-      fileCategory,
       clientId,
       clientName,
+      clientNo,
       requestedBy,
       requestedByUserId: this.getCurrentUserId(requestedBy),
       requestedAt: new Date().toISOString(),
@@ -101,16 +90,15 @@ export class FileRecoveryService {
     requests.push(request);
     this.saveRequests(requests);
 
-    console.log(`📝 File recovery request created: ${fileName} by ${requestedBy}`);
+    console.log(`📝 Client recovery request created: ${clientName} by ${requestedBy}`);
     return request;
   }
 
   // Approve recovery request
-  static approveRequest(
+  static async approveRequest(
     requestId: string,
-    reviewedBy: string,
-    adminNotes?: string
-  ): boolean {
+    reviewedBy: string
+  ): Promise<boolean> {
     try {
       const requests = this.getAllRequests();
       const requestIndex = requests.findIndex(req => req.id === requestId);
@@ -122,10 +110,10 @@ export class FileRecoveryService {
 
       const request = requests[requestIndex];
 
-      // Check if file exists and is deleted
-      const file = FileService.getFileById(request.fileId);
-      if (!file) {
-        console.error('File not found or already recovered');
+      // Recover the client
+      const success = await ClientService.recoverClient(request.clientId);
+      if (!success) {
+        console.error('Failed to recover client');
         return false;
       }
 
@@ -134,8 +122,7 @@ export class FileRecoveryService {
         ...request,
         status: 'approved',
         reviewedBy,
-        reviewedAt: new Date().toISOString(),
-        notes: adminNotes || request.notes
+        reviewedAt: new Date().toISOString()
       };
 
       this.saveRequests(requests);
@@ -144,17 +131,17 @@ export class FileRecoveryService {
       ActivityLogService.addLog({
         clientId: request.clientId,
         clientName: request.clientName,
-        action: 'file_recovered',
+        action: 'recovered',
         performedBy: reviewedBy,
         performedByUser: reviewedBy,
-        details: `File "${request.fileName}" recovered (requested by ${request.requestedBy})`
+        details: `Client recovered by admin (requested by ${request.requestedBy})`
       });
 
       // Send notification to requester
       NotificationService.addNotification({
         type: 'recovery_approved',
-        title: '✅ File Recovery Approved',
-        message: `Your request to recover file "${request.fileName}" for client "${request.clientName}" has been approved by ${reviewedBy}.`,
+        title: '✅ Client Recovery Approved',
+        message: `Your request to recover client "${request.clientName}" has been approved by ${reviewedBy}.`,
         targetUserId: request.requestedByUserId,
         targetUserName: request.requestedBy,
         fromUserId: this.getCurrentUserId(reviewedBy),
@@ -167,7 +154,7 @@ export class FileRecoveryService {
         }
       });
 
-      console.log(`✅ File recovery approved: ${request.fileName} by ${reviewedBy}`);
+      console.log(`✅ Client recovery approved: ${request.clientName} by ${reviewedBy}`);
       return true;
     } catch (error) {
       console.error('Error approving recovery request:', error);
@@ -207,17 +194,17 @@ export class FileRecoveryService {
       ActivityLogService.addLog({
         clientId: request.clientId,
         clientName: request.clientName,
-        action: 'file_recovery_rejected',
+        action: 'client_recovery_rejected',
         performedBy: reviewedBy,
         performedByUser: reviewedBy,
-        details: `File recovery rejected: "${request.fileName}" (requested by ${request.requestedBy})${reason ? ` - Reason: ${reason}` : ''}`
+        details: `Client recovery rejected by admin (requested by ${request.requestedBy})${reason ? ` - Reason: ${reason}` : ''}`
       });
 
       // Send notification to requester
       NotificationService.addNotification({
         type: 'recovery_rejected',
-        title: '❌ File Recovery Rejected',
-        message: `Your request to recover file "${request.fileName}" for client "${request.clientName}" has been rejected by ${reviewedBy}.${reason ? ` Reason: ${reason}` : ''}`,
+        title: '❌ Client Recovery Rejected',
+        message: `Your request to recover client "${request.clientName}" has been rejected by ${reviewedBy}.${reason ? ` Reason: ${reason}` : ''}`,
         targetUserId: request.requestedByUserId,
         targetUserName: request.requestedBy,
         fromUserId: this.getCurrentUserId(reviewedBy),
@@ -226,7 +213,7 @@ export class FileRecoveryService {
         clientName: request.clientName
       });
 
-      console.log(`❌ File recovery rejected: ${request.fileName} by ${reviewedBy}`);
+      console.log(`❌ Client recovery rejected: ${request.clientName} by ${reviewedBy}`);
       return true;
     } catch (error) {
       console.error('Error rejecting recovery request:', error);
@@ -257,7 +244,7 @@ export class FileRecoveryService {
       requests.splice(requestIndex, 1);
       this.saveRequests(requests);
 
-      console.log(`🚫 File recovery request cancelled: ${request.fileName}`);
+      console.log(`🚫 Client recovery request cancelled: ${request.clientName}`);
       return true;
     } catch (error) {
       console.error('Error cancelling recovery request:', error);
