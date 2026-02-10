@@ -89,10 +89,33 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
   // Load log notes on mount and when clientId changes
   useEffect(() => {
-    const loadNotes = () => {
-      const notes = LogNoteService.getLogNotes(clientId);
-      // console.log('Loading notes for client:', clientId, notes);
-      setLogNotes(notes);
+    const loadNotes = async () => {
+      try {
+        const response = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Convert timestamps to Date objects
+          const notes = data.logNotes.map((note: any) => ({
+            ...note,
+            timestamp: new Date(note.timestamp),
+            replies: (note.replies || []).map((reply: any) => ({
+              ...reply,
+              timestamp: new Date(reply.timestamp)
+            }))
+          }));
+          setLogNotes(notes);
+        } else {
+          // Fallback to localStorage if API fails
+          const notes = LogNoteService.getLogNotes(clientId);
+          setLogNotes(notes);
+        }
+      } catch (error) {
+        console.error('Error fetching log notes:', error);
+        // Fallback to localStorage
+        const notes = LogNoteService.getLogNotes(clientId);
+        setLogNotes(notes);
+      }
     };
     loadNotes();
   }, [clientId]);
@@ -100,69 +123,98 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   // Get activity logs for this client
   const activityLogs = ActivityLogService.getLogsByClient(clientId);
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
-    const logNote = LogNoteService.addLogNote(
-      clientId,
-      currentUserId,
-      currentUserName,
-      'manual',
-      'Comment Added',
-      newComment,
-      newCommentStatus
-    );
-
-    setLogNotes(prev => [logNote, ...prev]);
-    
-    // Check for mentions and create notifications
-    const mentionRegex = /@([\w-]+)/g;
-    const mentions = newComment.match(mentionRegex);
-    
-    if (mentions) {
-      const client = ClientService.getClientById(clientId);
-      const clientName = client?.contactName || 'Unknown Client';
-      
-      // Get all users for @everyone
-      const allUsersStr = localStorage.getItem('crm_users');
-      const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
-      
-      mentions.forEach(mention => {
-        const username = mention.substring(1); // Remove @ symbol
-        
-        // Check if it's @everyone
-        if (username.toLowerCase() === 'everyone') {
-          // Notify all users except the current user
-          allUsers.forEach((user: any) => {
-            if (user.id !== currentUserId) {
-              NotificationService.createMentionNotification({
-                mentionedUsername: user.username,
-                fromUserId: currentUserId,
-                fromUserName: currentUserName,
-                clientId: clientId,
-                clientName: clientName,
-                logNoteId: logNote.id,
-                commentText: newComment
-              });
-            }
-          });
-        } else {
-          // Notify specific user
-          NotificationService.createMentionNotification({
-            mentionedUsername: username,
-            fromUserId: currentUserId,
-            fromUserName: currentUserName,
-            clientId: clientId,
-            clientName: clientName,
-            logNoteId: logNote.id,
-            commentText: newComment
-          });
-        }
+    try {
+      // Save to MongoDB via API
+      const response = await fetch('/.netlify/functions/save-log-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          userId: currentUserId,
+          userName: currentUserName,
+          type: 'manual',
+          action: 'Comment Added',
+          description: newComment,
+          status: newCommentStatus
+        })
       });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error('Failed to save comment');
+      }
+
+      const logNote = data.logNote;
+      setLogNotes(prev => [{ ...logNote, timestamp: new Date(logNote.timestamp), replies: [] }, ...prev]);
+      
+      // Check for mentions and create notifications
+      const mentionRegex = /@([\w-]+)/g;
+      const mentions = newComment.match(mentionRegex);
+      
+      if (mentions) {
+        const client = ClientService.getClientById(clientId);
+        const clientName = client?.contactName || 'Unknown Client';
+        
+        // Get all users for @everyone
+        const allUsersStr = localStorage.getItem('crm_users');
+        const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+        
+        mentions.forEach(mention => {
+          const username = mention.substring(1); // Remove @ symbol
+          
+          // Check if it's @everyone
+          if (username.toLowerCase() === 'everyone') {
+            // Notify all users except the current user
+            allUsers.forEach((user: any) => {
+              if (user.id !== currentUserId) {
+                NotificationService.createMentionNotification({
+                  mentionedUsername: user.username,
+                  fromUserId: currentUserId,
+                  fromUserName: currentUserName,
+                  clientId: clientId,
+                  clientName: clientName,
+                  logNoteId: logNote.id,
+                  commentText: newComment
+                });
+              }
+            });
+          } else {
+            // Notify specific user
+            NotificationService.createMentionNotification({
+              mentionedUsername: username,
+              fromUserId: currentUserId,
+              fromUserName: currentUserName,
+              clientId: clientId,
+              clientName: clientName,
+              logNoteId: logNote.id,
+              commentText: newComment
+            });
+          }
+        });
+      }
+      
+      setNewComment('');
+      setNewCommentStatus('pending');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      // Fallback: Save to localStorage only
+      const logNote = LogNoteService.addLogNote(
+        clientId,
+        currentUserId,
+        currentUserName,
+        'manual',
+        'Comment Added',
+        newComment,
+        newCommentStatus
+      );
+      setLogNotes(prev => [logNote, ...prev]);
+      setNewComment('');
+      setNewCommentStatus('pending');
     }
-    
-    setNewComment('');
-    setNewCommentStatus('pending');
   };
 
   const handleAddReply = (logNoteId: string) => {
