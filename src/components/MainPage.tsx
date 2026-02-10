@@ -1270,13 +1270,15 @@ const ClientRecords: React.FC<{
           <div style={{ 
             background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
             borderRadius: "16px", 
-            padding: "32px", 
+            padding: window.innerWidth < 640 ? "16px" : "32px", 
             marginBottom: "32px",
             boxShadow: "0 8px 32px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.05)",
             border: "1px solid rgba(147, 197, 253, 0.3)",
             display: 'flex',
+            flexDirection: window.innerWidth < 640 ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: window.innerWidth < 640 ? 'flex-start' : 'center',
+            gap: window.innerWidth < 640 ? '16px' : '24px',
             position: 'relative' as const,
             overflow: 'hidden' as const
           }}>
@@ -1292,17 +1294,18 @@ const ClientRecords: React.FC<{
               zIndex: 0
             }}></div>
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '28px', marginRight: '12px' }}>👤</span>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: window.innerWidth < 640 ? '8px' : '12px' }}>
+                <span style={{ fontSize: window.innerWidth < 640 ? '24px' : '28px' }}>👤</span>
                 <h1 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
-                  fontSize: "28px", 
+                  fontSize: window.innerWidth < 640 ? '20px' : '28px', 
                   fontWeight: 800,
                   background: "linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                  letterSpacing: "-0.025em"
+                  letterSpacing: "-0.025em",
+                  whiteSpace: 'normal'
                 }}>
                   New Client Registration
                 </h1>
@@ -1312,15 +1315,17 @@ const ClientRecords: React.FC<{
               type="button"
               onClick={onNavigateBack}
               style={{
-                padding: '12px 24px',
+                padding: window.innerWidth < 640 ? '10px 16px' : '12px 24px',
                 backgroundColor: '#6c757d',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: '14px',
+                fontSize: window.innerWidth < 640 ? '12px' : '14px',
                 fontWeight: '500',
-                transition: 'background-color 0.3s ease'
+                transition: 'background-color 0.3s ease',
+                width: window.innerWidth < 640 ? '100%' : 'auto',
+                whiteSpace: 'nowrap'
               }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
@@ -1344,8 +1349,8 @@ const ClientRecords: React.FC<{
                 Client Information
               </h2>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Client No</label>
                 <input 
                   style={modernInput} 
@@ -1355,7 +1360,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setClientNoTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Status</label>
                 <select 
                   style={modernInput}
@@ -1369,7 +1374,7 @@ const ClientRecords: React.FC<{
                   <option>Cancelled</option>
                 </select>
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Agent</label>
                 <input 
                   style={modernInput} 
@@ -1380,7 +1385,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setAgentTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Contact No</label>
                 <input 
                   style={modernInput} 
@@ -1392,8 +1397,8 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: 32, marginTop: 18, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Contact Name</label>
                 <input 
                   style={{ ...modernInput, fontWeight: "bold" }} 
@@ -1404,7 +1409,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setContactNameTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Email</label>
                 <input
                   style={modernInput}
@@ -1415,7 +1420,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setEmailTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Date of Birth</label>
                 <input 
                   style={modernInput} 
@@ -1427,15 +1432,15 @@ const ClientRecords: React.FC<{
               </div>
             </div>
             {/* Save Button */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#dc2626', fontWeight: '500' }}>
+            <div style={{ display: "flex", flexDirection: window.innerWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: window.innerWidth < 640 ? 'stretch' : 'center' }}>
+              <span style={{ fontSize: window.innerWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: window.innerWidth < 640 ? 2 : 0 }}>
                 ⚠️ Remember to save changes before leaving!
               </span>
               <button
                 type="button"
                 onClick={handleSaveClientInfo}
                 disabled={isSavingClient}
-                style={saveButtonStyle(isSavingClient)}
+                style={{ ...saveButtonStyle(isSavingClient), width: window.innerWidth < 640 ? '100%' : 'auto' }}
               >
                 {isSavingClient ? "Saving..." : "💾 Save Client Info"}
               </button>
@@ -1457,8 +1462,8 @@ const ClientRecords: React.FC<{
                 Package & Travel Details
               </h2>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Package</label>
                 <input 
                   style={modernInput} 
@@ -1469,7 +1474,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setPackageNameTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Travel Date</label>
                 <input 
                   style={modernInput} 
@@ -1479,7 +1484,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setTravelDateTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>No. of Pax</label>
                 <input 
                   style={modernInput} 
@@ -1490,8 +1495,8 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: 32, marginTop: 18, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Booking Confirmation</label>
                 <input
                   style={modernInput}
@@ -1502,7 +1507,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setBookingConfirmationTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 2 }}>
+              <div style={{ flex: window.innerWidth < 640 ? '1' : '2', minWidth: window.innerWidth < 640 ? "100%" : "auto" }}>
                 <label style={label}>Package Link</label>
                 <input 
                   style={modernInput} 
