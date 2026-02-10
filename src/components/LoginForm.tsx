@@ -348,18 +348,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           type="submit"
           style={{
             width: '100%',
-            padding: '14px',
+            padding: window.innerWidth < 640 ? '16px' : '14px',
             background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
-            fontSize: '15px',
+            fontSize: window.innerWidth < 640 ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
-            boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)'
+            boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent'
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';

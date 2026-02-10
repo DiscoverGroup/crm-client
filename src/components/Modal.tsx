@@ -46,28 +46,42 @@ const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 10000,
-      backdropFilter: 'blur(4px)'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '16px',
-        padding: '32px',
-        maxWidth: '450px',
-        width: '90%',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        animation: 'modalSlideIn 0.3s ease-out'
-      }}>
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        backdropFilter: 'blur(4px)',
+        padding: window.innerWidth < 640 ? '16px' : '20px'
+      }}
+      onClick={(e) => {
+        // Only close if clicking the backdrop, not the modal content
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div 
+        style={{
+          backgroundColor: 'white',
+          borderRadius: window.innerWidth < 640 ? '12px' : '16px',
+          padding: window.innerWidth < 640 ? '24px' : '32px',
+          maxWidth: window.innerWidth < 640 ? '95vw' : '450px',
+          width: '90%',
+          maxHeight: '85vh',
+          overflowY: 'auto',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          animation: 'modalSlideIn 0.3s ease-out'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <style>
           {`
             @keyframes modalSlideIn {
@@ -126,21 +140,25 @@ const Modal: React.FC<ModalProps> = ({
           display: 'flex',
           gap: '12px',
           justifyContent: 'flex-end',
-          marginTop: '28px'
+          marginTop: '28px',
+          flexWrap: 'wrap'
         }}>
           {cancelText && (
             <button
               onClick={onClose}
               style={{
-                padding: '10px 24px',
+                padding: window.innerWidth < 640 ? '12px 20px' : '10px 24px',
                 borderRadius: '8px',
                 border: '2px solid #e5e7eb',
                 backgroundColor: 'white',
                 color: '#6b7280',
-                fontSize: '15px',
+                fontSize: window.innerWidth < 640 ? '14px' : '15px',
                 fontWeight: '500',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                flex: window.innerWidth < 640 ? '1' : 'initial',
+                minWidth: window.innerWidth < 640 ? '0' : 'auto',
+                touchAction: 'manipulation'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.backgroundColor = '#f9fafb';
@@ -157,16 +175,19 @@ const Modal: React.FC<ModalProps> = ({
           <button
             onClick={handleConfirm}
             style={{
-              padding: '10px 24px',
+              padding: window.innerWidth < 640 ? '12px 20px' : '10px 24px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: color,
               color: 'white',
-              fontSize: '15px',
+              fontSize: window.innerWidth < 640 ? '14px' : '15px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              boxShadow: `0 4px 6px -1px ${color}40`
+              boxShadow: `0 4px 6px -1px ${color}40`,
+              flex: window.innerWidth < 640 ? '1' : 'initial',
+              minWidth: window.innerWidth < 640 ? '0' : 'auto',
+              touchAction: 'manipulation'
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.transform = 'translateY(-1px)';
