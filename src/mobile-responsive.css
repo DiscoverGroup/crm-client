@@ -3,6 +3,38 @@
 /* Mobile-first approach with breakpoints */
 /* sm: 640px, md: 768px, lg: 1024px, xl: 1280px */
 
+/* Base mobile styles */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.25rem !important;
+  }
+  
+  h2 {
+    font-size: 1.1rem !important;
+  }
+  
+  h3 {
+    font-size: 1rem !important;
+  }
+  
+  /* Fix button text overflow */
+  button {
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+    white-space: nowrap;
+  }
+  
+  /* Input fields */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevent zoom on iOS */
+    padding: 10px !important;
+  }
+}
+
 /* Hide sidebar on mobile by default */
 @media (max-width: 1023px) {
   .mobile-menu-btn {

@@ -49,22 +49,21 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
         borderRadius: '24px',
         boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
         overflow: 'hidden',
-        width: '75vw',
-        height: '75vh',
-        minWidth: '900px',
-        minHeight: '600px',
-        maxWidth: '1300px',
-        maxHeight: '800px',
+        width: 'min(95vw, 1300px)',
+        height: 'min(85vh, 800px)',
+        minHeight: '500px',
         position: 'relative',
-        display: 'flex'
+        display: 'flex',
+        flexDirection: window.innerWidth < 768 ? 'column' : 'row'
       }}>
         
         {/* Form Container */}
         <div style={{
-          width: '50%',
-          height: '100%',
+          width: window.innerWidth < 768 ? '100%' : '50%',
+          height: window.innerWidth < 768 ? 'auto' : '100%',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          flex: window.innerWidth < 768 ? '1' : 'none'
         }}>
           {/* Forms Wrapper */}
           <div style={{
@@ -81,7 +80,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              padding: '2rem 1.5rem'
+              padding: window.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
+              overflowY: 'auto'
             }}>
               <LoginForm 
                 onLogin={handleLogin} 
@@ -95,7 +95,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'center',
+              justifyCowindow.innerWidth < 640 ? '1.5rem 1rem' : '2rem 1.5rem',
+              overflowY: 'autoer',
               padding: '2rem 1.5rem'
             }}>
               <RegisterForm onRegister={handleRegister} />
@@ -120,15 +121,16 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
         </div>
 
         {/* Side Panel */}
-        <div style={{
-          width: '50%',
-          height: '100%',
+        <div stylwindow.innerWidth < 768 ? '100%' : '50%',
+          height: window.innerWidth < 768 ? 'auto' : '100%',
+          minHeight: window.innerWidth < 768 ? '200px' : 'auto',
           background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
-          display: 'flex',
+          display: window.innerWidth < 768 ? 'none' : 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
           color: 'white',
+          padding: window.innerWidth < 768 ? '2rem 1.5rem' 'white',
           padding: '3rem',
           position: 'relative',
           overflow: 'hidden'
@@ -180,7 +182,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
             {!showRegister ? (
               <>
                 <h2 style={{
-                  fontSize: '40px',
+                  fontSize: window.innerWidth < 640 ? '28px' : '40px',
                   fontWeight: '700',
                   marginBottom: '20px',
                   textShadow: '0 2px 4px rgba(0,0,0,0.2)',
@@ -233,7 +235,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
             ) : (
               <>
                 <h2 style={{
-                  fontSize: '40px',
+                  fontSize: window.innerWidth < 640 ? '28px' : '40px',
                   fontWeight: '700',
                   marginBottom: '20px',
                   textShadow: '0 2px 4px rgba(0,0,0,0.2)',
