@@ -3263,7 +3263,7 @@ const ClientRecords: React.FC<{
                 </div>
 
                 {/* Modal Content */}
-                <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
+                <div style={{ padding: '16px', flex: 1, overflowY: 'auto', width: '100%', minWidth: 0 }}>
                   {currentClientId ? (
                     <LogNoteComponent
                       key={logRefreshKey}
