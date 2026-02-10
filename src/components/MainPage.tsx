@@ -1344,8 +1344,8 @@ const ClientRecords: React.FC<{
                 Client Information
               </h2>
             </div>
-            <div style={{ display: "flex", gap: 32 }}>
-              <div style={{ flex: 1 }}>
+            <div className="form-row" style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Client No</label>
                 <input 
                   style={modernInput} 
@@ -1355,7 +1355,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setClientNoTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Status</label>
                 <select 
                   style={modernInput}
@@ -1369,7 +1369,7 @@ const ClientRecords: React.FC<{
                   <option>Cancelled</option>
                 </select>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Agent</label>
                 <input 
                   style={modernInput} 
@@ -1380,7 +1380,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setAgentTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Contact No</label>
                 <input 
                   style={modernInput} 
@@ -1392,8 +1392,8 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 32, marginTop: 18 }}>
-              <div style={{ flex: 1 }}>
+            <div className="form-row" style={{ display: "flex", gap: 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Contact Name</label>
                 <input 
                   style={{ ...modernInput, fontWeight: "bold" }} 
@@ -1404,7 +1404,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setContactNameTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Email</label>
                 <input
                   style={modernInput}
@@ -1415,7 +1415,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setEmailTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Date of Birth</label>
                 <input 
                   style={modernInput} 
@@ -1457,8 +1457,8 @@ const ClientRecords: React.FC<{
                 Package & Travel Details
               </h2>
             </div>
-            <div style={{ display: "flex", gap: 32 }}>
-              <div style={{ flex: 1 }}>
+            <div className="form-row" style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Package</label>
                 <input 
                   style={modernInput} 
@@ -1469,7 +1469,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setPackageNameTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Travel Date</label>
                 <input 
                   style={modernInput} 
@@ -1479,7 +1479,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setTravelDateTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>No. of Pax</label>
                 <input 
                   style={modernInput} 
@@ -1490,8 +1490,8 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 32, marginTop: 18 }}>
-              <div style={{ flex: 1 }}>
+            <div className="form-row" style={{ display: "flex", gap: 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: "200px" }}>
                 <label style={label}>Booking Confirmation</label>
                 <input
                   style={modernInput}
