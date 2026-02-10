@@ -5,6 +5,7 @@ import type { LogNote } from '../types/logNote';
 import MentionInput from './MentionInput';
 import { NotificationService } from '../services/notificationService';
 import { ClientService } from '../services/clientService';
+import Loader from './Loader';
 
 interface LogNoteComponentProps {
   clientId: string;
@@ -18,6 +19,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   currentUserName 
 }) => {
   const [logNotes, setLogNotes] = useState<LogNote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [newCommentStatus, setNewCommentStatus] = useState<'pending' | 'done' | 'on hold'>('pending');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -90,6 +92,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   // Load log notes on mount and when clientId changes
   useEffect(() => {
     const loadNotes = async () => {
+      setIsLoading(true);
       try {
         const response = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`);
         const data = await response.json();
@@ -115,6 +118,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         // Fallback to localStorage
         const notes = LogNoteService.getLogNotes(clientId);
         setLogNotes(notes);
+      } finally {
+        setIsLoading(false);
       }
     };
     loadNotes();
@@ -489,6 +494,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
       {/* Log Notes List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {isLoading ? (
+          <Loader message="Loading activity logs..." />
+        ) : (
+          <>
         {/* Activity Logs (automatic) */}
         {activityLogs.map((log) => (
           <div 
@@ -1095,6 +1104,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               )}
             </div>
           ))
+        )}
+      </div>
+          </>
         )}
       </div>
 

@@ -14,6 +14,7 @@ import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
+import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
 
 // Utility for modern UI
@@ -153,6 +154,9 @@ const ClientRecords: React.FC<{
   // Mobile Activity Log toggle state
   const [showMobileActivityLog, setShowMobileActivityLog] = useState(false);
   
+  // Loading state for clients
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+  
   // Field tracking setup
   const currentClientId = clientId || tempClientId;
   const currentUserId = "user_1"; // In a real app, get from auth context
@@ -188,23 +192,28 @@ const ClientRecords: React.FC<{
   // Load existing client data if clientId is provided
   useEffect(() => {
     if (clientId) {
-      const existingClient = ClientService.getClientById(clientId);
-      if (existingClient) {
-        setClientNo(existingClient.clientNo || '');
-        setStatus(existingClient.status || 'Active');
-        setAgent(existingClient.agent || '');
-        setContactNo(existingClient.contactNo || '');
-        setContactName(existingClient.contactName || '');
-        setEmail(existingClient.email || '');
-        setDateOfBirth(existingClient.dateOfBirth || '');
-        setPackageName(existingClient.packageName || '');
-        setTravelDate(existingClient.travelDate || '');
-        setNumberOfPax(existingClient.numberOfPax || 1);
-        setBookingConfirmation(existingClient.bookingConfirmation || '');
-        setPackageLink(existingClient.packageLink || '');
-        if (existingClient.companions) {
-          setCompanions(existingClient.companions);
+      setIsLoadingClients(true);
+      try {
+        const existingClient = ClientService.getClientById(clientId);
+        if (existingClient) {
+          setClientNo(existingClient.clientNo || '');
+          setStatus(existingClient.status || 'Active');
+          setAgent(existingClient.agent || '');
+          setContactNo(existingClient.contactNo || '');
+          setContactName(existingClient.contactName || '');
+          setEmail(existingClient.email || '');
+          setDateOfBirth(existingClient.dateOfBirth || '');
+          setPackageName(existingClient.packageName || '');
+          setTravelDate(existingClient.travelDate || '');
+          setNumberOfPax(existingClient.numberOfPax || 1);
+          setBookingConfirmation(existingClient.bookingConfirmation || '');
+          setPackageLink(existingClient.packageLink || '');
+          if (existingClient.companions) {
+            setCompanions(existingClient.companions);
+          }
         }
+      } finally {
+        setIsLoadingClients(false);
       }
     }
   }, [clientId]);
@@ -1271,6 +1280,10 @@ const ClientRecords: React.FC<{
           backdropFilter: "blur(10px)"
         }}>
           <form style={{ padding: 24 }} autoComplete="off">
+          {isLoadingClients ? (
+            <Loader message="Loading client information..." />
+          ) : (
+          <>
           {/* Header */}
           <div style={{ 
             background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
@@ -3115,6 +3128,8 @@ const ClientRecords: React.FC<{
               }}
             />
           </div>
+          </>
+          )}
         </form>
       </div>
 
