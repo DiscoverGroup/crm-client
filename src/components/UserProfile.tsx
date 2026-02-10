@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { uploadFileToR2 } from '../services/r2UploadService';
+import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
 
 interface UserProfileProps {
   currentUser: { fullName: string; username: string; id?: string; email?: string };
@@ -158,13 +159,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
-      alert('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+      showWarningToast('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+      showWarningToast('File size must be less than 5MB');
       return;
     }
 
@@ -204,14 +205,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
           }
         }
         
-        alert('Profile image uploaded and saved successfully!');
+        showSuccessToast('Profile image uploaded and saved successfully!');
       } else {
         // console.error('Upload failed:', result.error);
-        alert('Failed to upload profile image: ' + (result.error || 'Unknown error'));
+        showErrorToast('Failed to upload profile image: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       // console.error('Error uploading profile image:', error);
-      alert('Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)));
+      showErrorToast('Error uploading profile image: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setUploading(false);
     }
@@ -220,12 +221,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
   const handleSave = () => {
     // Validate password if changing
     if (newPassword && newPassword !== confirmPassword) {
-      alert('Passwords do not match!');
+      showWarningToast('Passwords do not match!');
       return;
     }
 
     if (newPassword && newPassword.length < 6) {
-      alert('Password must be at least 6 characters long.');
+      showWarningToast('Password must be at least 6 characters long.');
       return;
     }
 
@@ -267,7 +268,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
         setNewPassword('');
         setConfirmPassword('');
         onUpdateUser(userData);
-        alert('Profile updated successfully!');
+        showSuccessToast('Profile updated successfully!');
       }
     }
   };

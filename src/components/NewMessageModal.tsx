@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MessagingService } from '../services/messagingService';
+import { showWarningToast } from '../utils/toast';
 
 interface User {
   id: string;
@@ -61,7 +62,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
 
   const handleCreateGroup = async () => {
     if (!groupName.trim() || selectedUsers.length < 1) {
-      alert('Please enter a group name and select at least one member');
+      showWarningToast('Please enter a group name and select at least one member');
       return;
     }
 

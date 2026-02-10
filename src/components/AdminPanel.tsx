@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface User {
   fullName: string;
@@ -95,7 +96,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       return user;
     });
     saveUsers(updatedUsers);
-    alert('User verified successfully!');
+    showSuccessToast('User verified successfully!');
   };
 
   const handleChangeRole = (email: string, newRole: string) => {
@@ -106,14 +107,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       return user;
     });
     saveUsers(updatedUsers);
-    alert(`User role changed to ${newRole}`);
+    showSuccessToast(`User role changed to ${newRole}`);
   };
 
   const handleDeleteUser = (email: string) => {
     const updatedUsers = users.filter(user => user.email !== email);
     saveUsers(updatedUsers);
     setShowDeleteConfirm(null);
-    alert('User deleted successfully!');
+    showSuccessToast('User deleted successfully!');
   };
 
   const handleApproveRecovery = (requestId: string) => {
@@ -123,10 +124,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (window.confirm(`Approve file recovery for "${request.fileName}"?`)) {
       const success = FileRecoveryService.approveRequest(requestId, getCurrentAdmin());
       if (success) {
-        alert('File recovery approved successfully!');
+        showSuccessToast('File recovery approved successfully!');
         loadRecoveryRequests();
       } else {
-        alert('Failed to approve recovery request.');
+        showErrorToast('Failed to approve recovery request.');
       }
     }
   };
@@ -139,10 +140,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (reason !== null) { // User didn't cancel
       const success = FileRecoveryService.rejectRequest(requestId, getCurrentAdmin(), reason || undefined);
       if (success) {
-        alert('File recovery request rejected.');
+        showSuccessToast('File recovery request rejected.');
         loadRecoveryRequests();
       } else {
-        alert('Failed to reject recovery request.');
+        showErrorToast('Failed to reject recovery request.');
       }
     }
   };
@@ -154,10 +155,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (window.confirm(`Approve client recovery for "${request.clientName}"?`)) {
       const success = await ClientRecoveryService.approveRequest(requestId, getCurrentAdmin());
       if (success) {
-        alert('Client recovery approved successfully!');
+        showSuccessToast('Client recovery approved successfully!');
         loadClientRecoveryRequests();
       } else {
-        alert('Failed to approve client recovery request.');
+        showErrorToast('Failed to approve client recovery request.');
       }
     }
   };
@@ -170,10 +171,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     if (reason !== null) { // User didn't cancel
       const success = ClientRecoveryService.rejectRequest(requestId, getCurrentAdmin(), reason || undefined);
       if (success) {
-        alert('Client recovery request rejected.');
+        showSuccessToast('Client recovery request rejected.');
         loadClientRecoveryRequests();
       } else {
-        alert('Failed to reject client recovery request.');
+        showErrorToast('Failed to reject client recovery request.');
       }
     }
   };

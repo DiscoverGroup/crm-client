@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileService, type StoredFile, type FileAttachment } from '../services/fileService';
+import { showErrorToast } from '../utils/toast';
 
 interface FileAttachmentListProps {
   attachments: FileAttachment[];
@@ -37,7 +38,7 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
         }
       } catch (error) {
         // console.error('Download error:', error);
-        alert('Failed to download file');
+        showErrorToast('Failed to download file');
       }
     } else {
       // For base64 files
@@ -59,11 +60,11 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
         if (success) {
           onFileDeleted?.(fileId);
         } else {
-          alert('Failed to delete file. Please try again.');
+          showErrorToast('Failed to delete file. Please try again.');
         }
       } catch (error) {
         // console.error('Error deleting file:', error);
-        alert('Error deleting file. Please try again.');
+        showErrorToast('Error deleting file. Please try again.');
       } finally {
         setDeletingFileId(null);
       }

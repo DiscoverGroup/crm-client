@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../utils/toast';
 
 interface LoginFormProps {
   onLogin: (username: string, password: string) => void;
@@ -42,7 +43,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const handleEmailVerification = (token: string, email: string) => {
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) {
-      alert('Verification failed: User not found');
+      showErrorToast('Verification failed: User not found');
       return;
     }
 
@@ -51,7 +52,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       const userIndex = users.findIndex((u: any) => u.email === email);
       
       if (userIndex === -1) {
-        alert('Verification failed: User not found');
+        showErrorToast('Verification failed: User not found');
         return;
       }
 
@@ -59,19 +60,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
       // Check if already verified
       if (user.isVerified) {
-        alert('Your email is already verified! You can now login.');
+        showInfoToast('Your email is already verified! You can now login.');
         return;
       }
 
       // Check if token matches
       if (user.verificationToken !== token) {
-        alert('Verification failed: Invalid verification link');
+        showErrorToast('Verification failed: Invalid verification link');
         return;
       }
 
       // Check if token expired
       if (Date.now() > user.verificationTokenExpiry) {
-        alert('Verification failed: This link has expired. Please contact support.');
+        showErrorToast('Verification failed: This link has expired. Please contact support.');
         return;
       }
 
@@ -83,10 +84,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       
       localStorage.setItem('crm_users', JSON.stringify(users));
       
-      alert('Email verified successfully! You can now login to your account.');
+      showSuccessToast('Email verified successfully! You can now login to your account.');
     } catch (error) {
       // console.error('Error verifying email:', error);
-      alert('An error occurred during verification. Please try again.');
+      showErrorToast('An error occurred during verification. Please try again.');
     }
   };
 
@@ -98,7 +99,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) {
-      alert('Please enter your email address');
+      showWarningToast('Please enter your email address');
       return;
     }
 
@@ -123,17 +124,17 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       // console.log('Response data:', data);
 
       if (response.ok && data.success) {
-        alert(`Password reset email sent to ${resetEmail}!\n\nPlease check your inbox and follow the instructions.`);
+        showSuccessToast(`Password reset email sent to ${resetEmail}! Please check your inbox and follow the instructions.`);
         setShowForgotPassword(false);
         setResetEmail('');
       } else {
-        const errorDetails = data.details ? `\n\nDetails: ${data.details}` : '';
+        const errorDetails = data.details ? ` Details: ${data.details}` : '';
         // console.error('Failed to send email:', data);
-        alert(`Failed to send reset email. Please try again.\n\nError: ${data.error || 'Unknown error'}${errorDetails}`);
+        showErrorToast(`Failed to send reset email. Please try again. Error: ${data.error || 'Unknown error'}${errorDetails}`);
       }
     } catch (error) {
       // console.error('Error sending reset email:', error);
-      alert('An error occurred. Please try again later.');
+      showErrorToast('An error occurred. Please try again later.');
     }
   };
 
@@ -141,24 +142,24 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     e.preventDefault();
     
     if (!newPassword.trim() || !confirmNewPassword.trim()) {
-      alert('Please fill in all fields');
+      showWarningToast('Please fill in all fields');
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      alert('Passwords do not match!');
+      showWarningToast('Passwords do not match!');
       return;
     }
 
     if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters long');
+      showWarningToast('Password must be at least 6 characters long');
       return;
     }
 
     // Get users from localStorage
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) {
-      alert('User not found');
+      showErrorToast('User not found');
       return;
     }
 
@@ -167,7 +168,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       const userIndex = users.findIndex((u: any) => u.email === resetUserEmail);
       
       if (userIndex === -1) {
-        alert('User not found');
+        showErrorToast('User not found');
         return;
       }
 
@@ -175,14 +176,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       users[userIndex].password = newPassword;
       localStorage.setItem('crm_users', JSON.stringify(users));
 
-      alert('Password reset successful! Please login with your new password.');
+      showSuccessToast('Password reset successful! Please login with your new password.');
       setShowResetPassword(false);
       setNewPassword('');
       setConfirmNewPassword('');
       setResetUserEmail('');
     } catch (error) {
       // console.error('Error resetting password:', error);
-      alert('An error occurred. Please try again.');
+      showErrorToast('An error occurred. Please try again.');
     }
   };
 

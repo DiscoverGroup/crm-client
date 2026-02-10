@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showErrorToast, showWarningToast } from '../utils/toast';
 
 interface R2DownloadButtonProps {
   url?: string;
@@ -25,7 +26,7 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
     e.stopPropagation();
 
     if (!r2Path) {
-      alert('File path not available for download');
+      showWarningToast('File path not available for download');
       return;
     }
 
@@ -45,7 +46,7 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
       }
     } catch (error) {
       // console.error('❌ Download failed:', error);
-      alert('Failed to download file. Please ensure R2 credentials are configured in Netlify.\n\nContact administrator if the issue persists.');
+      showErrorToast('Failed to download file. Please ensure R2 credentials are configured in Netlify. Contact administrator if the issue persists.');
     } finally {
       setIsGeneratingUrl(false);
     }

@@ -14,6 +14,7 @@ import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
+import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
 
 // Utility for modern UI
 const modernInput = {
@@ -434,7 +435,7 @@ const ClientRecords: React.FC<{
       // Validation: File size (max 50MB)
       const maxSize = 50 * 1024 * 1024; // 50MB
       if (file.size > maxSize) {
-        alert(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
         event.target.value = ''; // Clear the input
         return;
       }
@@ -442,7 +443,7 @@ const ClientRecords: React.FC<{
       // Validation: File type (images and PDFs only)
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
       if (!allowedTypes.includes(file.type)) {
-        alert(`Invalid file type. Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed.\n\nYour file type: ${file.type}`);
+        showErrorToast(`Invalid file type. Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed. Your file type: ${file.type}`);
         event.target.value = ''; // Clear the input
         return;
       }
@@ -477,7 +478,7 @@ const ClientRecords: React.FC<{
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
         // console.error('Error uploading file:', error);
-        alert('Failed to upload file. Please try again.');
+        showErrorToast('Failed to upload file. Please try again.');
       }
     } else {
       // Clear file
@@ -542,11 +543,11 @@ const ClientRecords: React.FC<{
         
         // console.log('✅ File removed successfully');
       } else {
-        alert('Failed to remove file. Please try again.');
+        showErrorToast('Failed to remove file. Please try again.');
       }
     } catch (error) {
       // console.error('❌ Error removing file:', error);
-      alert('Failed to remove file. Please try again.');
+      showErrorToast('Failed to remove file. Please try again.');
     }
   };
 
@@ -561,14 +562,14 @@ const ClientRecords: React.FC<{
       // Validation: File size (max 50MB)
       const maxSize = 50 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+        showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
         return;
       }
 
       // Validation: File type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
       if (!allowedTypes.includes(file.type)) {
-        alert(`Invalid file type. Only images and PDF files are allowed.\n\nYour file type: ${file.type}`);
+        showErrorToast(`Invalid file type. Only images and PDF files are allowed. Your file type: ${file.type}`);
         return;
       }
 
@@ -583,7 +584,7 @@ const ClientRecords: React.FC<{
       window.dispatchEvent(new Event('fileAttachmentUpdated'));
     } catch (error) {
       // console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
+      showErrorToast('Failed to upload file. Please try again.');
     }
   };
 
@@ -607,11 +608,11 @@ const ClientRecords: React.FC<{
         
         // console.log('✅ File removed successfully');
       } else {
-        alert('Failed to remove file. Please try again.');
+        showErrorToast('Failed to remove file. Please try again.');
       }
     } catch (error) {
       // console.error('❌ Error removing file:', error);
-      alert('Failed to remove file. Please try again.');
+      showErrorToast('Failed to remove file. Please try again.');
     }
   };
 
@@ -652,7 +653,7 @@ const ClientRecords: React.FC<{
       if (success) {
         // Save section changes to log
         saveSection('payment-terms-schedule', 'Payment Terms & Schedule');
-        alert('Payment details saved successfully!');
+        showSuccessToast('Payment details saved successfully!');
       } else {
         logSectionAction(
           'payment-terms-schedule',
@@ -660,7 +661,7 @@ const ClientRecords: React.FC<{
           'Failed to save payment details',
           'pending'
         );
-        alert('Failed to save payment details. Please try again.');
+        showErrorToast('Failed to save payment details. Please try again.');
       }
     } catch (error) {
       // console.error('Error saving payment details:', error);
@@ -670,7 +671,7 @@ const ClientRecords: React.FC<{
         'An error occurred while saving payment details',
         'pending'
       );
-      alert('An error occurred while saving payment details.');
+      showErrorToast('An error occurred while saving payment details.');
     } finally {
       setIsSaving(false);
     }
@@ -681,7 +682,7 @@ const ClientRecords: React.FC<{
     try {
       // Validation: Required fields
       if (!contactName || contactName.trim().length < 2) {
-        alert('Contact Name is required (minimum 2 characters)');
+        showWarningToast('Contact Name is required (minimum 2 characters)');
         setIsSavingClient(false);
         return;
       }
@@ -690,7 +691,7 @@ const ClientRecords: React.FC<{
       if (email && email.trim()) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
-          alert('Please enter a valid email address');
+          showWarningToast('Please enter a valid email address');
           setIsSavingClient(false);
           return;
         }
@@ -700,7 +701,7 @@ const ClientRecords: React.FC<{
       if (contactNo && contactNo.trim()) {
         const phoneRegex = /^[0-9\s\-\(\)\+]+$/;
         if (!phoneRegex.test(contactNo.trim()) || contactNo.replace(/[^0-9]/g, '').length < 7) {
-          alert('Please enter a valid contact number (minimum 7 digits)');
+          showWarningToast('Please enter a valid contact number (minimum 7 digits)');
           setIsSavingClient(false);
           return;
         }
@@ -712,7 +713,7 @@ const ClientRecords: React.FC<{
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (dob > today) {
-          alert('Date of Birth cannot be in the future');
+          showWarningToast('Date of Birth cannot be in the future');
           setIsSavingClient(false);
           return;
         }
@@ -724,7 +725,7 @@ const ClientRecords: React.FC<{
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (travel < today) {
-          alert('Travel Date cannot be in the past');
+          showWarningToast('Travel Date cannot be in the past');
           setIsSavingClient(false);
           return;
         }
@@ -732,7 +733,7 @@ const ClientRecords: React.FC<{
 
       // Validation: Number of Pax (must be positive)
       if (numberOfPax < 1) {
-        alert('Number of Passengers must be at least 1');
+        showWarningToast('Number of Passengers must be at least 1');
         setIsSavingClient(false);
         return;
       }
@@ -744,7 +745,7 @@ const ClientRecords: React.FC<{
           c.clientNo === clientNo.trim() && c.id !== clientId
         );
         if (duplicate) {
-          alert(`Client number "${clientNo.trim()}" is already in use. Please use a different number or leave blank for auto-generation.`);
+          showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number or leave blank for auto-generation.`);
           setIsSavingClient(false);
           return;
         }
@@ -804,7 +805,7 @@ const ClientRecords: React.FC<{
         setAttachments(clientAttachments);
       }
       
-      alert('Client information saved successfully!');
+      showSuccessToast('Client information saved successfully!');
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
@@ -821,7 +822,7 @@ const ClientRecords: React.FC<{
         'Failed to save client information',
         'pending'
       );
-      alert('An error occurred while saving client information.');
+      showErrorToast('An error occurred while saving client information.');
     } finally {
       setIsSavingClient(false);
     }
@@ -832,20 +833,20 @@ const ClientRecords: React.FC<{
     try {
       // Ensure we have a clientNo (required for saving)
       if (!clientNo) {
-        alert('Please save client information first before saving package details.');
+        showWarningToast('Please save client information first before saving package details.');
         return;
       }
 
       // Ensure we have a clientId
       if (!clientId) {
-        alert('Client ID not found. Please save client information first.');
+        showWarningToast('Client ID not found. Please save client information first.');
         return;
       }
 
       // Get the existing client data
       const existingClient = ClientService.getClientById(clientId);
       if (!existingClient) {
-        alert('Client not found. Please save client information first.');
+        showWarningToast('Client not found. Please save client information first.');
         return;
       }
 
@@ -877,7 +878,7 @@ const ClientRecords: React.FC<{
       // Save section changes to log
       saveSection('package-information', 'Package & Companions');
       
-      alert('Package & companions information saved successfully!');
+      showSuccessToast('Package & companions information saved successfully!');
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
@@ -889,7 +890,7 @@ const ClientRecords: React.FC<{
         'Failed to save package information',
         'pending'
       );
-      alert('An error occurred while saving package information.');
+      showErrorToast('An error occurred while saving package information.');
     } finally {
       setIsSavingPackage(false);
     }
@@ -900,10 +901,10 @@ const ClientRecords: React.FC<{
     try {
       // Simulate saving visa information
       await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Visa information saved successfully!');
+      showSuccessToast('Visa information saved successfully!');
     } catch (error) {
       // console.error('Error saving visa info:', error);
-      alert('An error occurred while saving visa information.');
+      showErrorToast('An error occurred while saving visa information.');
     } finally {
       setIsSavingVisa(false);
     }
@@ -918,7 +919,7 @@ const ClientRecords: React.FC<{
       // Save section changes to log
       saveSection('embassy-information', 'Embassy Information');
       
-      alert('Embassy information saved successfully!');
+      showSuccessToast('Embassy information saved successfully!');
     } catch (error) {
       // console.error('Error saving embassy info:', error);
       logSectionAction(
@@ -927,7 +928,7 @@ const ClientRecords: React.FC<{
         'Failed to save embassy information',
         'pending'
       );
-      alert('An error occurred while saving embassy information.');
+      showErrorToast('An error occurred while saving embassy information.');
     } finally {
       setIsSavingEmbassy(false);
     }
@@ -983,7 +984,7 @@ const ClientRecords: React.FC<{
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
         // console.error('Error uploading visa payment file:', error);
-        alert('Failed to upload file. Please try again.');
+        showErrorToast('Failed to upload file. Please try again.');
       }
     } else {
       // Clear file
@@ -1051,7 +1052,7 @@ const ClientRecords: React.FC<{
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
         // console.error('Error uploading insurance payment file:', error);
-        alert('Failed to upload file. Please try again.');
+        showErrorToast('Failed to upload file. Please try again.');
       }
     } else {
       setInsurancePayments(prev =>
@@ -1118,7 +1119,7 @@ const ClientRecords: React.FC<{
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
       } catch (error) {
         // console.error('Error uploading ETA payment file:', error);
-        alert('Failed to upload file. Please try again.');
+        showErrorToast('Failed to upload file. Please try again.');
       }
     } else {
       setEtaPayments(prev =>
@@ -1169,20 +1170,20 @@ const ClientRecords: React.FC<{
     
     // Validation: Minimum 2 characters
     if (name.length < 2) {
-      alert('Companion name must be at least 2 characters');
+      showWarningToast('Companion name must be at least 2 characters');
       return;
     }
     
     // Validation: Cannot be numbers only
     if (/^[0-9]+$/.test(name)) {
-      alert('Companion name cannot be numbers only');
+      showWarningToast('Companion name cannot be numbers only');
       return;
     }
     
     // Validation: Check for duplicate names
     const isDuplicate = companions.some(c => c.name.trim().toLowerCase() === name.toLowerCase());
     if (isDuplicate) {
-      alert(`Companion "${name}" already exists in the list.`);
+      showWarningToast(`Companion "${name}" already exists in the list.`);
       return;
     }
     
@@ -3929,7 +3930,7 @@ const MainPage: React.FC<MainPageProps> = ({
                                     performedByUser: currentUser.fullName,
                                     details: `Client moved to trash`
                                   });
-                                  alert('Client moved to trash. You can recover it from Deleted Clients page.');
+                                  showSuccessToast('Client moved to trash. You can recover it from Deleted Clients page.');
                                 }
                                 loadClients();
                               }

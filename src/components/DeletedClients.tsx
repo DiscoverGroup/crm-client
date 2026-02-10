@@ -4,6 +4,7 @@ import { ActivityLogService } from '../services/activityLogService';
 import { FileService, type FileAttachment } from '../services/fileService';
 import { FileRecoveryService } from '../services/fileRecoveryService';
 import { ClientRecoveryService } from '../services/clientRecoveryService';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 interface DeletedClientsProps {
   currentUser: string;
@@ -50,9 +51,9 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
       );
 
       if (request) {
-        alert(`Recovery request submitted for "${client.contactName}". An admin will review your request.`);
+        showSuccessToast(`Recovery request submitted for "${client.contactName}". An admin will review your request.`);
       } else {
-        alert('Failed to create recovery request.');
+        showErrorToast('Failed to create recovery request.');
       }
     }
   };
@@ -71,10 +72,10 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
             profileImageR2Path: getCurrentUserProfileImagePath(),
             details: 'Client permanently deleted from system'
           });
-          alert('Client permanently deleted.');
+          showSuccessToast('Client permanently deleted.');
           loadDeletedClients();
         } else {
-          alert('Failed to delete client.');
+          showErrorToast('Failed to delete client.');
         }
       }
     }
@@ -102,9 +103,9 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
       );
 
       if (request) {
-        alert(`Recovery request submitted for "${file.file.name}". An admin will review your request.`);
+        showSuccessToast(`Recovery request submitted for "${file.file.name}". An admin will review your request.`);
       } else {
-        alert('Failed to create recovery request.');
+        showErrorToast('Failed to create recovery request.');
       }
     }
   };
