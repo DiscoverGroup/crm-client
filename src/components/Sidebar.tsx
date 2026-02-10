@@ -274,16 +274,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Admin Panel Button (conditionally rendered) */}
       {onNavigateToAdminPanel && (
         <button
+          type="button"
           onClick={() => {
             console.log('🔘 Admin Panel button clicked!', onNavigateToAdminPanel);
             handleNavigation(onNavigateToAdminPanel);
           }}
           style={{
-            position: 'absolute',
-            bottom: '120px',
-            left: '24px',
-            right: '24px',
-            width: 'calc(100% - 48px)',
+            width: '100%',
             padding: '14px 16px',
             background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             color: 'white',
@@ -293,12 +290,25 @@ const Sidebar: React.FC<SidebarProps> = ({
             fontSize: '15px',
             fontWeight: '600',
             transition: 'all 0.3s ease',
+            marginTop: '20px',
+            marginBottom: '120px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '10px',
             boxShadow: '0 4px 8px rgba(245, 158, 11, 0.3)',
-            zIndex: 10002
+            position: 'relative',
+            zIndex: 100,
+            pointerEvents: 'auto',
+            minHeight: '50px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 12px rgba(245, 158, 11, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(245, 158, 11, 0.3)';
           }}
         >
           <span style={{ fontSize: '18px' }}>👥</span>
@@ -317,7 +327,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         opacity: 0.5,
         padding: '16px',
         borderTop: '1px solid rgba(255,255,255,0.1)',
-        zIndex: 10001
+        zIndex: 1,
+        pointerEvents: 'none'
       }}>
         <div>DG-CRM System v1.0</div>
         <div style={{ marginTop: '4px', fontSize: '10px' }}>© 2026 Discover Group</div>
