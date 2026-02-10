@@ -274,7 +274,10 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Admin Panel Button (conditionally rendered) */}
       {onNavigateToAdminPanel && (
         <button
-          onClick={() => handleNavigation(onNavigateToAdminPanel)}
+          onClick={() => {
+            console.log('🔘 Admin Panel button clicked!', onNavigateToAdminPanel);
+            handleNavigation(onNavigateToAdminPanel);
+          }}
           style={{
             width: '100%',
             padding: '14px 16px',
