@@ -279,7 +279,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             handleNavigation(onNavigateToAdminPanel);
           }}
           style={{
-            width: '100%',
+            position: 'absolute',
+            bottom: '120px',
+            left: '24px',
+            right: '24px',
+            width: 'calc(100% - 48px)',
             padding: '14px 16px',
             background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             color: 'white',
@@ -289,11 +293,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             fontSize: '15px',
             fontWeight: '600',
             transition: 'all 0.3s ease',
-            marginTop: '20px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: '10px',
-            boxShadow: '0 4px 8px rgba(245, 158, 11, 0.3)'
+            boxShadow: '0 4px 8px rgba(245, 158, 11, 0.3)',
+            zIndex: 10002
           }}
         >
           <span style={{ fontSize: '18px' }}>👥</span>
@@ -311,7 +316,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         fontSize: '11px',
         opacity: 0.5,
         padding: '16px',
-        borderTop: '1px solid rgba(255,255,255,0.1)'
+        borderTop: '1px solid rgba(255,255,255,0.1)',
+        zIndex: 10001
       }}>
         <div>DG-CRM System v1.0</div>
         <div style={{ marginTop: '4px', fontSize: '10px' }}>© 2026 Discover Group</div>
