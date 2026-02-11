@@ -132,6 +132,7 @@ const MainPage: React.FC = () => {
             onNavigateToProfile={() => {}}
             onNavigateToDeleted={() => {}}
             onNavigateToActivityLog={() => {}}
+            onNavigateToCalendar={() => {}}
           />
           <div style={{
             marginLeft: '300px',

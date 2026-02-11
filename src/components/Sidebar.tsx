@@ -5,6 +5,7 @@ interface SidebarProps {
   onNavigateToProfile: () => void;
   onNavigateToDeleted: () => void;
   onNavigateToActivityLog: () => void;
+  onNavigateToCalendar: () => void;
   onNavigateToAdminPanel?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
@@ -15,11 +16,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNavigateToProfile, 
   onNavigateToDeleted, 
   onNavigateToActivityLog, 
+  onNavigateToCalendar,
   onNavigateToAdminPanel,
   isOpen = false,
   onClose
 }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleNavigation = (callback: () => void) => {
     callback();
@@ -332,6 +334,44 @@ const Sidebar: React.FC<SidebarProps> = ({
         >
           <span style={{ fontSize: '20px' }}>📋</span>
           {!isCollapsed && <span>Activity Log</span>}
+        </button>
+
+        {/* Team Calendar Button */}
+        <button
+          onClick={() => handleNavigation(onNavigateToCalendar)}
+          style={{
+            width: '100%',
+            padding: isCollapsed ? '12px 0' : '14px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '15px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '8px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: '12px',
+            backdropFilter: 'blur(10px)',
+            whiteSpace: 'nowrap'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = isCollapsed ? 'scale(1)' : 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+          }}
+          title={isCollapsed ? 'Team Calendar' : ''}
+        >
+          <span style={{ fontSize: '20px' }}>📅</span>
+          {!isCollapsed && <span>Team Calendar</span>}
         </button>
       </div>
 

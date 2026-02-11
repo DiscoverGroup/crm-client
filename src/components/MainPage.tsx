@@ -12,6 +12,7 @@ import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
 import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
+import TeamCalendar from './TeamCalendar';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
@@ -3384,6 +3385,18 @@ const MainPage: React.FC<MainPageProps> = ({
     }
     return false;
   });
+  const [viewCalendar, setViewCalendar] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewCalendar || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [viewAdminPanel, setViewAdminPanel] = useState(() => {
     const saved = sessionStorage.getItem('crm_current_view');
     if (saved) {
@@ -3419,6 +3432,7 @@ const MainPage: React.FC<MainPageProps> = ({
         setViewProfile(false);
         setViewDeleted(false);
         setViewActivityLog(false);
+        setViewCalendar(false);
         setViewAdminPanel(false);
         
         // TODO: Scroll to specific note if params.scrollTo is provided
@@ -3428,6 +3442,7 @@ const MainPage: React.FC<MainPageProps> = ({
         setViewingForm(null);
         setViewProfile(false);
         setViewDeleted(false);
+        setViewCalendar(false);
         setViewAdminPanel(false);
       }
       
@@ -3442,9 +3457,10 @@ const MainPage: React.FC<MainPageProps> = ({
       viewProfile,
       viewDeleted,
       viewActivityLog,
+      viewCalendar,
       viewAdminPanel
     }));
-  }, [viewingForm, viewProfile, viewDeleted, viewActivityLog, viewAdminPanel]);
+  }, [viewingForm, viewProfile, viewDeleted, viewActivityLog, viewCalendar, viewAdminPanel]);
 
   // Check if current user is admin
   const isAdmin = () => {
@@ -3560,6 +3576,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewProfile(false);
               setViewActivityLog(true);
             }}
+            onNavigateToCalendar={() => {
+              setViewProfile(false);
+              setViewCalendar(true);
+            }}
             onNavigateToAdminPanel={isAdmin() ? () => {
               setViewProfile(false);
               setViewAdminPanel(true);
@@ -3605,6 +3625,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewDeleted(false);
               setViewActivityLog(true);
             }}
+            onNavigateToCalendar={() => {
+              setViewDeleted(false);
+              setViewCalendar(true);
+            }}
             onNavigateToAdminPanel={isAdmin() ? () => {
               setViewDeleted(false);
               setViewAdminPanel(true);
@@ -3644,6 +3668,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewDeleted(true);
             }}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
+            onNavigateToCalendar={() => {
+              setViewActivityLog(false);
+              setViewCalendar(true);
+            }}
             onNavigateToAdminPanel={isAdmin() ? () => {
               setViewActivityLog(false);
               setViewAdminPanel(true);
@@ -3682,6 +3710,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewAdminPanel(false);
               setViewActivityLog(true);
             }}
+            onNavigateToCalendar={() => {
+              setViewAdminPanel(false);
+              setViewCalendar(true);
+            }}
             onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
@@ -3696,6 +3728,45 @@ const MainPage: React.FC<MainPageProps> = ({
             />
           </div>
         </div>
+      ) : viewCalendar ? (
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={() => {
+              setViewCalendar(false);
+              loadClients();
+            }}
+            onNavigateToProfile={() => {
+              setViewCalendar(false);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => {
+              setViewCalendar(false);
+              setViewDeleted(true);
+            }}
+            onNavigateToActivityLog={() => {
+              setViewCalendar(false);
+              setViewActivityLog(true);
+            }}
+            onNavigateToCalendar={() => setViewCalendar(true)}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewCalendar(false);
+              setViewAdminPanel(true);
+            } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
+          />
+          <div
+            className="main-content"
+            style={{
+            minHeight: '100vh',
+            backgroundColor: '#f5f5f5'
+          }}>
+            <TeamCalendar
+              currentUser={currentUser}
+              onBack={() => setViewCalendar(false)}
+            />
+          </div>
+        </div>
       ) : (
         <div style={{ display: 'flex' }}>
           <Sidebar 
@@ -3703,6 +3774,13 @@ const MainPage: React.FC<MainPageProps> = ({
             onNavigateToProfile={() => setViewProfile(true)}
             onNavigateToDeleted={() => setViewDeleted(true)}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
+            onNavigateToCalendar={() => {
+              setViewProfile(false);
+              setViewDeleted(false);
+              setViewActivityLog(false);
+              setViewAdminPanel(false);
+              setViewCalendar(true);
+            }}
             onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}

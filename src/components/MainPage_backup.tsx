@@ -365,6 +365,7 @@ const MainPage: React.FC = () => {
         onNavigateToProfile={() => {}}
         onNavigateToDeleted={() => {}}
         onNavigateToActivityLog={() => {}}
+        onNavigateToCalendar={() => {}}
       />
       
       {/* Main Content */}
