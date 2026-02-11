@@ -516,6 +516,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </div>
       )}
 
+      {/* User Management Tab */}
+      {activeTab === 'users' && (
         <>
       {/* Stats Cards */}
       <div style={{
