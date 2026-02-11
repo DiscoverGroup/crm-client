@@ -3,6 +3,7 @@ import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileR
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
+import WorkflowBuilder from './WorkflowBuilder';
 
 interface User {
   fullName: string;
@@ -30,11 +31,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
   const [filterClientRecoveryStatus, setFilterClientRecoveryStatus] = useState<string>('pending');
+  const [showWorkflowBuilder, setShowWorkflowBuilder] = useState(false);
 
   // Get current admin user from localStorage
   const getCurrentAdmin = (): string => {
@@ -403,6 +405,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           ℹ️ Version Info
+        </button>
+        <button
+          onClick={() => setActiveTab('workflows')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'workflows' ? 'white' : 'transparent',
+            color: activeTab === 'workflows' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'workflows' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px'
+          }}
+        >
+          🔄 Workflows
         </button>
       </div>
 
@@ -1270,6 +1289,168 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Workflows Tab */}
+      {activeTab === 'workflows' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '700', color: '#1e293b' }}>
+                🔄 Workflow Automation
+              </h2>
+              <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+                Automate repetitive tasks and save time with powerful workflows
+              </p>
+            </div>
+            <button
+              onClick={() => setShowWorkflowBuilder(true)}
+              style={{
+                padding: '12px 24px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontSize: '14px',
+                boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              Open Workflow Builder
+            </button>
+          </div>
+
+          {/* Feature Overview */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ padding: '20px', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚡</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#1e40af' }}>Automated Actions</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>
+                Trigger automatic emails, notifications, tasks, and more based on events
+              </p>
+            </div>
+            
+            <div style={{ padding: '20px', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎯</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#166534' }}>Smart Triggers</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>
+                Start workflows when clients are created, statuses change, or on schedule
+              </p>
+            </div>
+            
+            <div style={{ padding: '20px', background: '#fef3c7', borderRadius: '12px', border: '1px solid #fde047' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#854d0e' }}>Ready Templates</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#854d0e', lineHeight: '1.5' }}>
+                5+ pre-built workflow templates to get started immediately
+              </p>
+            </div>
+            
+            <div style={{ padding: '20px', background: '#fce7f3', borderRadius: '12px', border: '1px solid #fbcfe8' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔀</div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#9f1239' }}>Conditional Logic</h3>
+              <p style={{ margin: 0, fontSize: '13px', color: '#9f1239', lineHeight: '1.5' }}>
+                Create complex workflows with if-this-then-that conditions
+              </p>
+            </div>
+          </div>
+
+          {/* Common Use Cases */}
+          <div style={{ marginTop: '32px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>Common Use Cases</h3>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {[
+                { icon: '👋', title: 'Welcome New Clients', desc: 'Automatically send welcome emails when clients are added' },
+                { icon: '📅', title: 'Follow-up Reminders', desc: 'Create tasks to follow up with clients after 3 days' },
+                { icon: '🔔', title: 'Status Notifications', desc: 'Notify team when client status changes' },
+                { icon: '⏰', title: 'Inactivity Alerts', desc: 'Alert team about clients inactive for 30+ days' },
+                { icon: '👥', title: 'Auto-Assignment', desc: 'Automatically assign new clients to available team members' },
+                { icon: '📊', title: 'Daily Reports', desc: 'Send automated daily summary reports' }
+              ].map((useCase, index) => (
+                <div key={index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '16px',
+                  background: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0'
+                }}>
+                  <div style={{ fontSize: '28px' }}>{useCase.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#1e293b' }}>
+                      {useCase.title}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                      {useCase.desc}
+                    </p>
+                  </div>
+                  <div style={{
+                    padding: '6px 12px',
+                    background: '#e0e7ff',
+                    color: '#4338ca',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: '600'
+                  }}>
+                    AVAILABLE
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div style={{
+            marginTop: '32px',
+            padding: '24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '12px',
+            textAlign: 'center',
+            color: 'white'
+          }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '20px', fontWeight: '700' }}>
+              Ready to Automate Your Workflow?
+            </h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', opacity: 0.9 }}>
+              Open the Workflow Builder to create your first automation in minutes
+            </p>
+            <button
+              onClick={() => setShowWorkflowBuilder(true)}
+              style={{
+                padding: '14px 32px',
+                background: 'white',
+                color: '#667eea',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '15px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.2)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+              }}
+            >
+              🚀 Launch Workflow Builder
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Workflow Builder Modal */}
+      {showWorkflowBuilder && (
+        <WorkflowBuilder onClose={() => setShowWorkflowBuilder(false)} />
       )}
     </div>
   );
