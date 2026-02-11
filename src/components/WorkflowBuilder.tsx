@@ -6,6 +6,7 @@ import type {
 } from '../types/workflow';
 import { WORKFLOW_TEMPLATES } from '../types/workflow';
 import workflowService from '../services/workflowService';
+import WorkflowEditor from './WorkflowEditor';
 
 interface WorkflowBuilderProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose }) => {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
   const [activeTab, setActiveTab] = useState<'workflows' | 'templates' | 'executions'>('workflows');
+  const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
 
   useEffect(() => {
     loadWorkflows();
@@ -284,8 +286,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Edit workflow - feature coming soon
-                            alert('Workflow editor coming soon!');
+                            setEditingWorkflow(workflow);
                           }}
                           style={{
                             flex: 1,
@@ -458,6 +459,18 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose }) => {
           )}
         </div>
       </div>
+
+      {/* Workflow Editor Modal */}
+      {editingWorkflow && (
+        <WorkflowEditor
+          workflow={editingWorkflow}
+          onSave={() => {
+            setEditingWorkflow(null);
+            loadWorkflows();
+          }}
+          onCancel={() => setEditingWorkflow(null)}
+        />
+      )}
     </div>
   );
 };

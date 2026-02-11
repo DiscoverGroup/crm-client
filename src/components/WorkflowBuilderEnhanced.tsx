@@ -484,20 +484,15 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose }) => {
       </div>
 
       {/* Editor Modal */}
-      {showEditor && (
+      {showEditor && editingWorkflow && (
         <WorkflowEditor
           workflow={editingWorkflow}
-          onSave={(workflow) => {
-            if (editingWorkflow) {
-              workflowService.updateWorkflow(editingWorkflow.id, workflow);
-            } else {
-              workflowService.createWorkflow(workflow);
-            }
+          onSave={() => {
             setShowEditor(false);
             setEditingWorkflow(null);
             loadWorkflows();
           }}
-          onClose={() => {
+          onCancel={() => {
             setShowEditor(false);
             setEditingWorkflow(null);
           }}
