@@ -51,15 +51,91 @@ const Sidebar: React.FC<SidebarProps> = ({
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
       {/* Header */}
-      <div style={{ marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+      <div style={{ marginBottom: '32px', paddingBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+        {/* Logo and Title */}
+        <button
+          onClick={() => handleNavigation(onNavigateToClientRecords)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'white',
+            padding: '0',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = 'scale(1.02)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = 'scale(1)';
+          }}
+          title="Go to Dashboard"
+        >
+          {!isCollapsed && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              width: '100%'
+            }}>
+              <img 
+                src="/DG.jpg" 
+                alt="Discover Group Logo" 
+                style={{
+                  width: '50px',
+                  height: '50px',
+                  objectFit: 'contain'
+                }}
+              />
+              <div style={{ textAlign: 'left' }}>
+                <h2 style={{ 
+                  margin: '0 0 4px 0',
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  letterSpacing: '0.5px'
+                }}>
+                  DG-CRM
+                </h2>
+                <p style={{ 
+                  margin: 0,
+                  opacity: 0.8,
+                  fontSize: '12px',
+                  fontWeight: '400'
+                }}>
+                  Discover Group
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isCollapsed && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '100%'
+            }}>
+              <img 
+                src="/DG.jpg" 
+                alt="DG" 
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  objectFit: 'contain'
+                }}
+              />
+            </div>
+          )}
+        </button>
+
         {/* Toggle Button */}
         <button
           onClick={toggleCollapse}
           style={{
-            position: 'absolute',
-            top: isCollapsed ? '50%' : '16px',
-            right: isCollapsed ? '50%' : '-16px',
-            transform: isCollapsed ? 'translate(50%, -50%)' : 'translateX(50%)',
             width: '32px',
             height: '32px',
             borderRadius: '50%',
@@ -74,76 +150,21 @@ const Sidebar: React.FC<SidebarProps> = ({
             boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
             zIndex: 10002,
             transition: 'all 0.3s ease',
-            padding: 0
+            padding: 0,
+            flexShrink: 0
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.transform = isCollapsed ? 'translate(50%, -50%) scale(1.1)' : 'translateX(50%) scale(1.1)';
+            e.currentTarget.style.transform = 'scale(1.1)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.5)';
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.transform = isCollapsed ? 'translate(50%, -50%)' : 'translateX(50%)';
+            e.currentTarget.style.transform = 'scale(1)';
             e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
           }}
           title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {isCollapsed ? '▶' : '◀'}
         </button>
-
-        {!isCollapsed && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '8px'
-          }}>
-            <img 
-              src="/DG.jpg" 
-              alt="Discover Group Logo" 
-              style={{
-                width: '50px',
-                height: '50px',
-                objectFit: 'contain'
-              }}
-            />
-            <div>
-              <h2 style={{ 
-                margin: '0 0 4px 0',
-                fontSize: '20px',
-                fontWeight: '600',
-                letterSpacing: '0.5px'
-              }}>
-                DG-CRM
-              </h2>
-              <p style={{ 
-                margin: 0,
-                opacity: 0.8,
-                fontSize: '12px',
-                fontWeight: '400'
-              }}>
-                Discover Group
-              </p>
-            </div>
-          </div>
-        )}
-
-        {isCollapsed && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: '48px'
-          }}>
-            <img 
-              src="/DG.jpg" 
-              alt="DG" 
-              style={{
-                width: '40px',
-                height: '40px',
-                objectFit: 'contain'
-              }}
-            />
-          </div>
-        )}
       </div>
 
       {/* Navigation Menu */}
