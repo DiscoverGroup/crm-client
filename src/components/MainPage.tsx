@@ -3448,6 +3448,13 @@ const MainPage: React.FC<MainPageProps> = ({
 
   // Check if current user is admin
   const isAdmin = () => {
+    // Check if user email is admin email as primary method
+    if (currentUser.email && currentUser.email.toLowerCase() === 'admin@discovergrp.com') {
+      console.log('🔍 isAdmin check: Admin email detected');
+      return true;
+    }
+    
+    // Check role field in crm_users as secondary method
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) {
       console.log('🔍 isAdmin check: No users data found');
@@ -3455,8 +3462,9 @@ const MainPage: React.FC<MainPageProps> = ({
     }
     try {
       const users = JSON.parse(usersData);
-      const user = users.find((u: any) => u.fullName === currentUser.fullName);
+      const user = users.find((u: any) => u.email === currentUser.email || u.fullName === currentUser.fullName);
       console.log('🔍 isAdmin check:', {
+        currentUserEmail: currentUser.email,
         currentUserFullName: currentUser.fullName,
         foundUser: user,
         userRole: user?.role,

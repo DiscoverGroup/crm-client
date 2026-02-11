@@ -109,6 +109,9 @@ export const handler: Handler = async (event) => {
       }
 
       // Create new user
+      // Automatically assign admin role to admin@discovergrp.com
+      const isAdminEmail = email.trim().toLowerCase() === 'admin@discovergrp.com';
+      
       const newUser = {
         username: username.trim(),
         email: email.trim(),
@@ -117,7 +120,8 @@ export const handler: Handler = async (event) => {
         department: department.trim(),
         position: position.trim(),
         profileImage: profileImage || '',
-        isVerified: false, // Require email verification
+        role: isAdminEmail ? 'admin' : 'user', // Admin role for admin email
+        isVerified: isAdminEmail ? true : false, // Auto-verify admin
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -133,6 +137,7 @@ export const handler: Handler = async (event) => {
         department: newUser.department,
         position: newUser.position,
         profileImage: newUser.profileImage,
+        role: newUser.role,
         isVerified: newUser.isVerified
       };
 
