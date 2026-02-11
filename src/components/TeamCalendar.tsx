@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import calendarService from '../services/calendarService';
 import type { CalendarEvent, CalendarAttendee } from '../types/calendar';
-import { showInfoToast } from '../utils/toast';
+import { showInfoToast, showSuccessToast, showWarningToast } from '../utils/toast';
 
 interface TeamCalendarProps {
   currentUser?: { id: string; fullName: string; username: string; email: string };
@@ -15,6 +15,9 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
   const [showModal, setShowModal] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [users, setUsers] = useState<Array<{ id: string; fullName: string; email: string }>>([]);
+  const [notificationEnabled, setNotificationEnabled] = useState(() => {
+    return localStorage.getItem('crm_calendar_desktop_notifications') === 'true';
+  });
   const [reminderSent, setReminderSent] = useState<Set<string>>(() => {
     const stored = localStorage.getItem('crm_calendar_reminders_sent');
     if (!stored) return new Set();
@@ -58,6 +61,10 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
   }, [reminderSent]);
 
   useEffect(() => {
+    localStorage.setItem('crm_calendar_desktop_notifications', notificationEnabled ? 'true' : 'false');
+  }, [notificationEnabled]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
       const upcoming = calendarService.getEventsInRange(
@@ -74,6 +81,11 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
           if (reminderTime <= now && now.getTime() - reminderTime.getTime() <= 60 * 1000) {
             if (!reminderSent.has(key)) {
               showInfoToast(`Reminder: ${event.title} starts in ${minutes} minutes.`);
+              if (notificationEnabled && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(`Upcoming: ${event.title}`, {
+                  body: `${minutes} minutes remaining${event.location ? ` • ${event.location}` : ''}`,
+                });
+              }
               setReminderSent(prev => new Set([...Array.from(prev), key]));
             }
           }
@@ -139,6 +151,33 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
     });
 
     setEvents(prev => prev.map(e => (e.id === eventId ? updated : e)));
+  };
+
+  const handleToggleNotifications = async () => {
+    if (notificationEnabled) {
+      setNotificationEnabled(false);
+      showInfoToast('Desktop notifications disabled.');
+      return;
+    }
+
+    if (!('Notification' in window)) {
+      showWarningToast('Desktop notifications are not supported in this browser.');
+      return;
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotificationEnabled(true);
+      showSuccessToast('Desktop notifications enabled.');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      setNotificationEnabled(true);
+      showSuccessToast('Desktop notifications enabled.');
+    } else {
+      showWarningToast('Notification permission denied.');
+    }
   };
 
   const handleOpenModal = () => {
@@ -251,6 +290,21 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
               Week
             </button>
           </div>
+          <button
+            onClick={handleToggleNotifications}
+            style={{
+              background: 'white',
+              color: notificationEnabled ? '#1d4ed8' : '#64748b',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+            title="Desktop notifications"
+          >
+            {notificationEnabled ? '🔔 Alerts On' : '🔕 Alerts Off'}
+          </button>
           <button
             onClick={handleOpenModal}
             style={{
