@@ -88,6 +88,32 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
     type: 'success' | 'error' | 'warning' | 'info';
   }>({ isOpen: false, title: '', message: '', type: 'info' });
 
+  const generateStrongPassword = (): string => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+    const allChars = uppercase + lowercase + numbers + symbols;
+    
+    let pwd = '';
+    pwd += uppercase[Math.floor(Math.random() * uppercase.length)];
+    pwd += lowercase[Math.floor(Math.random() * lowercase.length)];
+    pwd += numbers[Math.floor(Math.random() * numbers.length)];
+    pwd += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    for (let i = pwd.length; i < 16; i++) {
+      pwd += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    return pwd.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  const handleGeneratePassword = () => {
+    const newPassword = generateStrongPassword();
+    setPassword(newPassword);
+    setConfirm(newPassword);
+  };
+
   const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedDept = e.target.value;
     setDepartment(selectedDept);
@@ -298,57 +324,89 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
           />
         </div>
         
-        <div style={{ marginBottom: '12px', position: 'relative' }}>
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={password}
-            required
-            onChange={e => setPassword(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              paddingRight: '48px',
-              border: '2px solid #e5e7eb',
-              borderRadius: '10px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              boxSizing: 'border-box',
-              outline: 'none',
-              transition: 'all 0.2s ease',
-              color: '#1f2937'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#1e7bb8';
-              e.currentTarget.style.backgroundColor = 'white';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#e5e7eb';
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-          />
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '8px', position: 'relative' }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              required
+              onChange={e => setPassword(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                paddingRight: '48px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '10px',
+                fontSize: '14px',
+                backgroundColor: '#f9fafb',
+                boxSizing: 'border-box',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                color: '#1f2937'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#1e7bb8';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                color: '#6b7280',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.color = '#1e7bb8'}
+              onMouseOut={(e) => e.currentTarget.style.color = '#6b7280'}
+            >
+              {showPassword ? '👁️' : '👁️‍🗨️'}
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={handleGeneratePassword}
             style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
+              width: '100%',
+              padding: '8px 12px',
+              backgroundColor: '#f0f9ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '500',
+              color: '#1e7bb8',
               cursor: 'pointer',
-              fontSize: '18px',
-              color: '#6b7280',
-              padding: '4px',
+              transition: 'all 0.2s ease',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              gap: '6px'
             }}
-            onMouseOver={(e) => e.currentTarget.style.color = '#1e7bb8'}
-            onMouseOut={(e) => e.currentTarget.style.color = '#6b7280'}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#e0f2fe';
+              e.currentTarget.style.borderColor = '#7dd3fc';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#f0f9ff';
+              e.currentTarget.style.borderColor = '#bfdbfe';
+            }}
           >
-            {showPassword ? '👁️' : '👁️‍🗨️'}
+            🔐 Generate Strong Password
           </button>
         </div>
 
