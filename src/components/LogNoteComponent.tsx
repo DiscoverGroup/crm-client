@@ -1105,8 +1105,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             </div>
           ))
         )}
-      </div>
-          </>
+        </>
         )}
       </div>
 

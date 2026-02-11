@@ -1,12 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { getFullVersion, getSecurityVersion, getBuildInfo, VERSION_INFO } from "../config/version";
+import React from "react";
+import { getFullVersion, getSecurityVersion, getBuildInfo } from "../config/version";
 
 const Footer: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(false);
-  }, []);
 
   return (
     <footer 
