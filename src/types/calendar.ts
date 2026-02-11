@@ -19,6 +19,7 @@ export interface CalendarEvent {
   createdById?: string;
   createdByName?: string;
   color?: string;
+  reminderMinutes?: number[];
   createdAt: Date;
   updatedAt: Date;
 }

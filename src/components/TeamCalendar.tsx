@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import calendarService from '../services/calendarService';
 import type { CalendarEvent, CalendarAttendee } from '../types/calendar';
+import { showInfoToast } from '../utils/toast';
 
 interface TeamCalendarProps {
   currentUser?: { id: string; fullName: string; username: string; email: string };
@@ -12,7 +13,17 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [users, setUsers] = useState<Array<{ id: string; fullName: string; email: string }>>([]);
+  const [reminderSent, setReminderSent] = useState<Set<string>>(() => {
+    const stored = localStorage.getItem('crm_calendar_reminders_sent');
+    if (!stored) return new Set();
+    try {
+      return new Set(JSON.parse(stored));
+    } catch {
+      return new Set();
+    }
+  });
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -21,7 +32,8 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
     startTime: '09:00',
     endTime: '10:00',
     allDay: false,
-    attendeeIds: [] as string[]
+    attendeeIds: [] as string[],
+    reminderMinutes: [] as number[]
   });
 
   useEffect(() => {
@@ -40,6 +52,37 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('crm_calendar_reminders_sent', JSON.stringify(Array.from(reminderSent)));
+  }, [reminderSent]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const upcoming = calendarService.getEventsInRange(
+        new Date(now.getTime() - 60 * 1000),
+        new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      );
+
+      upcoming.forEach(event => {
+        if (!event.reminderMinutes || event.reminderMinutes.length === 0) return;
+        event.reminderMinutes.forEach(minutes => {
+          const reminderTime = new Date(event.start.getTime() - minutes * 60 * 1000);
+          const key = `${event.id}-${event.start.toISOString()}-${minutes}`;
+
+          if (reminderTime <= now && now.getTime() - reminderTime.getTime() <= 60 * 1000) {
+            if (!reminderSent.has(key)) {
+              showInfoToast(`Reminder: ${event.title} starts in ${minutes} minutes.`);
+              setReminderSent(prev => new Set([...Array.from(prev), key]));
+            }
+          }
+        });
+      });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [reminderSent]);
 
   const selectedDayEvents = useMemo(() => {
     return calendarService.getEventsForDate(selectedDate);
@@ -70,6 +113,33 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
 
     return days;
   }, [currentMonth]);
+
+  const weekDays = useMemo(() => {
+    const start = new Date(selectedDate);
+    start.setDate(start.getDate() - start.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [selectedDate]);
+
+  const handleMoveEvent = (eventId: string, date: Date) => {
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+
+    const newStart = new Date(event.start);
+    newStart.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+    const newEnd = new Date(event.end);
+    newEnd.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+
+    const updated = calendarService.updateEvent(eventId, {
+      start: newStart,
+      end: newEnd
+    });
+
+    setEvents(prev => prev.map(e => (e.id === eventId ? updated : e)));
+  };
 
   const handleOpenModal = () => {
     setFormData(prev => ({
@@ -105,7 +175,8 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
       attendees,
       createdById: currentUser?.id,
       createdByName: currentUser?.fullName || currentUser?.username,
-      color: '#3b82f6'
+      color: '#3b82f6',
+      reminderMinutes: formData.reminderMinutes
     });
 
     setEvents(prev => [...prev, newEvent]);
@@ -118,7 +189,8 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
       startTime: '09:00',
       endTime: '10:00',
       allDay: false,
-      attendeeIds: []
+      attendeeIds: [],
+      reminderMinutes: []
     });
   };
 
@@ -150,20 +222,50 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
           )}
           <h1 style={{ margin: 0, fontSize: '24px', color: '#1e293b' }}>📅 Team Calendar</h1>
         </div>
-        <button
-          onClick={handleOpenModal}
-          style={{
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            fontWeight: 600,
-            cursor: 'pointer'
-          }}
-        >
-          + New Event
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+            <button
+              onClick={() => setViewMode('month')}
+              style={{
+                background: viewMode === 'month' ? '#eff6ff' : 'white',
+                border: 'none',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: viewMode === 'month' ? '#1d4ed8' : '#64748b'
+              }}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              style={{
+                background: viewMode === 'week' ? '#eff6ff' : 'white',
+                border: 'none',
+                padding: '8px 12px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: viewMode === 'week' ? '#1d4ed8' : '#64748b'
+              }}
+            >
+              Week
+            </button>
+          </div>
+          <button
+            onClick={handleOpenModal}
+            style={{
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            + New Event
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
@@ -171,14 +273,34 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
         <div style={{ background: 'white', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+              onClick={() => {
+                if (viewMode === 'month') {
+                  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+                } else {
+                  const prevWeek = new Date(selectedDate);
+                  prevWeek.setDate(prevWeek.getDate() - 7);
+                  setSelectedDate(prevWeek);
+                }
+              }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px' }}
             >
               ◀
             </button>
-            <h2 style={{ margin: 0, fontSize: '18px' }}>{monthLabel}</h2>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>
+              {viewMode === 'month'
+                ? monthLabel
+                : `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+            </h2>
             <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+              onClick={() => {
+                if (viewMode === 'month') {
+                  setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+                } else {
+                  const nextWeek = new Date(selectedDate);
+                  nextWeek.setDate(nextWeek.getDate() + 7);
+                  setSelectedDate(nextWeek);
+                }
+              }}
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px' }}
             >
               ▶
@@ -191,41 +313,119 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-            {calendarDays.map((date, index) => {
-              const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-              const isSelected = date.toDateString() === selectedDate.toDateString();
-              const dayEvents = calendarService.getEventsForDate(date);
-              return (
-                <button
-                  key={`${date.toISOString()}_${index}`}
-                  onClick={() => setSelectedDate(date)}
-                  style={{
-                    border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                    background: isSelected ? '#eff6ff' : 'white',
-                    borderRadius: '8px',
-                    padding: '10px 6px',
-                    minHeight: '60px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    opacity: isCurrentMonth ? 1 : 0.4
-                  }}
-                >
-                  <div style={{ fontSize: '12px', fontWeight: 600 }}>{date.getDate()}</div>
-                  {dayEvents.length > 0 && (
-                    <div style={{ marginTop: '6px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {dayEvents.slice(0, 3).map(ev => (
-                        <span key={ev.id} style={{ width: '6px', height: '6px', background: ev.color || '#3b82f6', borderRadius: '50%' }} />
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <span style={{ fontSize: '10px', color: '#64748b' }}>+{dayEvents.length - 3}</span>
+          {viewMode === 'month' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+              {calendarDays.map((date, index) => {
+                const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+                const isSelected = date.toDateString() === selectedDate.toDateString();
+                const dayEvents = calendarService.getEventsForDate(date);
+                return (
+                  <div
+                    key={`${date.toISOString()}_${index}`}
+                    onClick={() => setSelectedDate(date)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      const id = e.dataTransfer.getData('text/plain');
+                      if (id) handleMoveEvent(id, date);
+                    }}
+                    style={{
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                      background: isSelected ? '#eff6ff' : 'white',
+                      borderRadius: '8px',
+                      padding: '10px 6px',
+                      minHeight: '80px',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      opacity: isCurrentMonth ? 1 : 0.4
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', fontWeight: 600 }}>{date.getDate()}</div>
+                    {dayEvents.length > 0 && (
+                      <div style={{ marginTop: '6px', display: 'grid', gap: '4px' }}>
+                        {dayEvents.slice(0, 2).map(ev => (
+                          <div
+                            key={ev.id}
+                            draggable
+                            onDragStart={(e) => e.dataTransfer.setData('text/plain', ev.id)}
+                            style={{
+                              fontSize: '10px',
+                              padding: '2px 4px',
+                              borderRadius: '6px',
+                              background: ev.color || '#3b82f6',
+                              color: 'white',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}
+                            title="Drag to move"
+                          >
+                            {ev.title}
+                          </div>
+                        ))}
+                        {dayEvents.length > 2 && (
+                          <span style={{ fontSize: '10px', color: '#64748b' }}>+{dayEvents.length - 2} more</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+              {weekDays.map((date) => {
+                const isSelected = date.toDateString() === selectedDate.toDateString();
+                const dayEvents = calendarService.getEventsForDate(date);
+                return (
+                  <div
+                    key={date.toISOString()}
+                    onClick={() => setSelectedDate(date)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      const id = e.dataTransfer.getData('text/plain');
+                      if (id) handleMoveEvent(id, date);
+                    }}
+                    style={{
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                      background: isSelected ? '#eff6ff' : 'white',
+                      borderRadius: '8px',
+                      padding: '8px',
+                      minHeight: '120px',
+                      textAlign: 'left',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
+                      {date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                    </div>
+                    <div style={{ display: 'grid', gap: '4px' }}>
+                      {dayEvents.length === 0 ? (
+                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>No events</div>
+                      ) : (
+                        dayEvents.map(ev => (
+                          <div
+                            key={ev.id}
+                            draggable
+                            onDragStart={(e) => e.dataTransfer.setData('text/plain', ev.id)}
+                            style={{
+                              fontSize: '11px',
+                              padding: '4px 6px',
+                              borderRadius: '6px',
+                              background: ev.color || '#3b82f6',
+                              color: 'white'
+                            }}
+                            title="Drag to move"
+                          >
+                            {ev.title}
+                          </div>
+                        ))
                       )}
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Event List */}
@@ -256,6 +456,11 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
                   {event.attendees.length > 0 && (
                     <div style={{ fontSize: '12px', color: '#475569' }}>
                       👥 {event.attendees.map(a => a.name).join(', ')}
+                    </div>
+                  )}
+                  {event.reminderMinutes && event.reminderMinutes.length > 0 && (
+                    <div style={{ fontSize: '12px', color: '#475569' }}>
+                      ⏰ Reminders: {event.reminderMinutes.join(', ')} min
                     </div>
                   )}
                 </div>
@@ -344,6 +549,28 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
                         }}
                       />
                       {u.fullName}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Reminders</div>
+                <div style={{ display: 'grid', gap: '6px' }}>
+                  {[5, 10, 30, 60].map(minutes => (
+                    <label key={minutes} style={{ display: 'flex', gap: '8px', fontSize: '13px' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.reminderMinutes.includes(minutes)}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            reminderMinutes: e.target.checked
+                              ? [...prev.reminderMinutes, minutes]
+                              : prev.reminderMinutes.filter(m => m !== minutes)
+                          }));
+                        }}
+                      />
+                      {minutes} minutes before
                     </label>
                   ))}
                 </div>
