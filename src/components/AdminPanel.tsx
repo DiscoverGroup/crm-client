@@ -4,6 +4,7 @@ import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/c
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 import WorkflowBuilder from './WorkflowBuilder';
+import SystemMonitoring from './SystemMonitoring';
 
 interface User {
   fullName: string;
@@ -31,12 +32,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
   const [filterClientRecoveryStatus, setFilterClientRecoveryStatus] = useState<string>('pending');
   const [showWorkflowBuilder, setShowWorkflowBuilder] = useState(false);
+  const [showSystemMonitoring, setShowSystemMonitoring] = useState(false);
 
   // Get current admin user from localStorage
   const getCurrentAdmin = (): string => {
@@ -422,6 +424,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           🔄 Workflows
+        </button>
+        <button
+          onClick={() => setActiveTab('monitoring')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'monitoring' ? 'white' : 'transparent',
+            color: activeTab === 'monitoring' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'monitoring' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px'
+          }}
+        >
+          🔍 System Monitoring
         </button>
       </div>
 
@@ -1448,9 +1467,151 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </div>
       )}
 
+      {/* System Monitoring Tab */}
+      {activeTab === 'monitoring' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ 
+            textAlign: 'center', 
+            maxWidth: '800px', 
+            margin: '0 auto',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            borderRadius: '16px',
+            padding: '48px 32px',
+            color: 'white',
+            boxShadow: '0 8px 32px rgba(239, 68, 68, 0.3)'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '24px' }}>🔍</div>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '32px', fontWeight: '800' }}>
+              System Monitoring & Error Detection
+            </h2>
+            <p style={{ 
+              margin: '0 0 32px 0', 
+              fontSize: '16px', 
+              opacity: 0.95,
+              lineHeight: '1.6'
+            }}>
+              Real-time monitoring, automatic error detection, and comprehensive system health analysis
+            </p>
+
+            {/* Feature Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '16px',
+              marginBottom: '32px',
+              textAlign: 'left'
+            }}>
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '16px', 
+                borderRadius: '12px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>❌</div>
+                <div style={{ fontWeight: '700', marginBottom: '4px', fontSize: '15px' }}>Error Tracking</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  Automatic capture of JavaScript errors, API failures, and exceptions
+                </div>
+              </div>
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '16px', 
+                borderRadius: '12px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>⚡</div>
+                <div style={{ fontWeight: '700', marginBottom: '4px', fontSize: '15px' }}>Performance Monitoring</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  Track page load times, API response times, and memory usage
+                </div>
+              </div>
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '16px', 
+                borderRadius: '12px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🚨</div>
+                <div style={{ fontWeight: '700', marginBottom: '4px', fontSize: '15px' }}>Anomaly Detection</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  AI-powered detection of unusual patterns and suspicious activity
+                </div>
+              </div>
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '16px', 
+                borderRadius: '12px',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔄</div>
+                <div style={{ fontWeight: '700', marginBottom: '4px', fontSize: '15px' }}>Data Consistency</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>
+                  Automatic checks for duplicates, orphaned data, and validation issues
+                </div>
+              </div>
+            </div>
+
+            {/* Key Capabilities */}
+            <div style={{ 
+              background: 'rgba(255,255,255,0.1)', 
+              padding: '24px', 
+              borderRadius: '12px',
+              marginBottom: '32px',
+              backdropFilter: 'blur(10px)'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: '700' }}>
+                What Gets Monitored
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '13px' }}>
+                <div>✓ JavaScript Errors</div>
+                <div>✓ API Failures</div>
+                <div>✓ Network Issues</div>
+                <div>✓ Performance Degradation</div>
+                <div>✓ Memory Leaks</div>
+                <div>✓ Slow Responses</div>
+                <div>✓ Duplicate Records</div>
+                <div>✓ Data Corruption</div>
+                <div>✓ Validation Failures</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSystemMonitoring(true)}
+              style={{
+                padding: '16px 40px',
+                background: 'white',
+                color: '#ef4444',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                fontSize: '16px',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.2)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+              }}
+            >
+              🚀 Open System Monitor
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Workflow Builder Modal */}
       {showWorkflowBuilder && (
         <WorkflowBuilder onClose={() => setShowWorkflowBuilder(false)} />
+      )}
+
+      {/* System Monitoring Modal */}
+      {showSystemMonitoring && (
+        <SystemMonitoring onClose={() => setShowSystemMonitoring(false)} />
       )}
     </div>
   );
