@@ -1,11 +1,13 @@
 # Admin Account Credentials
 
-A default administrator account has been automatically created for the DG-CRM system.
+⚠️ **SECURITY WARNING**: This file should NOT contain actual credentials in production!
 
 ## Admin Login Credentials
 
 **Email:** `admin@discovergrp.com`  
-**Password:** `Admin@DG2026!`
+**Password:** [SET_DURING_DEPLOYMENT - See ADMIN-CREDENTIALS.example.md for format]
+
+> Credentials are stored securely in Netlify environment variables, never in version control.
 
 ## Important Security Notes
 

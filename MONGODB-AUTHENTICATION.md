@@ -129,12 +129,14 @@ POST /.netlify/functions/register
 
 ## Environment Setup
 
+⚠️ **IMPORTANT**: Never commit credentials to version control!
+
 Make sure your Netlify environment has:
 ```
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/
+MONGODB_URI=[SET_IN_NETLIFY_ENVIRONMENT_VARIABLES]
 ```
 
-The functions will automatically connect to your MongoDB Atlas cluster.
+The functions will automatically connect to your MongoDB Atlas cluster using credentials stored in Netlify's environment variables (never hardcoded or in code/docs).
 
 ## Testing
 
@@ -190,6 +192,52 @@ The functions will automatically connect to your MongoDB Atlas cluster.
 - `netlify/functions/register.ts` - New registration API
 - `src/App.tsx` - Updated handleLogin and handleRegister
 - Both functions include localStorage fallback for offline mode
+
+## 🔒 Security Best Practices
+
+### Credential Management
+
+⚠️ **CRITICAL**: Never commit credentials to version control!
+
+#### Do's ✅
+- Store `MONGODB_URI` in Netlify environment variables
+- Store admin passwords in `.env` file (add to `.gitignore`)
+- Use `.example` files as templates for developers
+- Rotate credentials after any suspected exposure
+- Use strong passwords with mixed case, numbers, and special chars
+
+#### Don'ts ❌
+- ❌ Hardcode credentials in source files
+- ❌ Commit `.env` files to Git
+- ❌ Share credentials in documentation
+- ❌ Use default/simple passwords
+- ❌ Log sensitive information
+
+### Environment Variables
+
+**Local Development** (`.env` - add to .gitignore):
+```
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/dbname
+ADMIN_PASSWORD=YourSecurePassword123!
+GMAIL_APP_PASSWORD=your_16_char_app_password
+```
+
+**Netlify Production** (via Dashboard):
+1. Site Settings → Build & Deploy → Environment
+2. Add each sensitive variable
+3. Never expose in logs or frontend code
+
+### Accessing Credentials Safely
+
+In Netlify Functions (Node.js backend):
+```typescript
+const mongoUri = process.env.MONGODB_URI;  // ✅ Safe - server-side only
+```
+
+Never in Frontend (React):
+```typescript
+const mongoUri = import.meta.env.VITE_MONGODB_URI;  // ❌ Exposes to client!
+```
 
 ---
 

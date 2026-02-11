@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
+import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 
 interface User {
   fullName: string;
@@ -29,7 +30,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
@@ -236,7 +237,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             color: '#1e293b',
             margin: '0 0 8px 0'
           }}>
-            {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : '👤 Client Recovery Requests'}
+            {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : activeTab === 'client-recovery' ? '👤 Client Recovery Requests' : 'ℹ️ Version & System Info'}
           </h1>
           <p style={{
             fontSize: '14px',
@@ -386,10 +387,135 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('version')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'version' ? 'white' : 'transparent',
+            color: activeTab === 'version' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'version' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px'
+          }}
+        >
+          ℹ️ Version Info
+        </button>
       </div>
 
-      {/* User Management Tab */}
-      {activeTab === 'users' && (
+      {/* Version Info Tab */}
+      {activeTab === 'version' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            {/* Website Version */}
+            <div style={{ borderRadius: '12px', padding: '20px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#1e293b', fontSize: '16px', fontWeight: '700' }}>📱 Website Version</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>VERSION</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>{getFullVersion()}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>BUILD INFO</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#475569', fontFamily: 'monospace' }}>{getBuildInfo()}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>BUILD DATE</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#475569' }}>
+                    {new Date(VERSION_INFO.website.buildDate).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Security Patch Version */}
+            <div style={{ borderRadius: '12px', padding: '20px', background: '#f0fdf4', border: '1px solid #dcfce7' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#166534', fontSize: '16px', fontWeight: '700' }}>🔒 Security Patch Version</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#65a30d', fontSize: '12px', fontWeight: '600' }}>PATCH VERSION</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#16a34a' }}>v{getSecurityVersion()}</p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#65a30d', fontSize: '12px', fontWeight: '600' }}>LAST PATCHED</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#475569' }}>
+                    {new Date(VERSION_INFO.security.lastPatched).toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p style={{ margin: '0 0 4px 0', color: '#65a30d', fontSize: '12px', fontWeight: '600' }}>CRITICAL PATCHES</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#15803d', fontWeight: '600' }}>
+                    {VERSION_INFO.security.criticalPatches} Applied
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dependencies */}
+            <div style={{ borderRadius: '12px', padding: '20px', background: '#faf5ff', border: '1px solid #f3e8ff' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#6b21a8', fontSize: '16px', fontWeight: '700' }}>📦 Key Dependencies</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #e9d5ff' }}>
+                  <span style={{ color: '#64748b' }}>React</span>
+                  <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: '600' }}>{VERSION_INFO.dependencies.react}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #e9d5ff' }}>
+                  <span style={{ color: '#64748b' }}>TypeScript</span>
+                  <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: '600' }}>{VERSION_INFO.dependencies.typescript}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid #e9d5ff' }}>
+                  <span style={{ color: '#64748b' }}>Vite</span>
+                  <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: '600' }}>{VERSION_INFO.dependencies.vite}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: '#64748b' }}>MongoDB</span>
+                  <span style={{ fontFamily: 'monospace', color: '#7c3aed', fontWeight: '600' }}>{VERSION_INFO.dependencies.mongodb}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* System Status */}
+          <div style={{ marginTop: '24px', borderRadius: '12px', padding: '20px', background: '#f0f9ff', border: '1px solid #e0f2fe' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#0c4a6e', fontSize: '16px', fontWeight: '700' }}>⚙️ System Status</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '50%' }}></span>
+                <span style={{ color: '#0c4a6e', fontSize: '13px', fontWeight: '600' }}>API Online</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '50%' }}></span>
+                <span style={{ color: '#0c4a6e', fontSize: '13px', fontWeight: '600' }}>Database Connected</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ display: 'inline-block', width: '12px', height: '12px', background: '#10b981', borderRadius: '50%' }}></span>
+                <span style={{ color: '#0c4a6e', fontSize: '13px', fontWeight: '600' }}>Security Active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Version History Note */}
+          <div style={{ marginTop: '24px', padding: '16px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px' }}>
+            <p style={{ margin: 0, color: '#92400e', fontSize: '13px' }}>
+              <strong>Note:</strong> Version information is automatically updated on each deployment. For detailed changelog, refer to the project documentation.
+            </p>
+          </div>
+        </div>
+      )}
+
         <>
       {/* Stats Cards */}
       <div style={{

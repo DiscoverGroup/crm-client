@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 .env
+.env.local
+.env.*.local
+.env.production.local
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +26,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Sensitive files - should never be committed
+ADMIN-CREDENTIALS.md
+SECRETS.md
+CREDENTIALS.md
+test-mongodb.js
+
+# Netlify
+.netlify
