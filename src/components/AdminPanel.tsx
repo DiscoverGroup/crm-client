@@ -5,6 +5,7 @@ import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/to
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
+import TerritoryManager from './TerritoryManager';
 
 interface User {
   fullName: string;
@@ -32,7 +33,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
@@ -441,6 +442,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           🔍 System Monitoring
+        </button>
+        <button
+          onClick={() => setActiveTab('territory')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'territory' ? 'white' : 'transparent',
+            color: activeTab === 'territory' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'territory' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px'
+          }}
+        >
+          🗺️ Territory Management
         </button>
       </div>
 
@@ -1601,6 +1619,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               🚀 Open System Monitor
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Territory Management Tab */}
+      {activeTab === 'territory' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', height: '80vh', overflow: 'hidden' }}>
+          <TerritoryManager onClose={() => setActiveTab('users')} />
         </div>
       )}
 
