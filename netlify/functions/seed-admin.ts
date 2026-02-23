@@ -22,11 +22,10 @@ import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
-const MONGODB_URI      = process.env.MONGODB_URI  || '';
+const MONGODB_URI      = process.env.MONGODB_URI       || '';
 const DB_NAME          = 'dg_crm';
-// Re-use the JWT_SECRET already present in Netlify env vars as the gate key.
-// No extra env var needed.
-const SETUP_SECRET     = process.env.JWT_SECRET   || '';
+// Use GMAIL_APP_PASSWORD (already in Netlify) as the one-time gate key.
+const SETUP_SECRET     = process.env.GMAIL_APP_PASSWORD || '';
 const ADMIN_EMAIL      = 'admin@discovergrp.com';
 const ADMIN_PASSWORD   = process.env.ADMIN_PASSWORD || 'Admin@DG2026!';
 const BCRYPT_ROUNDS    = 12;
@@ -51,7 +50,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 503,
       headers,
-      body: JSON.stringify({ error: 'SETUP_SECRET env var not configured' }),
+      body: JSON.stringify({ error: 'GMAIL_APP_PASSWORD env var not configured' }),
     };
   }
 
