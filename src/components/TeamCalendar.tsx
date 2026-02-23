@@ -94,7 +94,7 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [reminderSent]);
+  }, [reminderSent, notificationEnabled]);
 
   const selectedDayEvents = useMemo(() => {
     return calendarService.getEventsForDate(selectedDate);

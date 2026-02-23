@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../utils/toast';
+import {
+  validateLoginForm,
+  validateForgotPasswordForm,
+  validateResetPasswordForm,
+  sanitizeEmail,
+  sanitizePassword,
+  containsAttackPatterns,
+} from '../utils/formSanitizer';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface LoginFormProps {
   onLogin: (username: string, password: string) => void;
@@ -8,6 +17,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
+  const windowWidth = useWindowWidth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +27,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [resetUserEmail, setResetUserEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
@@ -29,6 +40,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
     
     if (resetToken && emailParam) {
       setResetUserEmail(emailParam);
+      setResetToken(resetToken);
       setShowResetPassword(true);
       // Clean URL
       window.history.replaceState({}, '', '/');
@@ -93,110 +105,91 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('📝 Login attempt triggered');
-    console.log('   Email value:', email);
-    console.log('   Email length:', email.length);
-    console.log('   Password length:', password.length);
-    console.log('   Email trimmed:', email.trim());
-    console.log('   Password trimmed:', password.trim());
-    
-    if (!email.trim() || !password.trim()) {
-      console.warn('⚠️ Email or password is empty after trim');
-      showWarningToast('Please enter both email and password');
+
+    const cleanEmail    = sanitizeEmail(email);
+    const cleanPassword = sanitizePassword(password);
+
+    if (containsAttackPatterns(cleanEmail)) {
+      showWarningToast('Email contains invalid characters');
       return;
     }
-    
-    console.log('✓ Calling onLogin with:', { email: email.trim(), passwordLength: password.trim().length });
-    onLogin(email.trim(), password.trim());
+
+    const result = validateLoginForm({ email: cleanEmail, password: cleanPassword });
+    if (!result.valid) {
+      showWarningToast(result.firstError() || 'Please enter both email and password');
+      return;
+    }
+
+    onLogin(cleanEmail, cleanPassword);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail.trim()) {
-      showWarningToast('Please enter your email address');
+    const cleanEmail = sanitizeEmail(resetEmail);
+    const check = validateForgotPasswordForm({ email: cleanEmail });
+    if (!check.valid) {
+      showWarningToast(check.firstError() || 'Please enter a valid email address');
       return;
     }
 
     try {
-      // Get users from localStorage to send to backend
-      const usersData = localStorage.getItem('crm_users') || '[]';
-      
       const response = await fetch('/.netlify/functions/send-reset-email', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          email: resetEmail,
-          users: usersData
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
       });
 
       const data = await response.json();
-      
-      // console.log('Response status:', response.status);
-      // console.log('Response data:', data);
 
       if (response.ok && data.success) {
-        showSuccessToast(`Password reset email sent to ${resetEmail}! Please check your inbox and follow the instructions.`);
+        showSuccessToast(`Password reset email sent to ${cleanEmail}! Please check your inbox and follow the instructions.`);
         setShowForgotPassword(false);
         setResetEmail('');
       } else {
-        const errorDetails = data.details ? ` Details: ${data.details}` : '';
-        // console.error('Failed to send email:', data);
-        showErrorToast(`Failed to send reset email. Please try again. Error: ${data.error || 'Unknown error'}${errorDetails}`);
+        showErrorToast(`Failed to send reset email. ${data.error || 'Please try again.'}`);
       }
-    } catch (error) {
-      // console.error('Error sending reset email:', error);
+    } catch {
       showErrorToast('An error occurred. Please try again later.');
     }
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newPassword.trim() || !confirmNewPassword.trim()) {
-      showWarningToast('Please fill in all fields');
+
+    const cleanNew     = sanitizePassword(newPassword);
+    const cleanConfirm = sanitizePassword(confirmNewPassword);
+
+    const check = validateResetPasswordForm({ newPassword: cleanNew, confirmNewPassword: cleanConfirm });
+    if (!check.valid) {
+      showWarningToast(check.firstError() || 'Please fix the password fields');
       return;
     }
 
-    if (newPassword !== confirmNewPassword) {
-      showWarningToast('Passwords do not match!');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      showWarningToast('Password must be at least 6 characters long');
-      return;
-    }
-
-    // Get users from localStorage
-    const usersData = localStorage.getItem('crm_users');
-    if (!usersData) {
-      showErrorToast('User not found');
+    if (!resetToken || !resetUserEmail) {
+      showErrorToast('Invalid or expired reset link. Please request a new one.');
       return;
     }
 
     try {
-      const users = JSON.parse(usersData);
-      const userIndex = users.findIndex((u: any) => u.email === resetUserEmail);
-      
-      if (userIndex === -1) {
-        showErrorToast('User not found');
-        return;
+      const response = await fetch('/.netlify/functions/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetUserEmail, token: resetToken, newPassword: cleanNew }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showSuccessToast('Password reset successful! Please login with your new password.');
+        setShowResetPassword(false);
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setResetUserEmail('');
+        setResetToken('');
+      } else {
+        showErrorToast(data.error || 'Failed to reset password. The link may have expired.');
       }
-
-      // Update password
-      users[userIndex].password = newPassword;
-      localStorage.setItem('crm_users', JSON.stringify(users));
-
-      showSuccessToast('Password reset successful! Please login with your new password.');
-      setShowResetPassword(false);
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setResetUserEmail('');
-    } catch (error) {
-      // console.error('Error resetting password:', error);
+    } catch {
       showErrorToast('An error occurred. Please try again.');
     }
   };
@@ -207,18 +200,18 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'column',
-      padding: window.innerWidth < 640 ? '24px 20px' : '48px 40px',
-      height: window.innerWidth < 768 ? 'auto' : '100%',
-      minHeight: window.innerWidth < 768 ? '0' : '100%',
+      padding: windowWidth < 640 ? '24px 20px' : '48px 40px',
+      height: windowWidth < 768 ? 'auto' : '100%',
+      minHeight: windowWidth < 768 ? '0' : '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
       width: '100%',
-      borderRadius: window.innerWidth < 768 ? '0' : '20px 0 0 20px',
-      boxShadow: window.innerWidth < 768 ? 'none' : '-5px 0 15px rgba(0,0,0,0.05)'
+      borderRadius: windowWidth < 768 ? '0' : '20px 0 0 20px',
+      boxShadow: windowWidth < 768 ? 'none' : '-5px 0 15px rgba(0,0,0,0.05)'
     }}>
-      <div style={{ marginBottom: window.innerWidth < 640 ? '24px' : '40px' }}>
+      <div style={{ marginBottom: windowWidth < 640 ? '24px' : '40px' }}>
         <h1 style={{
-          fontSize: window.innerWidth < 640 ? '26px' : '32px',
+          fontSize: windowWidth < 640 ? '26px' : '32px',
           fontWeight: '700',
           marginBottom: '12px',
           color: '#0d47a1',
@@ -228,7 +221,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           Welcome Back
         </h1>
         <p style={{
-          fontSize: window.innerWidth < 640 ? '14px' : '15px',
+          fontSize: windowWidth < 640 ? '14px' : '15px',
           color: '#6b7280',
           margin: '8px 0 0 0'
         }}>
@@ -236,7 +229,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: window.innerWidth < 640 ? '100%' : '360px' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: windowWidth < 640 ? '100%' : '360px' }}>
         <div style={{ marginBottom: '16px' }}>
           <input
             type="email"
@@ -245,15 +238,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             required
             autoComplete="email"
             onChange={e => {
-              console.log('📧 Email changed:', e.target.value);
               setEmail(e.target.value);
             }}
             style={{
               width: '100%',
-              padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
+              padding: windowWidth < 640 ? '12px 14px' : '14px 16px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: window.innerWidth < 640 ? '14px' : '15px',
+              fontSize: windowWidth < 640 ? '14px' : '15px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -277,18 +269,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
             placeholder="Password"
             value={password}
             required
-            autoComplete="current-password"
-            onChange={e => {
-              console.log('🔑 Password changed, length:', e.target.value.length);
-              setPassword(e.target.value);
-            }}
+            onChange={e => setPassword(e.target.value)}
             style={{
               width: '100%',
-              padding: window.innerWidth < 640 ? '12px 14px' : '14px 16px',
+              padding: windowWidth < 640 ? '12px 14px' : '14px 16px',
               paddingRight: '48px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: window.innerWidth < 640 ? '14px' : '15px',
+              fontSize: windowWidth < 640 ? '14px' : '15px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -315,7 +303,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              fontSize: window.innerWidth < 640 ? '18px' : '20px',
+              fontSize: windowWidth < 640 ? '18px' : '20px',
               padding: '4px 8px',
               color: '#6b7280'
             }}
@@ -335,7 +323,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           <label style={{
             display: 'flex',
             alignItems: 'center',
-            fontSize: window.innerWidth < 640 ? '13px' : '14px',
+            fontSize: windowWidth < 640 ? '13px' : '14px',
             color: '#6b7280',
             cursor: 'pointer'
           }}>
@@ -370,12 +358,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
           type="submit"
           style={{
             width: '100%',
-            padding: window.innerWidth < 640 ? '16px' : '14px',
+            padding: windowWidth < 640 ? '16px' : '14px',
             background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
-            fontSize: window.innerWidth < 640 ? '14px' : '15px',
+            fontSize: windowWidth < 640 ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease',

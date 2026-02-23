@@ -1,4 +1,5 @@
 import React, { useState, useRef, type KeyboardEvent } from 'react';
+import { sanitizeOTP, validateOTPForm } from '../utils/formSanitizer';
 
 interface OTPVerificationProps {
   email: string;
@@ -67,11 +68,13 @@ const OTPVerification: React.FC<OTPVerificationProps> = ({ email, onVerify, onRe
   };
 
   const handleSubmit = (code?: string) => {
-    const fullCode = code || otp.join('');
-    if (fullCode.length === 6) {
-      setIsVerifying(true);
-      onVerify(fullCode);
-    }
+    const raw = code || otp.join('');
+    // Sanitise: keep only digits, exactly 6
+    const clean = sanitizeOTP(raw);
+    const check = validateOTPForm({ code: clean });
+    if (!check.valid) return; // silently ignore — UI already enforces 6-digit input
+    setIsVerifying(true);
+    onVerify(clean);
   };
 
   return (

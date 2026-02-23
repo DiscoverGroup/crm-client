@@ -1,6 +1,8 @@
 import type { Handler } from '@netlify/functions';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const accountId = process.env.VITE_R2_ACCOUNT_ID || '';
 const accessKeyId = process.env.VITE_R2_ACCESS_KEY_ID || '';
@@ -17,12 +19,29 @@ const r2Client = new S3Client({
 });
 
 export const handler: Handler = async (event) => {
+  const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
+    'Content-Type': 'application/json',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   // Only allow GET requests
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   try {
@@ -55,10 +74,7 @@ export const handler: Handler = async (event) => {
     // Return the signed URL
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
+      headers,
       body: JSON.stringify({ 
         success: true, 
         url: signedUrl 
@@ -70,7 +86,7 @@ export const handler: Handler = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to generate download URL' 
+        error: 'Failed to generate download URL' 
       })
     };
   }

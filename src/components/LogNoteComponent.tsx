@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { sanitizeComment, validateLogNoteForm } from '../utils/formSanitizer';
 import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote } from '../types/logNote';
@@ -6,6 +7,7 @@ import MentionInput from './MentionInput';
 import { NotificationService } from '../services/notificationService';
 import { ClientService } from '../services/clientService';
 import Loader from './Loader';
+import { authHeaders } from '../utils/authToken';
 
 interface LogNoteComponentProps {
   clientId: string;
@@ -94,7 +96,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     const loadNotes = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`);
+        const response = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, {
+          headers: authHeaders(),
+        });
         const data = await response.json();
         
         if (data.success) {
@@ -114,7 +118,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           setLogNotes(notes);
         }
       } catch (error) {
-        console.error('Error fetching log notes:', error);
+        // console.error('Error fetching log notes:', error);
         // Fallback to localStorage
         const notes = LogNoteService.getLogNotes(clientId);
         setLogNotes(notes);
@@ -129,20 +133,25 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const activityLogs = ActivityLogService.getLogsByClient(clientId);
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) return;
+    const cleanComment = sanitizeComment(newComment, 5000);
+    const validation = validateLogNoteForm({ comment: cleanComment });
+    if (!validation.valid) {
+      alert(validation.firstError());
+      return;
+    }
 
     try {
       // Save to MongoDB via API
       const response = await fetch('/.netlify/functions/save-log-note', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientId,
           userId: currentUserId,
           userName: currentUserName,
           type: 'manual',
           action: 'Comment Added',
-          description: newComment,
+          description: cleanComment,
           status: newCommentStatus
         })
       });
@@ -158,7 +167,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       
       // Check for mentions and create notifications
       const mentionRegex = /@([\w-]+)/g;
-      const mentions = newComment.match(mentionRegex);
+      const mentions = cleanComment.match(mentionRegex);
       
       if (mentions) {
         const client = ClientService.getClientById(clientId);
@@ -183,7 +192,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   clientId: clientId,
                   clientName: clientName,
                   logNoteId: logNote.id,
-                  commentText: newComment
+                  commentText: cleanComment
                 });
               }
             });
@@ -196,7 +205,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               clientId: clientId,
               clientName: clientName,
               logNoteId: logNote.id,
-              commentText: newComment
+              commentText: cleanComment
             });
           }
         });
@@ -205,7 +214,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       setNewComment('');
       setNewCommentStatus('pending');
     } catch (error) {
-      console.error('Error adding comment:', error);
+      // console.error('Error adding comment:', error);
       // Fallback: Save to localStorage only
       const logNote = LogNoteService.addLogNote(
         clientId,
@@ -213,7 +222,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         currentUserName,
         'manual',
         'Comment Added',
-        newComment,
+        cleanComment,
         newCommentStatus
       );
       setLogNotes(prev => [logNote, ...prev]);
@@ -223,20 +232,21 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   const handleAddReply = (logNoteId: string) => {
-    if (!replyText.trim()) return;
+    const cleanReply = sanitizeComment(replyText, 2000);
+    if (!cleanReply) return;
 
     const reply = LogNoteService.addReply(
       logNoteId,
       clientId,
       currentUserId,
       currentUserName,
-      replyText
+      cleanReply
     );
 
     if (reply) {
       // Check for mentions in reply and create notifications
       const mentionRegex = /@([\w-]+)/g;
-      const mentions = replyText.match(mentionRegex);
+      const mentions = cleanReply.match(mentionRegex);
       
       if (mentions) {
         const client = ClientService.getClientById(clientId);
@@ -261,7 +271,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   clientId: clientId,
                   clientName: clientName,
                   logNoteId: logNoteId,
-                  commentText: replyText
+                  commentText: cleanReply
                 });
               }
             });
@@ -274,7 +284,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               clientId: clientId,
               clientName: clientName,
               logNoteId: logNoteId,
-              commentText: replyText
+              commentText: cleanReply
             });
           }
         });

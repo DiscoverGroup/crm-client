@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileService, type StoredFile, type FileAttachment } from '../services/fileService';
 import { showErrorToast, showConfirmDialog } from '../utils/toast';
+import { authHeaders } from '../utils/authToken';
 
 interface FileAttachmentListProps {
   attachments: FileAttachment[];
@@ -24,10 +25,8 @@ const FileAttachmentList: React.FC<FileAttachmentListProps> = ({
     if (file.r2Path) {
       // For R2 files, use the download function
       try {
-        const response = await fetch('/.netlify/functions/download-file', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ key: file.r2Path })
+        const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(file.r2Path)}`, {
+          headers: authHeaders(),
         });
 
         if (response.ok) {

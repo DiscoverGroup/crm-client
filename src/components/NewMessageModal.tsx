@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessagingService } from '../services/messagingService';
 import { showWarningToast } from '../utils/toast';
+import { sanitizeName, validateGroupForm } from '../utils/formSanitizer';
 
 interface User {
   id: string;
@@ -61,15 +62,17 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({
   };
 
   const handleCreateGroup = async () => {
-    if (!groupName.trim() || selectedUsers.length < 1) {
-      showWarningToast('Please enter a group name and select at least one member');
+    const cleanName = sanitizeName(groupName, 80);
+    const participantIds = [currentUser.id, ...selectedUsers.map(u => u.id)];
+    const validation = validateGroupForm({ name: cleanName, participantIds });
+    if (!validation.valid) {
+      showWarningToast(validation.firstError() || 'Invalid group details');
       return;
     }
 
-    const participantIds = [currentUser.id, ...selectedUsers.map(u => u.id)];
     const participantNames = [currentUser.fullName, ...selectedUsers.map(u => u.fullName)];
     
-    const group = await MessagingService.createGroup(groupName, participantIds, participantNames, currentUser.id);
+    const group = await MessagingService.createGroup(cleanName, participantIds, participantNames, currentUser.id);
     onStartGroupChat(group.id, group.name);
     onClose();
   };

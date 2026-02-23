@@ -1,16 +1,34 @@
 import { MongoClient } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler = async (event: any) => {
+  const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
+    'Content-Type': 'application/json',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   // Allow GET requests
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   try {
@@ -24,8 +42,14 @@ export const handler = async (event: any) => {
       };
     }
 
-    const client = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
-    await client.connect();
+    const client = await MongoClient.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      retryWrites: true,
+      w: 'majority',
+    });
 
     const db = client.db(DB_NAME);
     const logNotesCollection = db.collection('log_notes');
@@ -57,20 +81,17 @@ export const handler = async (event: any) => {
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers,
       body: JSON.stringify({
         success: true,
         logNotes: formattedNotes
       })
     };
   } catch (error) {
-    console.error('Get log notes error:', error);
+    // console.error('Get log notes error:', error);
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ error: 'Failed to retrieve log notes' })
     };
   }

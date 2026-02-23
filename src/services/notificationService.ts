@@ -7,7 +7,7 @@ export class NotificationService {
     const notifications = this.getAllNotifications();
     const newNotification: Notification = {
       ...notification,
-      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `notif_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date(),
       isRead: false
     };

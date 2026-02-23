@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
+import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeText, containsAttackPatterns } from '../utils/formSanitizer';
 import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
 import type { PaymentDetail } from "../types/payment";
@@ -17,6 +18,7 @@ import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 // Utility for modern UI
 const modernInput = {
@@ -54,16 +56,16 @@ const checkboxLabel = {
   fontWeight: 500,
   color: "#1e293b"
 };
-const sectionStyle = {
+const sectionStyle = (w: number): React.CSSProperties => ({
   background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
   borderRadius: "16px",
   boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)",
-  padding: window.innerWidth < 640 ? "16px" : "32px",
-  marginBottom: window.innerWidth < 640 ? "16px" : "32px",
+  padding: w < 640 ? "16px" : "32px",
+  marginBottom: w < 640 ? "16px" : "32px",
   border: "1px solid rgba(147, 197, 253, 0.3)",
   position: "relative" as const,
   overflow: "hidden" as const
-};
+});
 
 const sectionHeader = {
   display: "flex",
@@ -132,6 +134,7 @@ const ClientRecords: React.FC<{
   clientId?: string;
   currentUser?: { fullName: string; username: string };
 }> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser }) => {
+  const windowWidth = useWindowWidth();
   // Client form state
   const [clientNo, setClientNo] = useState("");
   const [status, setStatus] = useState("Active");
@@ -212,6 +215,14 @@ const ClientRecords: React.FC<{
           if (existingClient.companions) {
             setCompanions(existingClient.companions);
           }
+          // Visa & embassy fields
+          setVisaService(existingClient.visaService || false);
+          setInsuranceService(existingClient.insuranceService || false);
+          setEta(existingClient.etaService || false);
+          setEmbassyAppointmentDate(existingClient.embassyAppointmentDate || '');
+          setVisaReleaseDate(existingClient.visaReleaseDate || '');
+          setVisaResult(existingClient.visaResult || '');
+          setAdvisoryDate(existingClient.advisoryDate || '');
         }
       } finally {
         setIsLoadingClients(false);
@@ -774,20 +785,36 @@ const ClientRecords: React.FC<{
         }
       }
 
-      const generatedClientNo = clientNo || `CLT-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      // Sanitise inputs before building clientData
+      const cleanContactName = sanitizeName(contactName, 200);
+      const cleanEmail = sanitizeEmail(email || '');
+      const cleanContactNo = sanitizePhone(contactNo || '');
+      const cleanPackageName = sanitizeText(packageName || '', 500);
+      const cleanPackageLink = sanitizeText(packageLink || '', 1000);
+      const cleanAgent = sanitizeName(agent || '', 100);
+
+      // Reject attack patterns in any string field
+      const textFields = [cleanContactName, cleanEmail, cleanContactNo, cleanPackageName, cleanAgent];
+      if (textFields.some(v => v && containsAttackPatterns(v))) {
+        showWarningToast('Invalid characters detected in your input. Please review and try again.');
+        setIsSavingClient(false);
+        return;
+      }
+
+      const generatedClientNo = clientNo || `CLT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const clientData = {
         clientNo: generatedClientNo,
         status,
-        agent,
-        contactNo: contactNo.trim(),
-        contactName: contactName.trim(),
-        email: email.trim(),
+        agent: cleanAgent,
+        contactNo: cleanContactNo,
+        contactName: cleanContactName,
+        email: cleanEmail,
         dateOfBirth,
-        packageName,
+        packageName: cleanPackageName,
         travelDate,
         numberOfPax,
         bookingConfirmation,
-        packageLink,
+        packageLink: cleanPackageLink,
         companions: companions
       };
 
@@ -922,8 +949,16 @@ const ClientRecords: React.FC<{
   const handleSaveVisaInfo = async () => {
     setIsSavingVisa(true);
     try {
-      // Simulate saving visa information
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!clientId) {
+        showWarningToast('Please save client information first before saving visa details.');
+        return;
+      }
+      await ClientService.updateClient(clientId, {
+        visaService,
+        insuranceService,
+        etaService: eta,
+      });
+      saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
     } catch (error) {
       // console.error('Error saving visa info:', error);
@@ -936,12 +971,18 @@ const ClientRecords: React.FC<{
   const handleSaveEmbassyInfo = async () => {
     setIsSavingEmbassy(true);
     try {
-      // Simulate saving embassy information
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      if (!clientId) {
+        showWarningToast('Please save client information first before saving embassy details.');
+        return;
+      }
+      await ClientService.updateClient(clientId, {
+        embassyAppointmentDate,
+        visaReleaseDate,
+        visaResult,
+        advisoryDate,
+      });
       // Save section changes to log
       saveSection('embassy-information', 'Embassy Information');
-      
       showSuccessToast('Embassy information saved successfully!');
     } catch (error) {
       // console.error('Error saving embassy info:', error);
@@ -1289,15 +1330,15 @@ const ClientRecords: React.FC<{
           <div style={{ 
             background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
             borderRadius: "16px", 
-            padding: window.innerWidth < 640 ? "16px" : "32px", 
+            padding: windowWidth < 640 ? "16px" : "32px", 
             marginBottom: "32px",
             boxShadow: "0 8px 32px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.05)",
             border: "1px solid rgba(147, 197, 253, 0.3)",
             display: 'flex',
-            flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+            flexDirection: windowWidth < 640 ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: window.innerWidth < 640 ? 'flex-start' : 'center',
-            gap: window.innerWidth < 640 ? '16px' : '24px',
+            alignItems: windowWidth < 640 ? 'flex-start' : 'center',
+            gap: windowWidth < 640 ? '16px' : '24px',
             position: 'relative' as const,
             overflow: 'hidden' as const
           }}>
@@ -1313,12 +1354,12 @@ const ClientRecords: React.FC<{
               zIndex: 0
             }}></div>
             <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: window.innerWidth < 640 ? '8px' : '12px' }}>
-                <span style={{ fontSize: window.innerWidth < 640 ? '24px' : '28px' }}>👤</span>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: windowWidth < 640 ? '8px' : '12px' }}>
+                <span style={{ fontSize: windowWidth < 640 ? '24px' : '28px' }}>👤</span>
                 <h1 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
-                  fontSize: window.innerWidth < 640 ? '20px' : '28px', 
+                  fontSize: windowWidth < 640 ? '20px' : '28px', 
                   fontWeight: 800,
                   background: "linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)",
                   WebkitBackgroundClip: "text",
@@ -1334,16 +1375,16 @@ const ClientRecords: React.FC<{
               type="button"
               onClick={onNavigateBack}
               style={{
-                padding: window.innerWidth < 640 ? '10px 16px' : '12px 24px',
+                padding: windowWidth < 640 ? '10px 16px' : '12px 24px',
                 backgroundColor: '#6c757d',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: window.innerWidth < 640 ? '12px' : '14px',
+                fontSize: windowWidth < 640 ? '12px' : '14px',
                 fontWeight: '500',
                 transition: 'background-color 0.3s ease',
-                width: window.innerWidth < 640 ? '100%' : 'auto',
+                width: windowWidth < 640 ? '100%' : 'auto',
                 whiteSpace: 'nowrap'
               }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
@@ -1354,7 +1395,7 @@ const ClientRecords: React.FC<{
           </div>
           
           {/* Client Info */}
-          <div style={sectionStyle}>
+          <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               <span style={{ fontSize: '24px', marginRight: '12px' }}>📋</span>
@@ -1368,8 +1409,8 @@ const ClientRecords: React.FC<{
                 Client Information
               </h2>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Client No</label>
                 <input 
                   style={modernInput} 
@@ -1379,7 +1420,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setClientNoTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Status</label>
                 <select 
                   style={modernInput}
@@ -1393,7 +1434,7 @@ const ClientRecords: React.FC<{
                   <option>Cancelled</option>
                 </select>
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Agent</label>
                 <input 
                   style={modernInput} 
@@ -1404,7 +1445,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setAgentTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Contact No</label>
                 <input 
                   style={modernInput} 
@@ -1416,8 +1457,8 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Contact Name</label>
                 <input 
                   style={{ ...modernInput, fontWeight: "bold" }} 
@@ -1428,7 +1469,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setContactNameTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Email</label>
                 <input
                   style={modernInput}
@@ -1439,7 +1480,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setEmailTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Date of Birth</label>
                 <input 
                   style={modernInput} 
@@ -1451,15 +1492,15 @@ const ClientRecords: React.FC<{
               </div>
             </div>
             {/* Save Button */}
-            <div style={{ display: "flex", flexDirection: window.innerWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: window.innerWidth < 640 ? 'stretch' : 'center' }}>
-              <span style={{ fontSize: window.innerWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: window.innerWidth < 640 ? 2 : 0 }}>
+            <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
+              <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
                 ⚠️ Remember to save changes before leaving!
               </span>
               <button
                 type="button"
                 onClick={handleSaveClientInfo}
                 disabled={isSavingClient}
-                style={{ ...saveButtonStyle(isSavingClient), width: window.innerWidth < 640 ? '100%' : 'auto' }}
+                style={{ ...saveButtonStyle(isSavingClient), width: windowWidth < 640 ? '100%' : 'auto' }}
               >
                 {isSavingClient ? "Saving..." : "💾 Save Client Info"}
               </button>
@@ -1467,7 +1508,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Package & Companions */}
-          <div style={sectionStyle}>
+          <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               <span style={{ fontSize: '24px', marginRight: '12px' }}>🎒</span>
@@ -1481,8 +1522,8 @@ const ClientRecords: React.FC<{
                 Package & Travel Details
               </h2>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Package</label>
                 <input 
                   style={modernInput} 
@@ -1493,7 +1534,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setPackageNameTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Travel Date</label>
                 <input 
                   style={modernInput} 
@@ -1503,19 +1544,19 @@ const ClientRecords: React.FC<{
                   onChange={e => setTravelDateTracked(e.target.value)}
                 />
               </div>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>No. of Pax</label>
                 <input 
                   style={modernInput} 
                   type="number" 
                   min={1}
                   value={numberOfPax}
-                  onChange={e => setNumberOfPaxTracked(parseInt(e.target.value) || 1)}
+                  onChange={e => setNumberOfPaxTracked(parseInt(e.target.value, 10) || 1)}
                 />
               </div>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: window.innerWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: window.innerWidth < 640 ? "100%" : "200px" }}>
+            <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Booking Confirmation</label>
                 <input
                   style={modernInput}
@@ -1526,7 +1567,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setBookingConfirmationTracked(e.target.value)}
                 />
               </div>
-              <div style={{ flex: window.innerWidth < 640 ? '1' : '2', minWidth: window.innerWidth < 640 ? "100%" : "auto" }}>
+              <div style={{ flex: windowWidth < 640 ? '1' : '2', minWidth: windowWidth < 640 ? "100%" : "auto" }}>
                 <label style={label}>Package Link</label>
                 <input 
                   style={modernInput} 
@@ -1688,7 +1729,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Payment Terms & Schedule */}
-          <div style={sectionStyle}>
+          <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               <span style={{ fontSize: '24px', marginRight: '12px' }}>💳</span>
@@ -1972,7 +2013,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Visa Section */}
-          <div style={sectionStyle}>
+          <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               <span style={{ fontSize: '24px', marginRight: '12px' }}>🛂</span>
@@ -2122,7 +2163,7 @@ const ClientRecords: React.FC<{
 
             {/* Booking/Tour Voucher Section */}
             <div style={{
-              ...sectionStyle,
+              ...sectionStyle(windowWidth),
               marginTop: "24px",
               background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
               border: "2px solid rgba(147, 197, 253, 0.3)",
@@ -2541,7 +2582,7 @@ const ClientRecords: React.FC<{
 
             {/* Important Notes/Requests Section */}
             <div style={{
-              ...sectionStyle,
+              ...sectionStyle(windowWidth),
               marginTop: "24px",
               background: "linear-gradient(145deg, rgba(255, 248, 220, 0.95) 0%, rgba(254, 249, 195, 0.9) 100%)",
               border: "2px solid rgba(251, 191, 36, 0.3)",
@@ -3099,7 +3140,7 @@ const ClientRecords: React.FC<{
           {/* Activity Log Section - Moved to Right Sidebar */}
           
           {/* File Attachments Section */}
-          <div style={{ ...sectionStyle, marginTop: "24px" }}>
+          <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
             {/* Section Header */}
             <div style={sectionHeader}>
               <span style={{ fontSize: '24px', marginRight: '12px' }}>📎</span>
@@ -3135,7 +3176,7 @@ const ClientRecords: React.FC<{
       </div>
 
       {/* Right Sidebar - Activity Log - Hidden on mobile, shown on desktop */}
-      {window.innerWidth >= 768 && (
+      {windowWidth >= 768 && (
         <div style={{
           width: '400px',
           flexShrink: 0,
@@ -3183,7 +3224,7 @@ const ClientRecords: React.FC<{
       )}
 
       {/* Mobile Activity Log Floating Button */}
-      {window.innerWidth < 768 && (
+      {windowWidth < 768 && (
         <>
           {/* Floating Button */}
           <button
@@ -3331,6 +3372,7 @@ const MainPage: React.FC<MainPageProps> = ({
   isSidebarOpen = false,
   onCloseSidebar
 }) => {
+  const windowWidth = useWindowWidth();
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -3414,9 +3456,13 @@ const MainPage: React.FC<MainPageProps> = ({
   const getCurrentUserProfileImagePath = (): string | undefined => {
     const users = localStorage.getItem('crm_users');
     if (users) {
-      const userList = JSON.parse(users);
-      const user = userList.find((u: any) => u.fullName === currentUser.fullName);
-      return user?.profileImageR2Path;
+      try {
+        const userList = JSON.parse(users);
+        const user = userList.find((u: any) => u.fullName === currentUser.fullName);
+        return user?.profileImageR2Path;
+      } catch {
+        return undefined;
+      }
     }
     return undefined;
   };
@@ -3466,29 +3512,19 @@ const MainPage: React.FC<MainPageProps> = ({
   const isAdmin = () => {
     // Check if user email is admin email as primary method
     if (currentUser.email && currentUser.email.toLowerCase() === 'admin@discovergrp.com') {
-      console.log('🔍 isAdmin check: Admin email detected');
       return true;
     }
     
     // Check role field in crm_users as secondary method
     const usersData = localStorage.getItem('crm_users');
     if (!usersData) {
-      console.log('🔍 isAdmin check: No users data found');
       return false;
     }
     try {
       const users = JSON.parse(usersData);
       const user = users.find((u: any) => u.email === currentUser.email || u.fullName === currentUser.fullName);
-      console.log('🔍 isAdmin check:', {
-        currentUserEmail: currentUser.email,
-        currentUserFullName: currentUser.fullName,
-        foundUser: user,
-        userRole: user?.role,
-        isAdmin: user && user.role === 'admin'
-      });
       return user && user.role === 'admin';
     } catch (error) {
-      console.error('🔍 isAdmin check error:', error);
       return false;
     }
   };

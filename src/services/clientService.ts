@@ -1,5 +1,6 @@
-import { MongoDBService } from './mongoDBService';
+﻿import { MongoDBService } from './mongoDBService';
 import { FileService } from './fileService';
+import { authHeaders } from '../utils/authToken';
 
 export interface ClientData {
   id: string;
@@ -26,6 +27,11 @@ export interface ClientData {
   insuranceService?: boolean;
   etaService?: boolean;
   visaFiles?: string[]; // Array of file IDs
+  // Embassy Information
+  embassyAppointmentDate?: string;
+  visaReleaseDate?: string;
+  visaResult?: string;
+  advisoryDate?: string;
   // Booking/Tour Voucher
   bookingVoucher?: string;
   // Important Notes/Requests
@@ -64,19 +70,14 @@ export class ClientService {
   // Load clients from MongoDB and sync to localStorage
   static async syncFromMongoDB(): Promise<void> {
     // Prevent concurrent syncs
-    if (this.syncInProgress) {
-      console.log('⏳ Sync already in progress, skipping...');
-      return;
-    }
+    if (this.syncInProgress) return;
     
     this.syncInProgress = true;
     window.dispatchEvent(new Event('syncStart'));
-    
     try {
-      console.log('🔄 Syncing clients from MongoDB...');
       const response = await fetch('/.netlify/functions/database', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'find',
@@ -94,13 +95,11 @@ export class ClientService {
         // Update localStorage with MongoDB data
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        console.log(`✅ Synced ${result.data.length} clients from MongoDB`);
         window.dispatchEvent(new Event('syncSuccess'));
       } else {
         throw new Error(result.error || 'No data returned from MongoDB');
       }
-    } catch (error) {
-      console.warn('⚠️ Failed to sync from MongoDB, using localStorage:', error);
+    } catch {
       window.dispatchEvent(new Event('syncError'));
     } finally {
       this.syncInProgress = false;
@@ -333,7 +332,6 @@ export class ClientService {
       const clientIndex = clients.findIndex(client => client.id === clientId);
       
       if (clientIndex === -1) {
-        console.warn('⚠️ Client not found for deletion:', clientId);
         return false;
       }
 
@@ -349,24 +347,14 @@ export class ClientService {
       };
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
-      console.log('✅ Client soft deleted in localStorage:', clientId);
       
-      // Soft delete in MongoDB (async)
-      MongoDBService.deleteClient(clientId, deletedByUser)
-        .then(result => {
-          if (result.success) {
-            console.log('✅ Client soft deleted in MongoDB:', clientId);
-          } else {
-            console.error('⚠️ MongoDB soft delete failed:', result.message);
-          }
-        })
-        .catch(error => {
-          console.error('❌ MongoDB soft delete error:', error);
-        });
+      // Soft delete in MongoDB (async, fire-and-forget)
+      MongoDBService.deleteClient(clientId, deletedByUser).catch(() => {
+        // Sync failure is non-critical; localStorage is already updated
+      });
       
       return true;
     } catch (error) {
-      console.error('❌ Error deleting client:', error);
       return false;
     }
   }
@@ -419,7 +407,6 @@ export class ClientService {
       const filteredClients = clients.filter(client => client.id !== clientId);
       
       if (filteredClients.length === clients.length) {
-        console.warn('⚠️ Client not found for permanent deletion:', clientId);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
             type: 'error',
@@ -431,13 +418,11 @@ export class ClientService {
 
       // Save to localStorage immediately
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredClients));
-      console.log('✅ Client removed from localStorage:', clientId);
 
       // Permanently delete from MongoDB
       try {
         const result = await MongoDBService.permanentlyDeleteClient(clientId);
         if (result.success) {
-          console.log('✅ Client permanently deleted from MongoDB:', clientId);
           window.dispatchEvent(new CustomEvent('showToast', {
             detail: {
               type: 'success',
@@ -448,7 +433,6 @@ export class ClientService {
           throw new Error(result.message || 'MongoDB deletion failed');
         }
       } catch (error) {
-        console.error('❌ Failed to delete from MongoDB:', error);
         window.dispatchEvent(new CustomEvent('showToast', {
           detail: {
             type: 'error',
@@ -460,7 +444,6 @@ export class ClientService {
         setTimeout(() => {
           MongoDBService.permanentlyDeleteClient(clientId).then(result => {
             if (result.success) {
-              console.log('✅ Retry successful - Client deleted from MongoDB:', clientId);
               window.dispatchEvent(new CustomEvent('showToast', {
                 detail: {
                   type: 'success',
@@ -481,10 +464,9 @@ export class ClientService {
               FileService.deleteFile?.(fileAttachment.file.id, 'System');
             }
           });
-          console.log(`✅ Cleaned up ${clientFiles.length} orphaned files for client ${clientId}`);
         }
-      } catch (error) {
-        console.warn('⚠️ Failed to clean up client files:', error);
+      } catch {
+        // Non-critical: file cleanup failure doesn't affect client deletion
       }
       
       // Trigger sync to refresh data
@@ -494,7 +476,6 @@ export class ClientService {
       
       return true;
     } catch (error) {
-      console.error('❌ Error permanently deleting client:', error);
       window.dispatchEvent(new CustomEvent('showToast', {
         detail: {
           type: 'error',
@@ -506,7 +487,7 @@ export class ClientService {
   }
 
   private static generateClientId(): string {
-    return 'CLT-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    return 'CLT-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
   }
 
   // Get summary statistics

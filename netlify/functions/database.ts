@@ -1,15 +1,34 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
+  const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
+    'Content-Type': 'application/json',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   // Check if MongoDB URI is configured
@@ -85,24 +104,12 @@ export const handler: Handler = async (event) => {
   } catch (error: any) {
     // console.error('Database error:', error);
     
-    let hint = 'Check if MONGODB_URI is set and MongoDB Atlas IP whitelist allows 0.0.0.0/0';
-    
-    // Provide specific hints based on error type
-    if (error.message?.includes('SSL') || error.message?.includes('TLS') || error.message?.includes('ssl3_read_bytes')) {
-      hint = 'SSL/TLS error - Check these: 1) Encode special characters in password (e.g., @ = %40, ! = %21). 2) Use correct MongoDB connection string format: mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority. 3) Verify database user has correct permissions. 4) Check if IP whitelist includes 0.0.0.0/0 in MongoDB Atlas Network Access.';
-    } else if (error.message?.includes('authentication failed')) {
-      hint = 'Authentication failed - check username and password in MONGODB_URI';
-    } else if (error.message?.includes('ENOTFOUND') || error.message?.includes('ETIMEDOUT')) {
-      hint = 'Cannot reach MongoDB - check if IP whitelist includes 0.0.0.0/0 in Network Access';
-    }
-    
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Database operation failed',
-        hint: hint
+        error: 'Database operation failed'
       })
     };
   }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { showErrorToast, showWarningToast } from '../utils/toast';
+import { authHeaders } from '../utils/authToken';
 
 interface R2DownloadButtonProps {
   url?: string;
@@ -35,7 +36,9 @@ const R2DownloadButton: React.FC<R2DownloadButtonProps> = ({
       setIsGeneratingUrl(true);
       
       // Use Netlify function to generate signed URL (more reliable than public URL)
-      const functionResponse = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+      const functionResponse = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`, {
+        headers: authHeaders(),
+      });
       const result = await functionResponse.json();
       
       if (result.success && result.url) {

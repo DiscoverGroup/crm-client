@@ -287,7 +287,7 @@ export class FileService {
 
   // Generate unique file ID
   private static generateFileId(): string {
-    return 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
   }
 
   // Format file size for display

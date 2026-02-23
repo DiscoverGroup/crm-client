@@ -1,15 +1,16 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
   const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -22,6 +23,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
@@ -38,7 +45,7 @@ export const handler: Handler = async (event) => {
   let client: MongoClient | null = null;
 
   try {
-    const { userId, otherUserId, groupId } = JSON.parse(event.body || '{}');
+    const { userId, otherUserId, groupId, before, limit: rawLimit } = JSON.parse(event.body || '{}');
 
     // Input validation
     if (!userId || typeof userId !== 'string' || userId.length > 100) {
@@ -99,22 +106,36 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    // TODO: Implement pagination for better performance
-    // For now, limit to 1000 messages. Future: use skip/limit with cursor-based pagination
-    const limit = 1000;
+    // ── Cursor-based pagination ───────────────────────────────────────────────
+    // Pass `before` (ISO timestamp string, exclusive upper bound) to load messages
+    // older than that point. Pass `limit` (1–100, default 50).
+    // Response includes `hasMore` and `nextBefore` so the client can page backwards.
+    const pageLimit = Math.min(Math.max(1, parseInt(String(rawLimit ?? '50'), 10) || 50), 100);
+    if (before && typeof before === 'string') {
+      (query as any).timestamp = { $lt: before };
+    }
+
+    // Fetch one extra document to detect whether an older page exists
     const messages = await messagesCol
       .find(query)
       .sort({ timestamp: -1 })
-      .limit(limit)
+      .limit(pageLimit + 1)
       .toArray();
-    
-    // Reverse to show oldest first in UI
-    messages.reverse();
+
+    const hasMore = messages.length > pageLimit;
+    if (hasMore) messages.pop(); // Remove the extra sentinel document
+    messages.reverse(); // Oldest-first for the UI
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, data: messages })
+      body: JSON.stringify({
+        success: true,
+        data: messages,
+        hasMore,
+        // Pass this value as `before` on the next request to load the previous page
+        nextBefore: hasMore && messages.length > 0 ? messages[0].timestamp : null,
+      }),
     };
   } catch (error: any) {
     // console.error('Get messages error:', error);
@@ -123,7 +144,7 @@ export const handler: Handler = async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to get messages' 
+        error: 'Failed to get messages' 
       })
     };
   } finally {

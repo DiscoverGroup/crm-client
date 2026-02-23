@@ -420,7 +420,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => {
-            console.log('🔘 Admin Panel button clicked!', onNavigateToAdminPanel);
             handleNavigation(onNavigateToAdminPanel);
           }}
           style={{

@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { uploadFileToR2 } from '../services/r2UploadService';
 import Modal from './Modal';
+import {
+  validateRegisterForm,
+  sanitizeEmail,
+  sanitizeUsername,
+  sanitizeName,
+  sanitizePassword,
+  containsAttackPatterns,
+} from '../utils/formSanitizer';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface RegisterFormProps {
   onRegister: (form: { 
@@ -70,6 +79,7 @@ const departmentPositions: Record<string, string[]> = {
 };
 
 const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
+  const windowWidth = useWindowWidth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -160,34 +170,45 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) {
-      setModalConfig({
-        isOpen: true,
-        title: 'Password Mismatch',
-        message: 'Passwords do not match.',
-        type: 'error'
-      });
+
+    // Sanitise inputs before validation
+    const cleanEmail    = sanitizeEmail(email);
+    const cleanUsername = sanitizeUsername(username);
+    const cleanFullName = sanitizeName(fullName);
+    const cleanPassword = sanitizePassword(password);
+    const cleanConfirm  = sanitizePassword(confirm);
+
+    // Reject obvious injection attempts early
+    if ([cleanEmail, cleanUsername, cleanFullName].some(v => containsAttackPatterns(v))) {
+      setModalConfig({ isOpen: true, title: 'Invalid Input', message: 'One or more fields contain invalid characters.', type: 'error' });
       return;
     }
-    if (!department) {
-      setModalConfig({
-        isOpen: true,
-        title: 'Missing Department',
-        message: 'Please select a department.',
-        type: 'warning'
-      });
+
+    const result = validateRegisterForm({
+      username: cleanUsername,
+      email: cleanEmail,
+      password: cleanPassword,
+      confirmPassword: cleanConfirm,
+      fullName: cleanFullName,
+      department,
+      position,
+    });
+
+    if (!result.valid) {
+      const msg = result.firstError() || 'Please fix the form errors before continuing.';
+      setModalConfig({ isOpen: true, title: 'Validation Error', message: msg, type: 'error' });
       return;
     }
-    if (!position) {
-      setModalConfig({
-        isOpen: true,
-        title: 'Missing Position',
-        message: 'Please select a position.',
-        type: 'warning'
-      });
-      return;
-    }
-    onRegister({ username, email, password, fullName, department, position, profileImage });
+
+    onRegister({
+      username: cleanUsername,
+      email: cleanEmail,
+      password: cleanPassword,
+      fullName: cleanFullName,
+      department,
+      position,
+      profileImage,
+    });
   };
 
   return (
@@ -196,15 +217,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
       alignItems: 'center',
       justifyContent: 'flex-start',
       flexDirection: 'column',
-      padding: window.innerWidth < 640 ? '24px 20px' : '40px 32px',
-      height: window.innerWidth < 768 ? 'auto' : '100%',
-      minHeight: window.innerWidth < 768 ? '0' : '100%',
+      padding: windowWidth < 640 ? '24px 20px' : '40px 32px',
+      height: windowWidth < 768 ? 'auto' : '100%',
+      minHeight: windowWidth < 768 ? '0' : '100%',
       textAlign: 'center',
       backgroundColor: '#ffffff',
       width: '100%',
-      borderRadius: window.innerWidth < 768 ? '0' : '0 20px 20px 0',
-      boxShadow: window.innerWidth < 768 ? 'none' : '5px 0 15px rgba(0,0,0,0.05)',
-      overflowY: window.innerWidth < 768 ? 'visible' : 'auto'
+      borderRadius: windowWidth < 768 ? '0' : '0 20px 20px 0',
+      boxShadow: windowWidth < 768 ? 'none' : '5px 0 15px rgba(0,0,0,0.05)',
+      overflowY: windowWidth < 768 ? 'visible' : 'auto'
     }}>
       <Modal
         isOpen={modalConfig.isOpen}
@@ -213,9 +234,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         message={modalConfig.message}
         type={modalConfig.type}
       />
-      <div style={{ marginBottom: window.innerWidth < 640 ? '24px' : '36px' }}>
+      <div style={{ marginBottom: windowWidth < 640 ? '24px' : '36px' }}>
         <h1 style={{
-          fontSize: window.innerWidth < 640 ? '26px' : '32px',
+          fontSize: windowWidth < 640 ? '26px' : '32px',
           fontWeight: '700',
           marginBottom: '12px',
           color: '#1e3a8a',
@@ -225,7 +246,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
           Create Account
         </h1>
         <p style={{
-          fontSize: window.innerWidth < 640 ? '14px' : '15px',
+          fontSize: windowWidth < 640 ? '14px' : '15px',
           color: '#6b7280',
           margin: '8px 0 0 0'
         }}>
@@ -233,7 +254,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: window.innerWidth < 640 ? '100%' : '340px' }}>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: windowWidth < 640 ? '100%' : '340px' }}>
         <div style={{ marginBottom: '12px' }}>
           <input
             type="text"
@@ -243,10 +264,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
             onChange={e => setFullName(e.target.value)}
             style={{
               width: '100%',
-              padding: window.innerWidth < 640 ? '10px 12px' : '12px 14px',
+              padding: windowWidth < 640 ? '10px 12px' : '12px 14px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
-              fontSize: window.innerWidth < 640 ? '13px' : '14px',
+              fontSize: windowWidth < 640 ? '13px' : '14px',
               backgroundColor: '#f9fafb',
               boxSizing: 'border-box',
               outline: 'none',
@@ -273,7 +294,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
             onChange={e => setUsername(e.target.value)}
             style={{
               width: '100%',
-              padding: window.innerWidth < 640 ? '10px 12px' : '12px 14px',
+              padding: windowWidth < 640 ? '10px 12px' : '12px 14px',
               border: '2px solid #e5e7eb',
               borderRadius: '10px',
               fontSize: '14px',
@@ -592,12 +613,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
           type="submit"
           style={{
             width: '100%',
-            padding: window.innerWidth < 640 ? '16px' : '14px',
+            padding: windowWidth < 640 ? '16px' : '14px',
             background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
-            fontSize: window.innerWidth < 640 ? '14px' : '15px',
+            fontSize: windowWidth < 640 ? '14px' : '15px',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease',

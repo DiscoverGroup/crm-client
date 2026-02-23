@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { sanitizeComment, validateMessageForm } from '../utils/formSanitizer';
 import { MessagingService, type Message, type Conversation } from '../services/messagingService';
 import NewMessageModal from './NewMessageModal';
 import { uploadFileToR2 } from '../services/r2UploadService';
 import R2DownloadButton from './R2DownloadButton';
 import './MessagingCenter.css';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 const emojiCategories = {
   smileys: {
@@ -60,6 +62,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   selectedUserName,
   onClose 
 }) => {
+  const windowWidth = useWindowWidth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(selectedUserId || null);
   const [activeConversationName, setActiveConversationName] = useState<string>(selectedUserName || '');
@@ -104,6 +107,10 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const messageLoadTimeoutRef = useRef<number | null>(null);
   const messagePollingIntervalRef = useRef<number | null>(null);
   const lastMessageLoadTimeRef = useRef<number>(0);
+  const isLoadingMessagesRef = useRef(false);
+
+  // Keep ref in sync with state so the polling interval always reads the latest value
+  useEffect(() => { isLoadingMessagesRef.current = isLoadingMessages; }, [isLoadingMessages]);
 
   const loadConversations = async () => {
     if (isLoadingConversations) return; // Prevent concurrent requests
@@ -176,7 +183,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
         const now = Date.now();
         const timeSinceLastLoad = now - lastMessageLoadTimeRef.current;
         
-        if (!isLoadingMessages && timeSinceLastLoad >= 8000) {
+        if (!isLoadingMessagesRef.current && timeSinceLastLoad >= 8000) {
           lastMessageLoadTimeRef.current = now;
           if (isGroupChat) {
             loadGroupChat(activeConversationId, activeConversationName, true);
@@ -289,9 +296,17 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   };
 
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && !attachedFile) || !activeConversationId) return;
+    const cleanMessage = sanitizeComment(newMessage, 10000);
+    if ((!cleanMessage && !attachedFile) || !activeConversationId) return;
+    if (cleanMessage) {
+      const validation = validateMessageForm({ content: cleanMessage });
+      if (!validation.valid) {
+        alert(validation.firstError());
+        return;
+      }
+    }
 
-    let messageText = newMessage.trim();
+    let messageText = cleanMessage;
     let fileUrl = '';
     
     // Upload file to R2 if attached
@@ -610,7 +625,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const handleTouchStart = (message: Message) => {
     if (message.isDeleted) return;
     const timer = setTimeout(() => {
-      setContextMenu({ x: window.innerWidth / 2 - 80, y: window.innerHeight / 2, message });
+      setContextMenu({ x: windowWidth / 2 - 80, y: window.innerHeight / 2, message });
     }, 500);
     setLongPressTimer(timer);
   };

@@ -16,6 +16,10 @@ class MonitoringService {
   private consistencyChecks: ConsistencyCheck[] = [];
   private readonly STORAGE_KEY = 'crm_monitoring_data';
   private readonly MAX_LOGS = 1000;
+  // Capture original console.error BEFORE patching it so internal
+  // logging helpers (saveToStorage / loadFromStorage) can report
+  // failures without re-entering the patched version and looping.
+  private readonly originalConsoleError: (...args: unknown[]) => void = console.error.bind(console);
 
   constructor() {
     this.loadFromStorage();
@@ -116,7 +120,7 @@ class MonitoringService {
   // Log error
   logError(error: Partial<ErrorLog>) {
     const errorLog: ErrorLog = {
-      id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `error_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString(),
       severity: error.severity || 'medium',
       category: error.category || 'javascript_error',
@@ -144,7 +148,7 @@ class MonitoringService {
   // Log performance metric
   logPerformanceMetric(metric: Partial<PerformanceMetric>) {
     const perfMetric: PerformanceMetric = {
-      id: `perf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `perf_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString(),
       metricType: metric.metricType || 'page_load',
       value: metric.value || 0,
@@ -176,7 +180,7 @@ class MonitoringService {
   // Log validation issue
   logValidationIssue(issue: Partial<ValidationIssue>) {
     const validationIssue: ValidationIssue = {
-      id: `validation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `validation_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString(),
       field: issue.field || 'unknown',
       expectedFormat: issue.expectedFormat || '',
@@ -319,7 +323,7 @@ class MonitoringService {
     if (existing) return;
 
     const dataAnomaly: DataAnomalyDetection = {
-      id: `anomaly_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `anomaly_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString(),
       anomalyType: anomaly.anomalyType || 'unusual_activity',
       description: anomaly.description || '',
@@ -340,7 +344,7 @@ class MonitoringService {
   // Log consistency check
   private logConsistencyCheck(check: Partial<ConsistencyCheck>) {
     const consistencyCheck: ConsistencyCheck = {
-      id: `check_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `check_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString(),
       checkType: check.checkType || 'data_mismatch',
       description: check.description || '',
@@ -418,9 +422,11 @@ class MonitoringService {
 
   private calculateTrend(values: number[]): number {
     if (values.length < 2) return 0;
-    const first = values[values.length - 1];
-    const last = values[0];
-    return last - first;
+    // The array is stored newest-first (via unshift), so index 0 = most recent,
+    // index length-1 = oldest. Positive result means the metric is increasing.
+    const oldest = values[values.length - 1];
+    const newest = values[0];
+    return newest - oldest;
   }
 
   private findDuplicates(array: any[], key: string): any[] {
@@ -457,7 +463,7 @@ class MonitoringService {
       localStorage.setItem('crm_start_time', Date.now().toString());
       return 0;
     }
-    return Math.round((Date.now() - parseInt(startTime)) / 1000 / 60); // Minutes
+    return Math.round((Date.now() - Number(startTime)) / 1000 / 60); // Minutes
   }
 
   private trimLogs() {
@@ -489,7 +495,9 @@ class MonitoringService {
       };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
-      console.error('Failed to save monitoring data:', error);
+      // Use originalConsoleError to avoid triggering the patched console.error
+      // which would call logError → saveToStorage again → infinite loop.
+      this.originalConsoleError('Failed to save monitoring data:', error);
     }
   }
 
@@ -505,7 +513,7 @@ class MonitoringService {
         this.consistencyChecks = parsed.consistencyChecks || [];
       }
     } catch (error) {
-      console.error('Failed to load monitoring data:', error);
+      this.originalConsoleError('Failed to load monitoring data:', error);
     }
   }
 

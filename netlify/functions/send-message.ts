@@ -1,15 +1,16 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
   const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -22,6 +23,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
@@ -132,7 +139,7 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to send message' 
+        error: 'Failed to send message' 
       })
     };
   } finally {

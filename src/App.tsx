@@ -11,6 +11,7 @@ import MessagingCenter from "./components/MessagingCenter";
 import { MongoDBService } from "./services/mongoDBService";
 import { FileService } from "./services/fileService";
 import { MessagingService } from "./services/messagingService";
+import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -146,7 +147,7 @@ const App: React.FC = () => {
               needsUpdate = true;
               return {
                 ...user,
-                id: user.email || `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                id: user.email || `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
                 role: user.role || 'user'
               };
             }
@@ -188,7 +189,7 @@ const App: React.FC = () => {
       try {
         const response = await fetch('/.netlify/functions/database', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
         });
         
@@ -232,58 +233,6 @@ const App: React.FC = () => {
       // console.log('─────────────────────────────────────');
     };
     checkConnections();
-  }, []);
-
-  // Initialize default admin account
-  useEffect(() => {
-    const initializeAdminAccount = () => {
-      const usersData = localStorage.getItem('crm_users');
-      let users = [];
-      
-      if (usersData) {
-        try {
-          users = JSON.parse(usersData);
-        } catch (error) {
-          // console.error('Error parsing users:', error);
-        }
-      }
-
-      // Check if admin account already exists
-      const adminExists = users.some((u: any) => u.email === 'admin@discovergrp.com');
-      
-      if (!adminExists) {
-        // Create default admin account
-        const adminAccount = {
-          fullName: 'System Administrator',
-          username: 'admin',
-          email: 'admin@discovergrp.com',
-          password: 'Admin@DG2026!', // Secured password
-          department: 'IT Department',
-          position: 'System Administrator',
-          profileImage: '',
-          registeredAt: new Date().toISOString(),
-          isVerified: true,
-          verificationToken: null,
-          verificationTokenExpiry: null,
-          verifiedAt: new Date().toISOString(),
-          role: 'admin'
-        };
-
-        users.push(adminAccount);
-        localStorage.setItem('crm_users', JSON.stringify(users));
-        
-        // Save admin account to MongoDB
-        MongoDBService.saveUser(adminAccount).then(result => {
-          if (result.success) {
-            // console.log('✅ Admin account synced to MongoDB');
-          }
-        }).catch(() => {
-          // console.error('Failed to sync admin to MongoDB:', err);
-        });
-      }
-    };
-
-    initializeAdminAccount();
   }, []);
 
   // Sync all localStorage users to MongoDB
@@ -403,11 +352,11 @@ const App: React.FC = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
     localStorage.removeItem('crm_auth');
+    clearAuthToken(); // Invalidate the JWT on the client side
   };
 
   // Handle user login with validation
   const handleLogin = async (username: string, password: string) => {
-    console.log('🔐 handleLogin called - Using MongoDB API');
     
     // Validate input fields
     if (!username.trim() || !password.trim()) {
@@ -434,10 +383,14 @@ const App: React.FC = () => {
       });
 
       const result = await response.json();
-      console.log('📡 Login API response:', result);
 
       if (result.success && result.user) {
-        // Sync user to localStorage for offline access
+        // Store the JWT returned by the login endpoint
+        if (result.token) {
+          setAuthToken(result.token);
+        }
+
+        // Sync user to localStorage for offline access (NO password stored)
         const usersData = localStorage.getItem('crm_users');
         let users = [];
         if (usersData) {
@@ -448,12 +401,12 @@ const App: React.FC = () => {
           }
         }
 
-        // Update or add user to localStorage
+        // Update or add user to localStorage (password intentionally omitted)
         const userIndex = users.findIndex((u: any) => u.email === result.user.email);
         const localUser = {
           ...result.user,
-          id: result.user.id || result.user.email,
-          password: password.trim() // Keep password in localStorage for offline access
+          id: result.user.id || result.user.email
+          // password is NOT stored in localStorage
         };
 
         if (userIndex >= 0) {
@@ -464,7 +417,6 @@ const App: React.FC = () => {
         localStorage.setItem('crm_users', JSON.stringify(users));
 
         // Show success modal then login
-        console.log('✅ Login successful for user:', result.user.fullName);
         setModalConfig({
           isOpen: true,
           title: 'Login Successful!',
@@ -490,7 +442,6 @@ const App: React.FC = () => {
           type: 'warning'
         });
       } else {
-        console.error('❌ Login failed:', result.error);
         setModalConfig({
           isOpen: true,
           title: 'Login Failed',
@@ -499,75 +450,14 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error in handleLogin:', error);
-      
-      // Fallback to localStorage if API fails
-      console.log('⚠️ Falling back to localStorage authentication');
-      const registeredUsers = localStorage.getItem('crm_users');
-      
-      if (!registeredUsers) {
-        setModalConfig({
-          isOpen: true,
-          title: 'Connection Error',
-          message: 'Cannot connect to server. Please check your internet connection.',
-          type: 'error'
-        });
-        return;
-      }
-
-      try {
-        const users = JSON.parse(registeredUsers);
-        const user = users.find((u: any) => {
-          const emailMatch = u.email === username.trim();
-          const usernameMatch = u.username === username.trim();
-          const passwordMatch = u.password === password.trim();
-          return (emailMatch || usernameMatch) && passwordMatch;
-        });
-
-        if (user) {
-          if (user.isVerified === false) {
-            setModalConfig({
-              isOpen: true,
-              title: 'Email Not Verified',
-              message: 'Please verify your email address before logging in.',
-              type: 'warning'
-            });
-            return;
-          }
-
-          setModalConfig({
-            isOpen: true,
-            title: 'Login Successful!',
-            message: `Welcome back, ${user.fullName || user.username}! (Offline mode)`,
-            type: 'success',
-            onConfirm: () => {
-              const userData = { 
-                fullName: user.fullName || user.username, 
-                username: user.username,
-                id: user.id || user.email,
-                email: user.email
-              };
-              setCurrentUser(userData);
-              setIsLoggedIn(true);
-              saveAuthState(true, userData);
-            }
-          });
-        } else {
-          setModalConfig({
-            isOpen: true,
-            title: 'Login Failed',
-            message: 'Invalid email/username or password.',
-            type: 'error'
-          });
-        }
-      } catch (err) {
-        setModalConfig({
-          isOpen: true,
-          title: 'Error',
-          message: 'An error occurred. Please try again.',
-          type: 'error'
-        });
-      }
+      // Server unreachable — do not fall back to localStorage (passwords are bcrypt-hashed
+      // server-side and are never stored locally, so a local comparison is not possible).
+      setModalConfig({
+        isOpen: true,
+        title: 'Connection Error',
+        message: 'Cannot connect to the server. Please check your internet connection and try again.',
+        type: 'error'
+      });
     }
   };
 
@@ -614,12 +504,8 @@ const App: React.FC = () => {
       });
 
       const result = await response.json();
-      console.log('📡 Register API response:', result);
 
       if (result.success && result.user) {
-        // Generate verification code
-        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
         // Sync user to localStorage
         const usersData = localStorage.getItem('crm_users');
         let users = [];
@@ -631,21 +517,18 @@ const App: React.FC = () => {
           }
         }
 
+        // Sync minimal user info to localStorage (NO password, NO plaintext OTP)
         const newUser = {
           ...result.user,
           id: result.user.id || result.user.email,
-          password: form.password.trim(), // Keep password in localStorage
-          verificationCode: verificationCode,
-          verificationCodeExpiry: Date.now() + (10 * 60 * 1000), // 10 minutes
           registeredAt: new Date().toISOString(),
           role: 'user'
         };
 
         users.push(newUser);
         localStorage.setItem('crm_users', JSON.stringify(users));
-        console.log('✅ User synced to localStorage');
 
-        // Send verification email
+        // Send verification email — server generates the OTP
         try {
           const emailResponse = await fetch('/.netlify/functions/send-verification-email', {
             method: 'POST',
@@ -654,8 +537,8 @@ const App: React.FC = () => {
             },
             body: JSON.stringify({
               email: form.email,
-              fullName: form.fullName,
-              verificationCode: verificationCode
+              fullName: form.fullName
+              // Do NOT send verificationCode — server generates it
             })
           });
 
@@ -689,10 +572,7 @@ const App: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error in handleRegister:', error);
-      
       // Fallback to localStorage if API fails
-      console.log('⚠️ Falling back to localStorage registration');
       const existingUsers = localStorage.getItem('crm_users');
       let users = [];
       
@@ -731,20 +611,20 @@ const App: React.FC = () => {
       // Generate 6-digit verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Add new user (unverified)
+      // Add new user (unverified) — password and OTP are intentionally
+      // omitted from localStorage; only non-sensitive display data is stored.
       const newUser = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
         fullName: form.fullName,
         username: form.username,
         email: form.email,
-        password: form.password,
+        // password intentionally NOT stored in localStorage
         department: form.department,
         position: form.position,
         profileImage: form.profileImage || '',
         registeredAt: new Date().toISOString(),
         isVerified: false,
-        verificationCode: verificationCode,
-        verificationCodeExpiry: Date.now() + (10 * 60 * 1000),
+        // verificationCode intentionally NOT stored in localStorage
         role: 'user'
       };
 
@@ -790,64 +670,32 @@ const App: React.FC = () => {
   };
 
   const handleOTPVerify = async (code: string) => {
-    const usersData = localStorage.getItem('crm_users');
-    if (!usersData) return;
+    if (!pendingUserEmail) return;
 
     try {
-      const users = JSON.parse(usersData);
-      const userIndex = users.findIndex((u: any) => u.email === pendingUserEmail);
+      // Verify OTP server-side — never trust localStorage for security-critical checks
+      const response = await fetch('/.netlify/functions/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: pendingUserEmail, code }),
+      });
 
-      if (userIndex === -1) {
-        setModalConfig({
-          isOpen: true,
-          title: 'Error',
-          message: 'User not found',
-          type: 'error'
-        });
-        return;
-      }
+      const result = await response.json();
 
-      const user = users[userIndex];
-
-      // Check if code is expired
-      if (Date.now() > user.verificationCodeExpiry) {
-        setModalConfig({
-          isOpen: true,
-          title: 'Code Expired',
-          message: 'Verification code has expired. Please request a new one.',
-          type: 'error'
-        });
-        setShowOTPVerification(false);
-        return;
-      }
-
-      // Verify code
-      if (user.verificationCode === code) {
-        const updates = {
-          isVerified: true,
-          verificationCode: null,
-          verificationCodeExpiry: null,
-          verifiedAt: new Date().toISOString()
-        };
-        
-        users[userIndex] = {
-          ...user,
-          ...updates
-        };
-        localStorage.setItem('crm_users', JSON.stringify(users));
-        
-        // Update user verification status in MongoDB
-        try {
-          const result = await MongoDBService.updateUser(user.email, updates);
-          if (result.success) {
-            // console.log('✅ User verification synced to MongoDB');
-          } else {
-            // console.warn('⚠️ Failed to sync verification to MongoDB:', result.message);
-          }
-        } catch (err) {
-          // console.error('❌ MongoDB sync failed:', err);
+      if (response.ok && result.success) {
+        // Update localStorage to reflect verified status (non-sensitive)
+        const usersData = localStorage.getItem('crm_users');
+        if (usersData) {
+          try {
+            const users = JSON.parse(usersData);
+            const idx = users.findIndex((u: any) => u.email === pendingUserEmail);
+            if (idx !== -1) {
+              users[idx].isVerified = true;
+              localStorage.setItem('crm_users', JSON.stringify(users));
+            }
+          } catch { /* ignore localStorage sync errors */ }
         }
-        
+
         setShowOTPVerification(false);
         setModalConfig({
           isOpen: true,
@@ -858,59 +706,61 @@ const App: React.FC = () => {
       } else {
         setModalConfig({
           isOpen: true,
-          title: 'Invalid Code',
-          message: 'The verification code you entered is incorrect. Please try again.',
+          title: result.error?.includes('expired') ? 'Code Expired' : 'Invalid Code',
+          message: result.error || 'The verification code is incorrect or expired.',
           type: 'error'
         });
       }
-    } catch (error) {
-      // console.error('Error verifying OTP:', error);
+    } catch {
       setModalConfig({
         isOpen: true,
         title: 'Error',
-        message: 'An error occurred during verification',
+        message: 'An error occurred during verification. Please try again.',
         type: 'error'
       });
     }
   };
 
   const handleOTPResend = async () => {
-    const usersData = localStorage.getItem('crm_users');
-    if (!usersData) return;
+    if (!pendingUserEmail) return;
 
     try {
-      const users = JSON.parse(usersData);
-      const userIndex = users.findIndex((u: any) => u.email === pendingUserEmail);
+      // Look up fullName from localStorage (non-sensitive display name)
+      let fullName = pendingUserEmail;
+      const usersData = localStorage.getItem('crm_users');
+      if (usersData) {
+        try {
+          const users = JSON.parse(usersData);
+          const user = users.find((u: any) => u.email === pendingUserEmail);
+          if (user?.fullName) fullName = user.fullName;
+        } catch { /* ignore */ }
+      }
 
-      if (userIndex === -1) return;
-
-      // Generate new code
-      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-      users[userIndex].verificationCode = newCode;
-      users[userIndex].verificationCodeExpiry = Date.now() + (10 * 60 * 1000);
-      localStorage.setItem('crm_users', JSON.stringify(users));
-
-      // Resend email
+      // Server generates a new OTP — no code generated on client
       const response = await fetch('/.netlify/functions/send-verification-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: pendingUserEmail,
-          fullName: users[userIndex].fullName,
-          verificationCode: newCode
-        })
+        body: JSON.stringify({ email: pendingUserEmail, fullName })
       });
 
-      if (response.ok) {
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         setModalConfig({
           isOpen: true,
           title: 'Code Resent',
           message: 'A new verification code has been sent to your email.',
           type: 'success'
         });
+      } else {
+        setModalConfig({
+          isOpen: true,
+          title: 'Error',
+          message: result.error || 'Failed to resend verification code',
+          type: 'error'
+        });
       }
-    } catch (error) {
-      // console.error('Error resending code:', error);
+    } catch {
       setModalConfig({
         isOpen: true,
         title: 'Error',

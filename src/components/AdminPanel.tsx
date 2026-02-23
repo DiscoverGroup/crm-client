@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { validateRoleChange, sanitizeEmail } from '../utils/formSanitizer';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
@@ -45,8 +46,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const getCurrentAdmin = (): string => {
     const currentUserData = localStorage.getItem('crm_current_user');
     if (currentUserData) {
-      const userData = JSON.parse(currentUserData);
-      return userData.fullName || userData.username || 'Admin';
+      try {
+        const userData = JSON.parse(currentUserData);
+        return userData.fullName || userData.username || 'Admin';
+      } catch {
+        return 'Admin';
+      }
     }
     return 'Admin';
   };
@@ -106,8 +111,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   };
 
   const handleChangeRole = (email: string, newRole: string) => {
+    const cleanEmail = sanitizeEmail(email);
+    const validation = validateRoleChange({ email: cleanEmail, newRole });
+    if (!validation.valid) {
+      return; // silently ignore invalid role values (they come from a controlled <select>)
+    }
     const updatedUsers = users.map(user => {
-      if (user.email === email) {
+      if (user.email === cleanEmail) {
         return { ...user, role: newRole };
       }
       return user;

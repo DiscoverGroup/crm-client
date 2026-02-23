@@ -21,7 +21,7 @@ export class ClientRecoveryService {
 
   // Generate unique ID for recovery request
   private static generateRequestId(): string {
-    return `client_recovery_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `client_recovery_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
   // Get current user ID from localStorage

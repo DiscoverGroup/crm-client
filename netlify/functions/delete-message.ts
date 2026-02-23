@@ -1,5 +1,7 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient, ObjectId } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -7,9 +9,8 @@ const DB_NAME = 'dg_crm';
 export const handler: Handler = async (event) => {
   // CORS headers
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
     'Content-Type': 'application/json',
   };
 
@@ -24,6 +25,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   let client: MongoClient | null = null;
@@ -84,7 +91,6 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ 
         error: 'Failed to delete message',
-        details: error instanceof Error ? error.message : 'Unknown error'
       }),
     };
   } finally {

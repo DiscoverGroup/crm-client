@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { uploadFileToR2 } from '../services/r2UploadService';
 import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
+import { authHeaders } from '../utils/authToken';
+import { sanitizeName, sanitizeEmail, sanitizeUsername, validateProfileForm, validatePasswordChangeForm } from '../utils/formSanitizer';
 
 interface UserProfileProps {
   currentUser: { fullName: string; username: string; id?: string; email?: string };
@@ -90,10 +92,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     position: '',
     profileImage: ''
   });
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [profileImageSignedUrl, setProfileImageSignedUrl] = useState<string>('');
   const [loadingImage, setLoadingImage] = useState(false);
@@ -131,7 +136,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     
     setLoadingImage(true);
     try {
-      const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+      const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`, {
+        headers: authHeaders(),
+      });
       const result = await response.json();
       
       if (result.success && result.url) {
@@ -218,63 +225,119 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    // Sanitise user input
+    const cleanFullName = sanitizeName(userData.fullName, 100);
+    const cleanUsername = sanitizeUsername(userData.username);
+    const cleanEmail = sanitizeEmail(userData.email);
+
+    // Validate profile fields
+    const profileValidation = validateProfileForm({
+      fullName: cleanFullName,
+      username: cleanUsername,
+      email: cleanEmail
+    });
+    if (!profileValidation.valid) {
+      showWarningToast(profileValidation.firstError() || 'Invalid profile data');
+      return;
+    }
+
     // Validate password if changing
-    if (newPassword && newPassword !== confirmPassword) {
-      showWarningToast('Passwords do not match!');
-      return;
+    if (newPassword) {
+      if (!currentPassword) {
+        showWarningToast('Please enter your current password to set a new one');
+        return;
+      }
+      const pwValidation = validatePasswordChangeForm({
+        newPassword,
+        confirmPassword
+      });
+      if (!pwValidation.valid) {
+        showWarningToast(pwValidation.firstError() || 'Invalid password');
+        return;
+      }
     }
 
-    if (newPassword && newPassword.length < 6) {
-      showWarningToast('Password must be at least 6 characters long.');
-      return;
-    }
-
-    // Get all users
-    const users = localStorage.getItem('crm_users');
-    if (users) {
-      const userList = JSON.parse(users);
-      const userIndex = userList.findIndex((u: any) => u.fullName === currentUser);
-      
-      if (userIndex !== -1) {
-        // Update user data
-        userList[userIndex] = {
-          ...userList[userIndex],
-          fullName: userData.fullName,
-          username: userData.username,
-          email: userData.email,
+    setIsSaving(true);
+    try {
+      // ── Call backend API ────────────────────────────────────────────────
+      const response = await fetch('/.netlify/functions/update-profile', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: cleanFullName,
+          username: cleanUsername,
+          email: cleanEmail,
           department: userData.department,
           position: userData.position,
-          profileImage: userData.profileImage,
-          profileImageR2Path: userData.profileImageR2Path,
-          ...(newPassword && { password: newPassword })
-        };
+          ...(newPassword && { currentPassword, newPassword }),
+        }),
+      });
 
-        // Save to localStorage
-        localStorage.setItem('crm_users', JSON.stringify(userList));
+      const result = await response.json();
 
-        // Update auth if name changed
-        if (userData.fullName !== currentUser.fullName) {
-          const authData = localStorage.getItem('crm_auth');
-          if (authData) {
-            const auth = JSON.parse(authData);
-            auth.currentUser = { fullName: userData.fullName, username: userData.username };
-            localStorage.setItem('crm_auth', JSON.stringify(auth));
-          }
-        }
-
-        setOriginalData(userData);
-        setIsEditing(false);
-        setNewPassword('');
-        setConfirmPassword('');
-        onUpdateUser(userData);
-        showSuccessToast('Profile updated successfully!');
+      if (!response.ok || !result.success) {
+        showErrorToast(result.error || 'Failed to save profile');
+        return;
       }
+
+      // ── Sync localStorage from server response ──────────────────────────
+      const serverUser = result.user;
+      const users = localStorage.getItem('crm_users');
+      if (users) {
+        const userList = JSON.parse(users);
+        const userIndex = userList.findIndex((u: any) =>
+          (currentUser.email && u.email === currentUser.email) ||
+          u.fullName === currentUser.fullName
+        );
+        if (userIndex !== -1) {
+          userList[userIndex] = {
+            ...userList[userIndex],
+            fullName:   serverUser.fullName,
+            username:   serverUser.username,
+            email:      serverUser.email,
+            department: serverUser.department,
+            position:   serverUser.position,
+          };
+          localStorage.setItem('crm_users', JSON.stringify(userList));
+        }
+      }
+
+      // Update crm_auth if name changed
+      if (serverUser.fullName !== currentUser.fullName) {
+        const authData = localStorage.getItem('crm_auth');
+        if (authData) {
+          const auth = JSON.parse(authData);
+          auth.currentUser = { fullName: serverUser.fullName, username: serverUser.username };
+          localStorage.setItem('crm_auth', JSON.stringify(auth));
+        }
+      }
+
+      const updatedUserData = {
+        ...userData,
+        fullName:   serverUser.fullName,
+        username:   serverUser.username,
+        email:      serverUser.email,
+        department: serverUser.department,
+        position:   serverUser.position,
+      };
+      setOriginalData(updatedUserData);
+      setIsEditing(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      onUpdateUser(updatedUserData);
+      showSuccessToast('Profile updated successfully!');
+    } catch {
+      showErrorToast('Network error — please try again');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
     setUserData(originalData);
+    setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
     setIsEditing(false);
@@ -620,7 +683,52 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
             <h3 style={{ margin: '0 0 20px 0', color: '#0d47a1', fontSize: '18px' }}>
               Change Password (Optional)
             </h3>
-            
+
+            {/* Current password — required to unlock a password change */}
+            <div style={{ position: 'relative', marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
+                color: '#2c3e50',
+                fontSize: '14px'
+              }}>
+                Current Password
+              </label>
+              <input
+                type={showCurrentPassword ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Required only if changing password"
+                style={{
+                  width: '100%',
+                  padding: '12px 40px 12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: '#fff',
+                  color: '#2c3e50',
+                  boxSizing: 'border-box'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '42px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: '#6b7280'
+                }}
+              >
+                {showCurrentPassword ? '👁️' : '👁️\u200d🗨️'}
+              </button>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div style={{ position: 'relative' }}>
                 <label style={{
@@ -740,19 +848,22 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
             </button>
             <button
               onClick={handleSave}
+              disabled={isSaving}
               style={{
                 padding: '12px 24px',
-                background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+                background: isSaving
+                  ? '#9ca3af'
+                  : 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)'
+                boxShadow: isSaving ? 'none' : '0 4px 12px rgba(13, 71, 161, 0.3)'
               }}
             >
-              💾 Save Changes
+              {isSaving ? '⏳ Saving...' : '💾 Save Changes'}
             </button>
           </div>
         )}

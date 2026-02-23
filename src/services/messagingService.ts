@@ -1,3 +1,5 @@
+import { authHeaders } from '../utils/authToken';
+
 export interface Message {
   id: string;
   fromUserId: string;
@@ -45,12 +47,12 @@ export class MessagingService {
   private static STORAGE_KEY = 'crm_messages'; // Fallback for offline mode
   private static GROUPS_KEY = 'crm_group_chats'; // Fallback for offline mode
 
-  // Helper to make API calls
+  // Helper to make API calls (always attaches JWT)
   private static async apiCall(endpoint: string, data: any): Promise<any> {
     try {
       const response = await fetch(`${this.API_BASE}/${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
       const result = await response.json();

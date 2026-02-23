@@ -1,5 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
@@ -7,9 +8,7 @@ import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
-function hashCode(code: string): string {
-  return crypto.createHash('sha256').update(code).digest('hex');
-}
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -29,13 +28,21 @@ export const handler: Handler = async (event) => {
 
   try {
     const ip = getClientIP(event.headers as Record<string, string>);
-    const { email, code } = JSON.parse(event.body || '{}');
+    const { email, token, newPassword } = JSON.parse(event.body || '{}');
 
-    if (!email || !code) {
+    if (!email || !token || !newPassword) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, error: 'Missing email or verification code' }),
+        body: JSON.stringify({ error: 'Missing required fields' }),
+      };
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Password must be at least 8 characters long' }),
       };
     }
 
@@ -48,57 +55,58 @@ export const handler: Handler = async (event) => {
     try {
       const db = dbClient.db(DB_NAME);
 
-      // Rate limit: 5 attempts per IP per 15 minutes to prevent brute-force
-      const rateLimit = await checkRateLimit(db, ip, 'verify-otp', 5, 900);
+      // Rate limit: 5 reset attempts per IP per 15 minutes
+      const rateLimit = await checkRateLimit(db, ip, 'reset-password', 5, 900);
       if (rateLimit.limited) return tooManyRequestsResponse(headers);
 
       const user = await db.collection('users').findOne({
         email: email.trim().toLowerCase(),
       });
 
-      // Compute hash regardless of user existence to prevent timing attacks
-      const enteredHash = hashCode(String(code).trim());
-      const storedHash: string = user?.verificationCodeHash || '';
-      const storedExpiry: number = user?.verificationCodeExpiry || 0;
+      if (!user) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid or expired reset token' }),
+        };
+      }
 
-      // Use timingSafeEqual to prevent timing-based user enumeration
-      let codeMatches = false;
-      if (storedHash.length === enteredHash.length && storedHash.length > 0) {
-        codeMatches = crypto.timingSafeEqual(
-          Buffer.from(enteredHash, 'hex'),
+      // Validate reset token
+      const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+      const storedHash: string = user.passwordResetTokenHash || '';
+      const storedExpiry: number = user.passwordResetExpiry || 0;
+
+      let tokenValid = false;
+      if (storedHash.length === tokenHash.length && storedHash.length > 0) {
+        tokenValid = crypto.timingSafeEqual(
+          Buffer.from(tokenHash, 'hex'),
           Buffer.from(storedHash, 'hex')
         );
       }
 
-      if (!user || !codeMatches) {
+      if (!tokenValid || Date.now() > storedExpiry) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ success: false, error: 'Invalid or expired verification code' }),
+          body: JSON.stringify({ error: 'Invalid or expired reset token. Please request a new password reset.' }),
         };
       }
 
-      if (Date.now() > storedExpiry) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ success: false, error: 'Verification code has expired. Please request a new one.' }),
-        };
-      }
+      // Hash new password and update, clearing reset token fields
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-      // Mark verified and clear the OTP fields
       await db.collection('users').updateOne(
         { email: email.trim().toLowerCase() },
         {
-          $set: { isVerified: true, verifiedAt: new Date() },
-          $unset: { verificationCodeHash: '', verificationCodeExpiry: '' },
+          $set: { password: hashedPassword, passwordUpdatedAt: new Date() },
+          $unset: { passwordResetTokenHash: '', passwordResetExpiry: '' },
         }
       );
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ success: true, message: 'Email verified successfully' }),
+        body: JSON.stringify({ success: true, message: 'Password reset successfully' }),
       };
     } finally {
       await dbClient.close();
@@ -107,7 +115,7 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, error: 'Server error during verification' }),
+      body: JSON.stringify({ error: 'Failed to reset password', success: false }),
     };
   }
 };

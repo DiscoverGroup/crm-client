@@ -1,16 +1,17 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
-  // CORS headers
+  // CORS headers + security headers
   const headers = {
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   // Handle preflight request
@@ -28,6 +29,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── JWT Authentication ─────────────────────────────────────────────────────
+  const auth = verifyAuthToken(event.headers['authorization']);
+  if (!auth.valid) {
+    return unauthorizedResponse(headers, auth.error);
   }
 
   if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
@@ -67,160 +74,175 @@ export const handler: Handler = async (event) => {
     const conversationMetaCol = db.collection('conversation_meta');
     const groupsCol = db.collection('groups');
 
-    // Get all messages involving this user (limit for performance)
-    const messages = await messagesCol
-      .find({
-        $or: [
-          { fromUserId: userId },
-          { toUserId: userId }
-        ]
-      })
-      .sort({ timestamp: -1 })
-      .limit(500) // Limit to recent messages for performance
-      .toArray();
-
-    // Get groups where user is a participant
+    // ── 1. Fetch user's groups ────────────────────────────────────────────────
     const userGroups = await groupsCol
       .find({ participants: userId })
       .toArray();
+    const groupIds = userGroups.map((g: any) => g.id).filter(Boolean);
+    const groupMap = new Map(userGroups.map((g: any) => [g.id, g]));
 
-    const groupIds = userGroups.map(g => g.id);
+    // ── 2. Aggregate direct-message conversations (server-side) ───────────────
+    // Instead of fetching 500 raw messages and grouping in Node.js, we let MongoDB
+    // group by conversation partner and return only the summary (last message +
+    // unread count) per conversation. This reduces data transfer by ~99 % on a
+    // busy instance and uses the { fromUserId, timestamp } / { toUserId, timestamp }
+    // indexes added in create-indexes.ts.
+    const directConvAgg = await messagesCol.aggregate([
+      {
+        $match: {
+          groupId: null,
+          $or: [{ fromUserId: userId }, { toUserId: userId }],
+        },
+      },
+      { $sort: { timestamp: -1 } },
+      {
+        $addFields: {
+          // Who is the other person in this conversation?
+          conversationPartner: {
+            $cond: [{ $eq: ['$fromUserId', userId] }, '$toUserId', '$fromUserId'],
+          },
+          partnerName: {
+            $cond: [{ $eq: ['$fromUserId', userId] }, '$toUserName', '$fromUserName'],
+          },
+          // Normalised key: lexicographic ordering so A→B and B→A share the same key
+          conversationKey: {
+            $cond: [
+              { $lt: ['$fromUserId', '$toUserId'] },
+              { $concat: ['user_', '$fromUserId', '_', '$toUserId'] },
+              { $concat: ['user_', '$toUserId', '_', '$fromUserId'] },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id:             '$conversationPartner',
+          conversationKey: { $first: '$conversationKey' },
+          lastMessage:     { $first: '$content' },
+          lastMessageTime: { $first: '$timestamp' },
+          otherUserName:   { $first: '$partnerName' },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$toUserId', userId] }, { $eq: ['$isRead', false] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { lastMessageTime: -1 } },
+      { $limit: 100 },
+    ]).toArray();
 
-    // Get group messages (limit for performance)
-    const groupMessages = await messagesCol
-      .find({ groupId: { $in: groupIds } })
-      .sort({ timestamp: -1 })
-      .limit(500) // Limit to recent messages for performance
-      .toArray();
+    // ── 3. Aggregate group conversations (server-side) ────────────────────────
+    let groupConvAgg: any[] = [];
+    if (groupIds.length > 0) {
+      groupConvAgg = await messagesCol.aggregate([
+        { $match: { groupId: { $in: groupIds } } },
+        { $sort: { timestamp: -1 } },
+        {
+          $group: {
+            _id:             '$groupId',
+            conversationKey: { $first: { $concat: ['group_', '$groupId'] } },
+            lastMessage:     { $first: '$content' },
+            lastMessageTime: { $first: '$timestamp' },
+            unreadCount: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $ne: ['$fromUserId', userId] }, { $eq: ['$isRead', false] }] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        { $sort: { lastMessageTime: -1 } },
+      ]).toArray();
+    }
 
-    // Combine all messages and sort by timestamp descending (newest first)
-    const allMessages = [...messages, ...groupMessages].sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime();
-      const timeB = new Date(b.timestamp).getTime();
-      return timeB - timeA; // Descending order
-    });
-
-    // Get conversation metadata (pinned, archived status)
+    // ── 4. Fetch conversation metadata (pinned / archived) ────────────────────
     const conversationMetas = await conversationMetaCol
       .find({ userId })
       .toArray();
-
-    const metaMap = new Map(
-      conversationMetas.map(meta => [
-        meta.conversationKey, 
-        { isPinned: meta.isPinned, isArchived: meta.isArchived }
+    const metaMap = new Map<string, { isPinned: boolean; isArchived: boolean }>(
+      conversationMetas.map((meta: any) => [
+        meta.conversationKey,
+        { isPinned: Boolean(meta.isPinned), isArchived: Boolean(meta.isArchived) },
       ])
     );
 
-    // Group messages by conversation
-    const conversationsMap = new Map();
-    const groupMap = new Map(userGroups.map(g => [g.id, g]));
-
-    for (const msg of allMessages) {
-      let conversationKey;
-      let otherUserId;
-      let isGroup = false;
-
-      if (msg.groupId) {
-        conversationKey = `group_${msg.groupId}`;
-        isGroup = true;
-      } else {
-        // Ensure consistent conversation key regardless of sender/receiver order
-        otherUserId = msg.fromUserId === userId ? msg.toUserId : msg.fromUserId;
-        if (!otherUserId) continue; // Skip if no valid other user
-        
-        // Normalize conversation key with lexicographic ordering to prevent duplicates
-        const ids = [userId, otherUserId].sort();
-        conversationKey = `user_${ids[0]}_${ids[1]}`;
-      }
-
-      if (!conversationsMap.has(conversationKey)) {
-        const meta = metaMap.get(conversationKey) || { isPinned: false, isArchived: false };
-        
-        // Get the other user's name from the message
-        let otherUserName = null;
-        if (!isGroup) {
-          if (msg.fromUserId === userId) {
-            // Current user sent this message, get recipient's name
-            otherUserName = msg.toUserName || null;
-          } else {
-            // Current user received this message, get sender's name
-            otherUserName = msg.fromUserName || null;
-          }
-        }
-        
-        conversationsMap.set(conversationKey, {
-          userId: otherUserId,
-          groupId: msg.groupId,
-          userName: otherUserName,
-          groupName: isGroup ? (groupMap.get(msg.groupId)?.name || msg.groupId) : null,
-          isGroup,
-          lastMessage: msg.content,
-          lastMessageTime: msg.timestamp,
-          unreadCount: 0,
-          isPinned: meta.isPinned,
-          isArchived: meta.isArchived,
-          participants: isGroup ? groupMap.get(msg.groupId)?.participants : undefined
-        });
-      }
-      // Note: We don't update lastMessage for existing conversations since messages are sorted DESC
-      // The first message we encounter IS the latest message
-
-      // Count unread messages for direct conversations
-      if (!isGroup && msg.toUserId === userId && !msg.isRead) {
-        const conv = conversationsMap.get(conversationKey);
-        if (conv) conv.unreadCount++;
-      }
-      
-      // Count unread group messages (messages not sent by current user)
-      if (isGroup && msg.fromUserId !== userId && !msg.isRead) {
-        const conv = conversationsMap.get(conversationKey);
-        if (conv) conv.unreadCount++;
-      }
-    }
-
-    // Get user names for conversations
-    const userIds = Array.from(conversationsMap.values())
-      .filter(conv => !conv.isGroup && conv.userId)
-      .map(conv => conv.userId);
-
-    if (userIds.length > 0) {
+    // ── 5. Resolve any still-unknown display names (one batched lookup) ───────
+    const unresolvedIds = directConvAgg
+      .filter((dc: any) => !dc.otherUserName && dc._id)
+      .map((dc: any) => dc._id as string);
+    const userNameMap = new Map<string, string>();
+    if (unresolvedIds.length > 0) {
       const users = await usersCol
-        .find({ 
-          $or: [
-            { id: { $in: userIds } },
-            { email: { $in: userIds } }
-          ]
-        })
+        .find({ $or: [{ id: { $in: unresolvedIds } }, { email: { $in: unresolvedIds } }] })
+        .project({ _id: 0, id: 1, email: 1, fullName: 1, username: 1 })
         .toArray();
-
-      const userMap = new Map(users.map(u => [u.id || u.email, u.fullName || u.name || u.username || 'Unknown User']));
-
-      for (const [key, conv] of conversationsMap.entries()) {
-        if (!conv.isGroup && conv.userId) {
-          const userName = userMap.get(conv.userId);
-          // Provide fallback chain: userMap -> existing userName -> userId -> Unknown User
-          conv.userName = userName || conv.userName || conv.userId || 'Unknown User';
-        }
-      }
-    } else {
-      // Ensure all direct conversations have a userName, even without user lookup
-      for (const [key, conv] of conversationsMap.entries()) {
-        if (!conv.isGroup && !conv.userName) {
-          conv.userName = conv.userId || 'Unknown User';
-        }
+      for (const u of users) {
+        const key = (u as any).id || (u as any).email;
+        if (key) userNameMap.set(key, (u as any).fullName || (u as any).username || 'Unknown User');
       }
     }
 
-    // Close connection in background
-    client.close().catch(err => { /* console.error('Error closing connection:', err) */ });
+    // ── 6. Build final conversation list ──────────────────────────────────────
+    const conversations: any[] = [];
 
-    const conversations = Array.from(conversationsMap.values());
+    for (const dc of directConvAgg) {
+      const conversationKey = dc.conversationKey || `user_${dc._id}`;
+      const meta = metaMap.get(conversationKey) || { isPinned: false, isArchived: false };
+      conversations.push({
+        userId:          dc._id,
+        groupId:         null,
+        userName:        dc.otherUserName || userNameMap.get(dc._id as string) || String(dc._id) || 'Unknown User',
+        groupName:       null,
+        isGroup:         false,
+        lastMessage:     dc.lastMessage,
+        lastMessageTime: dc.lastMessageTime,
+        unreadCount:     dc.unreadCount,
+        isPinned:        meta.isPinned,
+        isArchived:      meta.isArchived,
+      });
+    }
+
+    for (const gc of groupConvAgg) {
+      const conversationKey = `group_${gc._id}`;
+      const groupData = groupMap.get(gc._id as string);
+      const meta = metaMap.get(conversationKey) || { isPinned: false, isArchived: false };
+      conversations.push({
+        userId:          null,
+        groupId:         gc._id,
+        userName:        null,
+        groupName:       groupData?.name || String(gc._id) || 'Group',
+        isGroup:         true,
+        lastMessage:     gc.lastMessage,
+        lastMessageTime: gc.lastMessageTime,
+        unreadCount:     gc.unreadCount,
+        isPinned:        meta.isPinned,
+        isArchived:      meta.isArchived,
+        participants:    groupData?.participants,
+      });
+    }
+
+    // Pinned conversations float to the top; remainder sorted by latest message time
+    conversations.sort((a, b) => {
+      if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+      const tA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+      const tB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+      return tB - tA;
+    });
+
+    client.close().catch(() => {});
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, data: conversations })
+      body: JSON.stringify({ success: true, data: conversations }),
     };
   } catch (error: any) {
     // console.error('Get conversations error:', error);
@@ -229,7 +251,7 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to get conversations' 
+        error: 'Failed to get conversations' 
       })
     };
   }

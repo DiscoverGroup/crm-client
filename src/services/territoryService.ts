@@ -19,7 +19,7 @@ class TerritoryService {
   createTerritory(territory: Omit<Territory, 'id' | 'createdAt' | 'updatedAt'>): Territory {
     const newTerritory: Territory = {
       ...territory,
-      id: `territory_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `territory_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -145,7 +145,7 @@ class TerritoryService {
   createAssignmentRule(rule: Omit<AssignmentRule, 'id' | 'createdAt' | 'updatedAt'>): AssignmentRule {
     const newRule: AssignmentRule = {
       ...rule,
-      id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `rule_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -565,7 +565,13 @@ class TerritoryService {
       return undefined;
     }
     
-    return new Date(Math.max(...territoryLogs.map(l => new Date(l.timestamp).getTime())));
+    // Use reduce instead of Math.max(...spread) to avoid a
+    // RangeError when the array has thousands of entries.
+    const maxTime = territoryLogs.reduce((max, l) => {
+      const t = new Date(l.timestamp).getTime();
+      return t > max ? t : max;
+    }, 0);
+    return new Date(maxTime);
   }
   
   getCapacityUtilization(): { territoryName: string; utilization: number }[] {
@@ -587,7 +593,7 @@ class TerritoryService {
     const logs = this.getAssignmentLogs();
     
     const log: AssignmentLog = {
-      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       clientId: result.clientId,
       clientName: result.clientId, // This could be enhanced with actual client name
       newAssignment: {

@@ -735,7 +735,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow: initialWorkfl
                         min="0"
                         value={selectedAction.config.delayDays || 0}
                         onChange={(e) => handleUpdateAction(selectedAction.id, {
-                          config: { ...selectedAction.config, delayDays: parseInt(e.target.value) }
+                          config: { ...selectedAction.config, delayDays: parseInt(e.target.value, 10) || 0 }
                         })}
                         style={{
                           width: '100%',
@@ -754,7 +754,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow: initialWorkfl
                         max="23"
                         value={selectedAction.config.delayHours || 0}
                         onChange={(e) => handleUpdateAction(selectedAction.id, {
-                          config: { ...selectedAction.config, delayHours: parseInt(e.target.value) }
+                          config: { ...selectedAction.config, delayHours: parseInt(e.target.value, 10) || 0 }
                         })}
                         style={{
                           width: '100%',
@@ -773,7 +773,7 @@ const WorkflowEditor: React.FC<WorkflowEditorProps> = ({ workflow: initialWorkfl
                         max="59"
                         value={selectedAction.config.delayMinutes || 0}
                         onChange={(e) => handleUpdateAction(selectedAction.id, {
-                          config: { ...selectedAction.config, delayMinutes: parseInt(e.target.value) }
+                          config: { ...selectedAction.config, delayMinutes: parseInt(e.target.value, 10) || 0 }
                         })}
                         style={{
                           width: '100%',

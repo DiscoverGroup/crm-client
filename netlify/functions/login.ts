@@ -1,16 +1,20 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import bcrypt from 'bcryptjs';
+import { generateAuthToken } from './middleware/authMiddleware';
+import { validateLoginRequest, parseRequestBody } from './middleware/validation';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
 export const handler: Handler = async (event) => {
-  // Enable CORS
+  // Restricted CORS + security headers
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
+    'Content-Type': 'application/json',
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -38,18 +42,27 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { email, password } = JSON.parse(event.body || '{}');
+    // ── Rate limiting: 10 attempts per IP per 15 minutes ─────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
 
-    if (!email || !password) {
+    // ── Parse & validate body ─────────────────────────────────────────────────
+    const parsed = parseRequestBody(event);
+    if (!parsed.valid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Email and password are required' 
-        })
+        body: JSON.stringify({ success: false, error: parsed.error }),
       };
     }
+    const validation = validateLoginRequest(parsed.data);
+    if (!validation.valid) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, errors: validation.errors }),
+      };
+    }
+    const { email, password } = validation.data;
 
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
@@ -62,6 +75,13 @@ export const handler: Handler = async (event) => {
 
     try {
       const db = client.db(DB_NAME);
+
+      // ── Rate limit check (needs DB connection) ─────────────────────────────
+      const rateLimit = await checkRateLimit(db, ip, 'login', 10, 900);
+      if (rateLimit.limited) {
+        return tooManyRequestsResponse(headers);
+      }
+
       const usersCollection = db.collection('users');
 
       // Find user by email or username
@@ -83,8 +103,9 @@ export const handler: Handler = async (event) => {
         };
       }
 
-      // Check password (in production, you should hash passwords!)
-      if (user.password !== password.trim()) {
+      // ── Verify password with bcrypt (constant-time comparison) ──────────────
+      const passwordMatch = await bcrypt.compare(password.trim(), user.password);
+      if (!passwordMatch) {
         return {
           statusCode: 401,
           headers,
@@ -108,7 +129,7 @@ export const handler: Handler = async (event) => {
         };
       }
 
-      // Return user data (without password)
+      // ── Build safe response payload ──────────────────────────────────────────────
       const userData = {
         id: user._id,
         email: user.email,
@@ -117,17 +138,26 @@ export const handler: Handler = async (event) => {
         department: user.department,
         position: user.position,
         profileImage: user.profileImage,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        role: user.role ?? 'user',
       };
+
+      // ── Generate signed JWT ─────────────────────────────────────────────────────
+      const token = generateAuthToken(
+        String(user._id),
+        user.email,
+        userData.role as 'admin' | 'user'
+      );
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ 
-          success: true, 
+        body: JSON.stringify({
+          success: true,
+          token,          // <─ JWT; store in memory / httpOnly cookie on client
           user: userData,
-          message: 'Login successful'
-        })
+          message: 'Login successful',
+        }),
       };
 
     } finally {

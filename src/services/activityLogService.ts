@@ -20,7 +20,7 @@ export class ActivityLogService {
     const logs = this.getAllLogs();
     const newLog: ActivityLog = {
       ...log,
-      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       timestamp: new Date().toISOString()
     };
     logs.unshift(newLog); // Add to beginning for most recent first

@@ -1,16 +1,20 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
+import bcrypt from 'bcryptjs';
+import { validateRegistrationRequest, parseRequestBody } from './middleware/validation';
+import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
+const BCRYPT_SALT_ROUNDS = 12;
 
 export const handler: Handler = async (event) => {
-  // Enable CORS
+  // Restricted CORS + security headers
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
+    ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
+    ...getSecurityHeaders(),
+    'Content-Type': 'application/json',
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -38,30 +42,35 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { username, email, password, fullName, department, position, profileImage } = JSON.parse(event.body || '{}');
+    // ── Rate limiting (10 registrations per IP per 15 min) ──────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+
+    // ── Parse & validate input ────────────────────────────────────────────────
+    const parsed = parseRequestBody(event);
+    if (!parsed.valid) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: parsed.error }),
+      };
+    }
+    const { username, email, password, fullName, department, position, profileImage } = parsed.data;
 
     // Validate required fields
     if (!username || !email || !password || !fullName || !department || !position) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'All fields are required' 
-        })
+        body: JSON.stringify({ success: false, error: 'All fields are required' }),
       };
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const validation = validateRegistrationRequest(parsed.data);
+    if (!validation.valid) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Invalid email format' 
-        })
+        body: JSON.stringify({ success: false, errors: validation.errors }),
       };
     }
 
@@ -76,6 +85,13 @@ export const handler: Handler = async (event) => {
 
     try {
       const db = client.db(DB_NAME);
+
+      // ── Rate limit check (needs DB connection) ─────────────────────────────
+      const rateLimit = await checkRateLimit(db, ip, 'register', 10, 900);
+      if (rateLimit.limited) {
+        return tooManyRequestsResponse(headers);
+      }
+
       const usersCollection = db.collection('users');
 
       // Check if email or username already exists
@@ -115,7 +131,7 @@ export const handler: Handler = async (event) => {
       const newUser = {
         username: username.trim(),
         email: email.trim(),
-        password: password.trim(), // In production, hash this!
+        password: await bcrypt.hash(password.trim(), BCRYPT_SALT_ROUNDS),
         fullName: fullName.trim(),
         department: department.trim(),
         position: position.trim(),

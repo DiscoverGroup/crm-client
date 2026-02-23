@@ -20,6 +20,29 @@ class WorkflowService {
     this.loadExecutions();
   }
 
+  // Revive date strings back to Date objects after JSON.parse
+  private static reviveWorkflow(w: any): Workflow {
+    return {
+      ...w,
+      createdAt: new Date(w.createdAt),
+      updatedAt: new Date(w.updatedAt),
+      lastExecutedAt: w.lastExecutedAt ? new Date(w.lastExecutedAt) : undefined,
+    };
+  }
+
+  private static reviveExecution(e: any): WorkflowExecution {
+    return {
+      ...e,
+      startedAt: new Date(e.startedAt),
+      completedAt: e.completedAt ? new Date(e.completedAt) : undefined,
+      steps: ((e.steps as any[]) || []).map((s: any) => ({
+        ...s,
+        startedAt: s.startedAt ? new Date(s.startedAt) : undefined,
+        completedAt: s.completedAt ? new Date(s.completedAt) : undefined,
+      })),
+    };
+  }
+
   // Load workflows from localStorage
   private loadWorkflows(): void {
     try {
@@ -27,11 +50,11 @@ class WorkflowService {
       if (stored) {
         const workflows: Workflow[] = JSON.parse(stored);
         workflows.forEach(workflow => {
-          this.workflows.set(workflow.id, workflow);
+          this.workflows.set(workflow.id, WorkflowService.reviveWorkflow(workflow));
         });
       }
     } catch (error) {
-      console.error('Failed to load workflows:', error);
+      console.warn('Failed to load workflows:', error);
     }
   }
 
@@ -41,7 +64,7 @@ class WorkflowService {
       const workflows = Array.from(this.workflows.values());
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(workflows));
     } catch (error) {
-      console.error('Failed to save workflows:', error);
+      console.warn('Failed to save workflows:', error);
     }
   }
 
@@ -52,11 +75,11 @@ class WorkflowService {
       if (stored) {
         const executions: WorkflowExecution[] = JSON.parse(stored);
         executions.forEach(execution => {
-          this.executions.set(execution.id, execution);
+          this.executions.set(execution.id, WorkflowService.reviveExecution(execution));
         });
       }
     } catch (error) {
-      console.error('Failed to load executions:', error);
+      console.warn('Failed to load executions:', error);
     }
   }
 
@@ -68,7 +91,7 @@ class WorkflowService {
       const recent = executions.slice(-100);
       localStorage.setItem(this.EXECUTIONS_KEY, JSON.stringify(recent));
     } catch (error) {
-      console.error('Failed to save executions:', error);
+      console.warn('Failed to save executions:', error);
     }
   }
 
@@ -335,14 +358,15 @@ class WorkflowService {
   }
 
   // Action implementations
-  private async sendEmail(config: any): Promise<any> {
-    console.log('Sending email:', config);
-    // TODO: Integrate with actual email service
-    return { success: true, message: 'Email sent (simulated)' };
+  private async sendEmail(_config: any): Promise<never> {
+    // TODO: Integrate with an email provider (e.g. SendGrid / Nodemailer).
+    // Throwing here so the execution step is marked 'failed' rather than
+    // silently reporting success while doing nothing.
+    throw new Error('send_email action is not yet implemented — configure an email provider first');
   }
 
   private async sendNotification(config: any): Promise<any> {
-    console.log('Sending notification:', config);
+    // console.log('Sending notification:', config);
     // Create notification in localStorage
     const notifications = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
     notifications.push({
@@ -357,34 +381,29 @@ class WorkflowService {
     return { success: true, message: 'Notification created' };
   }
 
-  private async createTask(config: any): Promise<any> {
-    console.log('Creating task:', config);
-    // TODO: Integrate with task management system
-    return { success: true, message: 'Task created (simulated)' };
+  private async createTask(_config: any): Promise<never> {
+    // TODO: Integrate with task management system.
+    throw new Error('create_task action is not yet implemented');
   }
 
-  private async updateClientStatus(config: any): Promise<any> {
-    console.log('Updating client status:', config);
-    // TODO: Integrate with client service
-    return { success: true, message: 'Status updated (simulated)' };
+  private async updateClientStatus(_config: any): Promise<never> {
+    // TODO: Integrate with client service.
+    throw new Error('update_client_status action is not yet implemented');
   }
 
-  private async assignToUser(config: any): Promise<any> {
-    console.log('Assigning to user:', config);
-    // TODO: Integrate with client service
-    return { success: true, message: 'User assigned (simulated)' };
+  private async assignToUser(_config: any): Promise<never> {
+    // TODO: Integrate with client service.
+    throw new Error('assign_to_user action is not yet implemented');
   }
 
-  private async addNote(config: any): Promise<any> {
-    console.log('Adding note:', config);
-    // TODO: Integrate with activity log service
-    return { success: true, message: 'Note added (simulated)' };
+  private async addNote(_config: any): Promise<never> {
+    // TODO: Integrate with activity log service.
+    throw new Error('add_note action is not yet implemented');
   }
 
-  private async updateClientField(config: any): Promise<any> {
-    console.log('Updating client field:', config);
-    // TODO: Integrate with client service
-    return { success: true, message: 'Field updated (simulated)' };
+  private async updateClientField(_config: any): Promise<never> {
+    // TODO: Integrate with client service.
+    throw new Error('update_client_field action is not yet implemented');
   }
 
   private async waitDelay(config: any): Promise<any> {
@@ -393,7 +412,7 @@ class WorkflowService {
       (config.delayHours || 0) * 60 * 60 * 1000 +
       (config.delayDays || 0) * 24 * 60 * 60 * 1000;
     
-    console.log(`Waiting for ${totalMs}ms`);
+    // console.log(`Waiting for ${totalMs}ms`);
     // In production, this would schedule a deferred execution
     return { success: true, message: `Waited ${totalMs}ms (simulated)` };
   }
@@ -415,7 +434,7 @@ class WorkflowService {
   }
 
   private async sendWebhook(config: any): Promise<any> {
-    console.log('Sending webhook:', config);
+    // console.log('Sending webhook:', config);
     try {
       const response = await fetch(config.webhookUrl, {
         method: config.webhookMethod || 'POST',
@@ -434,12 +453,12 @@ class WorkflowService {
     if (workflowId) {
       return executions.filter(e => e.workflowId === workflowId);
     }
-    return executions.sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime());
+    return executions.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
   }
 
   // Generate unique ID
   private generateId(): string {
-    return `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `wf_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 }
 

@@ -48,11 +48,11 @@ export class LogNoteService {
     
     logNotes.forEach(logs => {
       logs.forEach(log => {
-        const logId = parseInt(log.id.replace('log_', ''));
+        const logId = parseInt(log.id.replace('log_', ''), 10);
         if (logId > maxLogId) maxLogId = logId;
         
         log.replies.forEach(reply => {
-          const replyId = parseInt(reply.id.replace('reply_', ''));
+          const replyId = parseInt(reply.id.replace('reply_', ''), 10);
           if (replyId > maxReplyId) maxReplyId = replyId;
         });
       });

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
+import { authHeaders } from '../utils/authToken';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface ActivityLogViewerProps {
   clientId?: string;
@@ -7,6 +9,7 @@ interface ActivityLogViewerProps {
 }
 
 const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack }) => {
+  const windowWidth = useWindowWidth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [filterAction, setFilterAction] = useState<string>('all');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
@@ -61,7 +64,9 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
     for (const [userId, r2Path] of uniqueUsers) {
       try {
         // console.log('⬇️ Fetching image for:', userId, 'from:', r2Path);
-        const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`);
+        const response = await fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`, {
+          headers: authHeaders(),
+        });
         const result = await response.json();
         
         // console.log('✅ Image fetch result for', userId, ':', result);
@@ -163,7 +168,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
 
   return (
     <div style={{
-      padding: window.innerWidth < 640 ? '10px' : '20px',
+      padding: windowWidth < 640 ? '10px' : '20px',
       maxWidth: '1400px',
       margin: '0 auto',
       width: '100%',
@@ -172,17 +177,17 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
       {/* Header */}
       <div style={{
         display: 'flex',
-        alignItems: window.innerWidth < 768 ? 'stretch' : 'center',
+        alignItems: windowWidth < 768 ? 'stretch' : 'center',
         justifyContent: 'space-between',
-        flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-        gap: window.innerWidth < 768 ? '16px' : '10px',
+        flexDirection: windowWidth < 768 ? 'column' : 'row',
+        gap: windowWidth < 768 ? '16px' : '10px',
         marginBottom: '30px',
         backgroundColor: 'white',
-        padding: window.innerWidth < 640 ? '15px' : '20px',
+        padding: windowWidth < 640 ? '15px' : '20px',
         borderRadius: '12px',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: window.innerWidth < 640 ? '12px' : '20px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: windowWidth < 640 ? '12px' : '20px', flexWrap: 'wrap' }}>
           <button
             onClick={onBack}
             style={{
@@ -200,16 +205,16 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             ← Back
           </button>
           <div>
-            <h1 style={{ margin: '0 0 5px 0', color: '#0d47a1', fontSize: window.innerWidth < 640 ? '22px' : '28px' }}>
+            <h1 style={{ margin: '0 0 5px 0', color: '#0d47a1', fontSize: windowWidth < 640 ? '22px' : '28px' }}>
               📋 Activity Log
             </h1>
-            <p style={{ margin: 0, color: '#6c757d', fontSize: window.innerWidth < 640 ? '12px' : '14px' }}>
+            <p style={{ margin: 0, color: '#6c757d', fontSize: windowWidth < 640 ? '12px' : '14px' }}>
               {clientId ? 'Client activity history' : 'All system activities'}
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: window.innerWidth < 768 ? '100%' : 'auto' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: window.innerWidth < 768 ? '1 1 100%' : 'initial' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: windowWidth < 768 ? '100%' : 'auto' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: windowWidth < 768 ? '1 1 100%' : 'initial' }}>
             <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d', whiteSpace: 'nowrap' }}>
               Sort:
             </label>
@@ -223,7 +228,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 fontSize: '14px',
                 backgroundColor: '#fff',
                 cursor: 'pointer',
-                flex: window.innerWidth < 768 ? '1' : 'initial'
+                flex: windowWidth < 768 ? '1' : 'initial'
               }}
             >
               <option value="recent">Most recent</option>
@@ -232,7 +237,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: window.innerWidth < 768 ? '1 1 100%' : 'initial' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flex: windowWidth < 768 ? '1 1 100%' : 'initial' }}>
             <label style={{ fontSize: '14px', fontWeight: '500', color: '#6c757d', whiteSpace: 'nowrap' }}>
               Action:
             </label>
@@ -246,7 +251,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 fontSize: '14px',
                 backgroundColor: '#fff',
                 cursor: 'pointer',
-                flex: window.innerWidth < 768 ? '1' : 'initial'
+                flex: windowWidth < 768 ? '1' : 'initial'
               }}
             >
               <option value="all">All Actions</option>
@@ -275,7 +280,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
-              flex: window.innerWidth < 768 ? '1 1 100%' : 'initial',
+              flex: windowWidth < 768 ? '1 1 100%' : 'initial',
               whiteSpace: 'nowrap'
             }}
           >
@@ -314,10 +319,10 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
           backgroundColor: 'white',
           borderRadius: '12px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          padding: window.innerWidth < 640 ? '16px' : '20px',
+          padding: windowWidth < 640 ? '16px' : '20px',
           marginBottom: '20px'
         }}>
-          <h3 style={{ margin: '0 0 16px 0', color: '#0d47a1', fontSize: window.innerWidth < 640 ? '16px' : '18px' }}>
+          <h3 style={{ margin: '0 0 16px 0', color: '#0d47a1', fontSize: windowWidth < 640 ? '16px' : '18px' }}>
             📅 Date & Time Filter
           </h3>
 
@@ -360,7 +365,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
               />
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 640 ? '1fr' : '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 640 ? '1fr' : '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#6c757d', marginBottom: '8px' }}>
                   Start Date & Time:
@@ -450,7 +455,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             {/* Timeline line */}
             <div style={{
               position: 'absolute',
-              left: window.innerWidth < 640 ? '15px' : '30px',
+              left: windowWidth < 640 ? '15px' : '30px',
               top: '20px',
               bottom: '20px',
               width: '2px',
@@ -463,7 +468,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 key={log.id}
                 style={{
                   position: 'relative',
-                  paddingLeft: window.innerWidth < 640 ? '40px' : '70px',
+                  paddingLeft: windowWidth < 640 ? '40px' : '70px',
                   paddingBottom: '30px',
                   paddingTop: index === 0 ? '0' : '10px'
                 }}
@@ -471,10 +476,10 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 {/* Timeline dot */}
                 <div style={{
                   position: 'absolute',
-                  left: window.innerWidth < 640 ? '6px' : '20px',
+                  left: windowWidth < 640 ? '6px' : '20px',
                   top: index === 0 ? '10px' : '20px',
-                  width: window.innerWidth < 640 ? '18px' : '20px',
-                  height: window.innerWidth < 640 ? '18px' : '20px',
+                  width: windowWidth < 640 ? '18px' : '20px',
+                  height: windowWidth < 640 ? '18px' : '20px',
                   borderRadius: '50%',
                   backgroundColor: getActionColor(log.action),
                   border: '3px solid white',
@@ -493,7 +498,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 style={{
                   backgroundColor: '#f8f9fa',
                   borderRadius: '8px',
-                  padding: window.innerWidth < 640 ? '12px' : '16px',
+                  padding: windowWidth < 640 ? '12px' : '16px',
                   border: '1px solid #e9ecef',
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
@@ -513,9 +518,9 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: window.innerWidth < 640 ? 'flex-start' : 'center',
-                    flexDirection: window.innerWidth < 640 ? 'column' : 'row',
-                    gap: window.innerWidth < 640 ? '8px' : '0',
+                    alignItems: windowWidth < 640 ? 'flex-start' : 'center',
+                    flexDirection: windowWidth < 640 ? 'column' : 'row',
+                    gap: windowWidth < 640 ? '8px' : '0',
                     marginBottom: '8px'
                   }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
@@ -525,14 +530,14 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                         backgroundColor: getActionColor(log.action),
                         color: 'white',
                         borderRadius: '12px',
-                        fontSize: window.innerWidth < 640 ? '10px' : '11px',
+                        fontSize: windowWidth < 640 ? '10px' : '11px',
                         fontWeight: '600',
                         textTransform: 'uppercase'
                       }}>
                         {log.action.replace('_', ' ')}
                       </span>
                       <span style={{
-                        fontSize: window.innerWidth < 640 ? '14px' : '16px',
+                        fontSize: windowWidth < 640 ? '14px' : '16px',
                         fontWeight: '600',
                         color: '#2c3e50',
                         wordBreak: 'break-word'
@@ -541,9 +546,9 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                       </span>
                     </div>
                     <span style={{
-                      fontSize: window.innerWidth < 640 ? '11px' : '12px',
+                      fontSize: windowWidth < 640 ? '11px' : '12px',
                       color: '#6c757d',
-                      whiteSpace: window.innerWidth < 640 ? 'normal' : 'nowrap'
+                      whiteSpace: windowWidth < 640 ? 'normal' : 'nowrap'
                     }}>
                       {formatDate(log.timestamp)}
                     </span>
@@ -661,9 +666,9 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'white',
-              borderRadius: window.innerWidth < 640 ? '12px' : '16px',
-              padding: window.innerWidth < 640 ? '20px' : '32px',
-              maxWidth: window.innerWidth < 640 ? '95vw' : '700px',
+              borderRadius: windowWidth < 640 ? '12px' : '16px',
+              padding: windowWidth < 640 ? '20px' : '32px',
+              maxWidth: windowWidth < 640 ? '95vw' : '700px',
               width: '90%',
               maxHeight: '85vh',
               overflowY: 'auto',
@@ -761,13 +766,13 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             {/* Details */}
             <div style={{
               backgroundColor: '#f9fafb',
-              padding: window.innerWidth < 640 ? '16px' : '20px',
+              padding: windowWidth < 640 ? '16px' : '20px',
               borderRadius: '12px',
               marginBottom: '20px'
             }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: window.innerWidth < 640 ? '1fr' : '1fr 1fr',
+                gridTemplateColumns: windowWidth < 640 ? '1fr' : '1fr 1fr',
                 gap: '16px'
               }}>
                 <div>

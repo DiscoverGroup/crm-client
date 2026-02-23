@@ -1,4 +1,5 @@
 import React from 'react';
+import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface ModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ const Modal: React.FC<ModalProps> = ({
   onConfirm,
   cancelText
 }) => {
+  const windowWidth = useWindowWidth();
   if (!isOpen) return null;
 
   const getIconAndColor = () => {
@@ -59,7 +61,7 @@ const Modal: React.FC<ModalProps> = ({
         justifyContent: 'center',
         zIndex: 10000,
         backdropFilter: 'blur(4px)',
-        padding: window.innerWidth < 640 ? '16px' : '20px'
+        padding: windowWidth < 640 ? '16px' : '20px'
       }}
       onClick={(e) => {
         // Only close if clicking the backdrop, not the modal content
@@ -71,9 +73,9 @@ const Modal: React.FC<ModalProps> = ({
       <div 
         style={{
           backgroundColor: 'white',
-          borderRadius: window.innerWidth < 640 ? '12px' : '16px',
-          padding: window.innerWidth < 640 ? '24px' : '32px',
-          maxWidth: window.innerWidth < 640 ? '95vw' : '450px',
+          borderRadius: windowWidth < 640 ? '12px' : '16px',
+          padding: windowWidth < 640 ? '24px' : '32px',
+          maxWidth: windowWidth < 640 ? '95vw' : '450px',
           width: '90%',
           maxHeight: '85vh',
           overflowY: 'auto',
@@ -147,17 +149,17 @@ const Modal: React.FC<ModalProps> = ({
             <button
               onClick={onClose}
               style={{
-                padding: window.innerWidth < 640 ? '12px 20px' : '10px 24px',
+                padding: windowWidth < 640 ? '12px 20px' : '10px 24px',
                 borderRadius: '8px',
                 border: '2px solid #e5e7eb',
                 backgroundColor: 'white',
                 color: '#6b7280',
-                fontSize: window.innerWidth < 640 ? '14px' : '15px',
+                fontSize: windowWidth < 640 ? '14px' : '15px',
                 fontWeight: '500',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                flex: window.innerWidth < 640 ? '1' : 'initial',
-                minWidth: window.innerWidth < 640 ? '0' : 'auto',
+                flex: windowWidth < 640 ? '1' : 'initial',
+                minWidth: windowWidth < 640 ? '0' : 'auto',
                 touchAction: 'manipulation'
               }}
               onMouseOver={(e) => {
@@ -175,18 +177,18 @@ const Modal: React.FC<ModalProps> = ({
           <button
             onClick={handleConfirm}
             style={{
-              padding: window.innerWidth < 640 ? '12px 20px' : '10px 24px',
+              padding: windowWidth < 640 ? '12px 20px' : '10px 24px',
               borderRadius: '8px',
               border: 'none',
               backgroundColor: color,
               color: 'white',
-              fontSize: window.innerWidth < 640 ? '14px' : '15px',
+              fontSize: windowWidth < 640 ? '14px' : '15px',
               fontWeight: '600',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               boxShadow: `0 4px 6px -1px ${color}40`,
-              flex: window.innerWidth < 640 ? '1' : 'initial',
-              minWidth: window.innerWidth < 640 ? '0' : 'auto',
+              flex: windowWidth < 640 ? '1' : 'initial',
+              minWidth: windowWidth < 640 ? '0' : 'auto',
               touchAction: 'manipulation'
             }}
             onMouseOver={(e) => {
