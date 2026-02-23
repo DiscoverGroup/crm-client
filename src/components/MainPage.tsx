@@ -3372,7 +3372,6 @@ const MainPage: React.FC<MainPageProps> = ({
   isSidebarOpen = false,
   onCloseSidebar
 }) => {
-  const windowWidth = useWindowWidth();
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');

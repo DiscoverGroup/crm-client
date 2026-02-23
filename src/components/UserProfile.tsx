@@ -234,8 +234,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
     // Validate profile fields
     const profileValidation = validateProfileForm({
       fullName: cleanFullName,
-      username: cleanUsername,
-      email: cleanEmail
+      department: userData.department,
+      position: userData.position
     });
     if (!profileValidation.valid) {
       showWarningToast(profileValidation.firstError() || 'Invalid profile data');
@@ -249,6 +249,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ currentUser, onBack, onUpdate
         return;
       }
       const pwValidation = validatePasswordChangeForm({
+        currentPassword,
         newPassword,
         confirmPassword
       });
