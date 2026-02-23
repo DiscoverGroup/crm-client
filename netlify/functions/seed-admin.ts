@@ -22,11 +22,13 @@ import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
-const MONGODB_URI      = process.env.MONGODB_URI      || '';
+const MONGODB_URI      = process.env.MONGODB_URI  || '';
 const DB_NAME          = 'dg_crm';
-const SETUP_SECRET     = process.env.SETUP_SECRET     || '';   // must be set in Netlify env vars
-const ADMIN_EMAIL      = process.env.ADMIN_EMAIL      || 'admin@discovergrp.com';
-const ADMIN_PASSWORD   = process.env.ADMIN_PASSWORD   || '';   // must be set in Netlify env vars
+// Re-use the JWT_SECRET already present in Netlify env vars as the gate key.
+// No extra env var needed.
+const SETUP_SECRET     = process.env.JWT_SECRET   || '';
+const ADMIN_EMAIL      = 'admin@discovergrp.com';
+const ADMIN_PASSWORD   = process.env.ADMIN_PASSWORD || 'Admin@DG2026!';
 const BCRYPT_ROUNDS    = 12;
 
 export const handler: Handler = async (event) => {
@@ -70,14 +72,6 @@ export const handler: Handler = async (event) => {
       statusCode: 500,
       headers,
       body: JSON.stringify({ error: 'MONGODB_URI not configured' }),
-    };
-  }
-
-  if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 8) {
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'ADMIN_PASSWORD env var missing or too short' }),
     };
   }
 
