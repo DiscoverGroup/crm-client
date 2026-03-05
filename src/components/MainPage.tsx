@@ -163,7 +163,7 @@ const ClientRecords: React.FC<{
   
   // Field tracking setup
   const currentClientId = clientId || tempClientId;
-  const currentUserId = "user_1"; // In a real app, get from auth context
+  const currentUserId = propsCurrentUser?.id || "unknown_user";
   const currentUserName = propsCurrentUser?.fullName || "Current User"; // Use prop or fallback
   
   // Get current user's profile image R2 path
@@ -223,6 +223,21 @@ const ClientRecords: React.FC<{
           setVisaReleaseDate(existingClient.visaReleaseDate || '');
           setVisaResult(existingClient.visaResult || '');
           setAdvisoryDate(existingClient.advisoryDate || '');
+
+          // Load saved payment data for existing client
+          const savedPayment = PaymentService.getPaymentData(clientId);
+          if (savedPayment) {
+            if (savedPayment.paymentTerm) setPaymentTerm(savedPayment.paymentTerm as string);
+            if (typeof savedPayment.termCount === 'number') setTermCount(savedPayment.termCount);
+            if (savedPayment.selectedPaymentBox !== undefined) setSelectedPaymentBox(savedPayment.selectedPaymentBox as number | null);
+            if (Array.isArray(savedPayment.paymentDetails)) {
+              setPaymentDetails(savedPayment.paymentDetails.map((d: any) => ({
+                date: (d.date as string) || '',
+                depositSlip: null,
+                receipt: null,
+              })));
+            }
+          }
         }
       } finally {
         setIsLoadingClients(false);
@@ -311,13 +326,13 @@ const ClientRecords: React.FC<{
   const [firstPaymentDepositSlip, setFirstPaymentDepositSlip] = useState<File | null>(null);
   const [firstPaymentReceipt, setFirstPaymentReceipt] = useState<File | null>(null);
   
-  const [secondPaymentDate] = useState("");
-  const [secondPaymentDepositSlip] = useState<File | null>(null);
-  const [secondPaymentReceipt] = useState<File | null>(null);
+  const [secondPaymentDate, setSecondPaymentDate] = useState("");
+  const [secondPaymentDepositSlip, setSecondPaymentDepositSlip] = useState<File | null>(null);
+  const [secondPaymentReceipt, setSecondPaymentReceipt] = useState<File | null>(null);
   
-  const [thirdPaymentDate] = useState("");
-  const [thirdPaymentDepositSlip] = useState<File | null>(null);
-  const [thirdPaymentReceipt] = useState<File | null>(null);
+  const [thirdPaymentDate, setThirdPaymentDate] = useState("");
+  const [thirdPaymentDepositSlip, setThirdPaymentDepositSlip] = useState<File | null>(null);
+  const [thirdPaymentReceipt, setThirdPaymentReceipt] = useState<File | null>(null);
   
   const [otherPaymentsEnabled, setOtherPaymentsEnabled] = useState(false);
   const [otherPaymentsDescription, setOtherPaymentsDescription] = useState("");
@@ -753,15 +768,13 @@ const ClientRecords: React.FC<{
         }
       }
 
-      // Validation: Travel Date (cannot be past date)
+      // Validation: Travel Date (warn if in the past, but allow saving historical records)
       if (travelDate) {
         const travel = new Date(travelDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (travel < today) {
-          showWarningToast('Travel Date cannot be in the past');
-          setIsSavingClient(false);
-          return;
+          showWarningToast('Note: Travel Date is in the past');
         }
       }
 
@@ -850,6 +863,8 @@ const ClientRecords: React.FC<{
       // If this is a new client (no existing clientId), update file associations
       if (!clientId && savedClientId && tempClientId !== savedClientId) {
         FileService.updateClientIdForTempFiles(tempClientId, savedClientId);
+        // Migrate payment data from temp key to real client ID
+        PaymentService.migratePaymentData(tempClientId, savedClientId);
         // Refresh attachments with new client ID
         const clientAttachments = FileService.getFilesByClient(savedClientId);
         setAttachments(clientAttachments);
@@ -859,11 +874,6 @@ const ClientRecords: React.FC<{
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
-      
-      // Navigate back to client list after saving
-      if (onNavigateBack) {
-        setTimeout(() => onNavigateBack(), 500);
-      }
     } catch (error) {
       // console.error('Error saving client info:', error);
       logSectionAction(
@@ -900,15 +910,29 @@ const ClientRecords: React.FC<{
         return;
       }
 
+      // Sanitise package inputs before saving
+      const cleanPackageName = sanitizeName(packageName || '', 500);
+      const cleanBookingConfirmation = sanitizeText(bookingConfirmation || '', 200);
+      const cleanPackageLink = sanitizeText(packageLink || '', 1000);
+      const cleanCompanions = companions.map(c => ({
+        ...c,
+        name: sanitizeName(c.name, 200),
+      }));
+      if ([cleanPackageName, cleanBookingConfirmation, cleanPackageLink].some(v => v && containsAttackPatterns(v))) {
+        showWarningToast('Invalid characters detected in package info. Please review and try again.');
+        setIsSavingPackage(false);
+        return;
+      }
+
       // Update client with package information
       const clientData = {
         ...existingClient,
-        packageName,
+        packageName: cleanPackageName,
         travelDate,
         numberOfPax,
-        bookingConfirmation,
-        packageLink,
-        companions: companions
+        bookingConfirmation: cleanBookingConfirmation,
+        packageLink: cleanPackageLink,
+        companions: cleanCompanions
       };
 
       // Save to ClientService
@@ -1224,6 +1248,20 @@ const ClientRecords: React.FC<{
     }
   };
 
+  const handleSaveRequestNotes = async () => {
+    if (!clientId) {
+      showWarningToast('Please save client information first before saving request notes.');
+      return;
+    }
+    try {
+      await ClientService.updateClient(clientId, { requestNotes } as any);
+      saveSection('request-notes', 'Important Notes/Requests');
+      showSuccessToast('Request notes saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving request notes.');
+    }
+  };
+
   // Handlers
   function handleCompanionFieldChange(field: keyof Companion, value: string) {
     setNewCompanion({ ...newCompanion, [field]: value });
@@ -1288,8 +1326,8 @@ const ClientRecords: React.FC<{
     setPaymentTerm(selected);
     const opt = paymentOptions.find(o => o.value === selected)!;
     if (selected === "installment" || selected === "travel_funds") {
-      setTermCount(2); // default for these types
-      trackSectionField('payment-terms-schedule', 'termCount', 2, 'Number of Terms');
+      setTermCount(1); // start at 1, let user choose
+      trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
     } else {
       setTermCount(opt.terms);
       trackSectionField('payment-terms-schedule', 'termCount', opt.terms, 'Number of Terms');
@@ -2700,6 +2738,27 @@ const ClientRecords: React.FC<{
                   onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                 >
                   ➕ Add a Line!
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveRequestNotes}
+                  style={{
+                    background: "linear-gradient(135deg, #b45309 0%, #92400e 100%)",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    transition: "transform 0.2s",
+                    boxShadow: "0 4px 12px rgba(180, 83, 9, 0.3)",
+                    marginLeft: "12px"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  💾 Save Notes
                 </button>
               </div>
             </div>

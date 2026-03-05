@@ -124,7 +124,12 @@ export class ClientService {
       const clients = this.getAllClientsIncludingDeleted();
       
       // Check if client already exists by clientNo
-      const existingClientIndex = clients.findIndex(c => c.clientNo === clientData.clientNo);
+      // Guard: only match on clientNo when it is a non-empty string to prevent
+      // two clients with no clientNo being treated as the same record.
+      const existingClientIndex =
+        clientData.clientNo && clientData.clientNo.trim() !== ''
+          ? clients.findIndex(c => c.clientNo === clientData.clientNo)
+          : -1;
       
       if (existingClientIndex !== -1) {
         // Update existing client
@@ -290,13 +295,15 @@ export class ClientService {
     const clients = this.getAllClients();
     
     return clients.filter(client => {
-      // Search term filter (searches across name, email, client number)
+      // Search term filter (searches across name, email, client number, phone)
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
         const matchesSearch = 
           (client.contactName?.toLowerCase().includes(searchLower)) ||
           (client.email?.toLowerCase().includes(searchLower)) ||
-          (client.clientNo?.toLowerCase().includes(searchLower));
+          (client.clientNo?.toLowerCase().includes(searchLower)) ||
+          (client.contactNo?.toLowerCase().includes(searchLower)) ||
+          (client.agent?.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) {
           return false;

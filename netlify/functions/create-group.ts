@@ -43,9 +43,12 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { name, participantIds, participantNames, createdBy } = JSON.parse(event.body || '{}');
+    const { name, participantIds, participantNames } = JSON.parse(event.body || '{}');
 
-    if (!name || !participantIds || !participantIds.length || !createdBy) {
+    // Use the authenticated user's identity from the JWT — never trust the body
+    const createdBy = auth.user!.userId;
+
+    if (!name || !participantIds || !participantIds.length) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Missing required fields: name, participantIds, createdBy' })
@@ -54,7 +57,7 @@ export const handler: Handler = async (event) => {
 
     // Sanitise and validate
     const cleanName = sanitizeInput(String(name)).substring(0, 80);
-    const cleanCreatedBy = sanitizeInput(String(createdBy)).substring(0, 100);
+    // createdBy comes from JWT — already trusted, no sanitization required
     if (!cleanName) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Group name is required' }) };
     }
@@ -87,7 +90,7 @@ export const handler: Handler = async (event) => {
       name: cleanName,
       participants: cleanParticipantIds,
       participantNames: cleanParticipantNames,
-      createdBy: cleanCreatedBy,
+      createdBy: createdBy,
       createdAt: new Date()
     };
 

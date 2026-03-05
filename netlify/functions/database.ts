@@ -46,6 +46,20 @@ export const handler: Handler = async (event) => {
   try {
     const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
 
+    // ── Collection allowlist — prevent access to sensitive internal collections ──
+    const ALLOWED_COLLECTIONS = [
+      'clients', 'messages', 'groups', 'conversation_meta',
+      'log_notes', 'activity_logs', 'notifications', 'calendar_events',
+      'file_attachments', 'file_recovery_requests', 'client_recovery_requests'
+    ];
+    if (!collection || !ALLOWED_COLLECTIONS.includes(collection)) {
+      return {
+        statusCode: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Access to this collection is not permitted' })
+      };
+    }
+
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000,

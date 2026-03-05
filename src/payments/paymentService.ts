@@ -174,6 +174,20 @@ export class PaymentService {
     }
   }
 
+  // Migrate payment data from a temp client ID key to the real client ID key
+  static migratePaymentData(oldKey: string, newKey: string): void {
+    try {
+      const allPayments = this.getAllPaymentData();
+      if (allPayments[oldKey]) {
+        allPayments[newKey] = allPayments[oldKey];
+        delete allPayments[oldKey];
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allPayments));
+      }
+    } catch (error) {
+      // console.error('Error migrating payment data:', error);
+    }
+  }
+
   // Get all file attachments for payment data
   static getPaymentFileAttachments(): Array<{ fileId: string; category: string; paymentInfo: string }> {
     const paymentData = this.getPaymentData();

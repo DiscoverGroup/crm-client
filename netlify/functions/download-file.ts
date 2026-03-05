@@ -51,7 +51,21 @@ export const handler: Handler = async (event) => {
     if (!filePath) {
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Missing file path parameter' })
+      };
+    }
+
+    // ── Ownership check — prevent IDOR (Insecure Direct Object Reference) ──────
+    // File paths must start with the requesting user's ID so users can only
+    // access their own files. Admins may access any path.
+    const requestingUserId = auth.user!.userId;
+    const requestingRole   = auth.user!.role;
+    if (requestingRole !== 'admin' && !filePath.startsWith(requestingUserId + '/')) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ error: 'Access denied: you do not own this file' })
       };
     }
 
@@ -59,17 +73,18 @@ export const handler: Handler = async (event) => {
     if (!accountId || !accessKeyId || !secretAccessKey) {
       return {
         statusCode: 500,
+        headers,
         body: JSON.stringify({ error: 'R2 credentials not configured' })
       };
     }
 
-    // Generate a signed URL (valid for 7 days - maximum allowed)
+    // Generate a signed URL (valid for 1 hour — reduced from 7 days)
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: filePath,
     });
 
-    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 604800 });
+    const signedUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
 
     // Return the signed URL
     return {

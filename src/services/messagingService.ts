@@ -362,7 +362,9 @@ export class MessagingService {
         let otherUserName: string;
 
         if (message.fromUserId === userId) {
-          otherUserId = message.toUserId!;
+          // Guard: skip ill-formed messages with no recipient
+          if (!message.toUserId) return;
+          otherUserId = message.toUserId;
           otherUserName = message.toUserName!;
         } else if (message.toUserId === userId) {
           otherUserId = message.fromUserId;
@@ -543,8 +545,8 @@ export class MessagingService {
   // Archive/Unarchive conversation
   static async toggleArchiveConversation(otherUserId?: string, groupId?: string): Promise<void> {
     try {
-      // Get current user from localStorage (temporary solution)
-      const userData = localStorage.getItem('currentUser');
+      // Get current user from localStorage
+      const userData = localStorage.getItem('crm_current_user');
       if (!userData) return;
       const userId = JSON.parse(userData).id;
 
@@ -577,7 +579,7 @@ export class MessagingService {
   // Check if conversation is archived
   static async isConversationArchived(otherUserId?: string, groupId?: string): Promise<boolean> {
     try {
-      const userData = localStorage.getItem('currentUser');
+      const userData = localStorage.getItem('crm_current_user');
       if (!userData) return false;
       const userId = JSON.parse(userData).id;
 
@@ -600,7 +602,7 @@ export class MessagingService {
   // Pin/Unpin conversation
   static async togglePinConversation(otherUserId?: string, groupId?: string): Promise<void> {
     try {
-      const userData = localStorage.getItem('currentUser');
+      const userData = localStorage.getItem('crm_current_user');
       if (!userData) return;
       const userId = JSON.parse(userData).id;
 
@@ -633,7 +635,7 @@ export class MessagingService {
   // Check if conversation is pinned
   static async isConversationPinned(otherUserId?: string, groupId?: string): Promise<boolean> {
     try {
-      const userData = localStorage.getItem('currentUser');
+      const userData = localStorage.getItem('crm_current_user');
       if (!userData) return false;
       const userId = JSON.parse(userData).id;
 

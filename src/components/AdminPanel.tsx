@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { validateRoleChange, sanitizeEmail } from '../utils/formSanitizer';
+import { MongoDBService } from '../services/mongoDBService';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
@@ -107,6 +108,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       return user;
     });
     saveUsers(updatedUsers);
+    // Persist verification to MongoDB
+    MongoDBService.updateUser(email, {
+      isVerified: true,
+      verificationToken: null,
+      verificationTokenExpiry: null,
+      verifiedAt: new Date().toISOString()
+    }).catch(() => { /* non-critical */ });
     showSuccessToast('User verified successfully!');
   };
 
@@ -123,12 +131,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       return user;
     });
     saveUsers(updatedUsers);
+    // Persist role change to MongoDB
+    MongoDBService.updateUser(cleanEmail, { role: newRole }).catch(() => { /* non-critical */ });
     showSuccessToast(`User role changed to ${newRole}`);
   };
 
   const handleDeleteUser = (email: string) => {
     const updatedUsers = users.filter(user => user.email !== email);
     saveUsers(updatedUsers);
+    // Persist deletion to MongoDB
+    fetch('/.netlify/functions/database', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'users',
+        operation: 'deleteOne',
+        filter: { email }
+      })
+    }).catch(() => { /* non-critical */ });
     setShowDeleteConfirm(null);
     showSuccessToast('User deleted successfully!');
   };

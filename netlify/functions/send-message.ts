@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -47,14 +48,9 @@ export const handler: Handler = async (event) => {
   try {
     const message = JSON.parse(event.body || '{}');
 
-    // Input validation to prevent NoSQL injection
-    if (!message.fromUserId || typeof message.fromUserId !== 'string' || message.fromUserId.length > 100) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Invalid fromUserId' })
-      };
-    }
+    // ── Force fromUserId from JWT — prevents spoofing ──────────────────────────
+    // Ignore any fromUserId supplied in the body; always use the verified JWT identity.
+    message.fromUserId = auth.user!.userId;
 
     if (!message.content || typeof message.content !== 'string' || message.content.length > 10000) {
       return {
@@ -107,13 +103,21 @@ export const handler: Handler = async (event) => {
     });
 
     const db = client.db(DB_NAME);
+
+    // ── Rate limiting: 60 messages per IP per minute ───────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rateLimit = await checkRateLimit(db, ip, 'send-message', 60, 60);
+    if (rateLimit.limited) {
+      return tooManyRequestsResponse(headers, 60);
+    }
+
     const messagesCol = db.collection('messages');
 
     // Create message document
     const messageDoc = {
       id: message.id,
-      fromUserId: message.fromUserId,
-      fromUserName: message.fromUserName,
+      fromUserId: auth.user!.userId,  // always from JWT, never from body
+      fromUserName: auth.user!.fullName || message.fromUserName, // prefer JWT-derived name
       toUserId: message.toUserId || null,
       toUserName: message.toUserName || null,
       groupId: message.groupId || null,

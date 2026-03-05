@@ -110,7 +110,7 @@ export class NotificationService {
       type: 'mention',
       title: '💬 New Mention',
       message: `${params.fromUserName} mentioned you in a comment: "${params.commentText.substring(0, 50)}${params.commentText.length > 50 ? '...' : ''}"`,
-      targetUserId: mentionedUser.fullName,
+      targetUserId: mentionedUser.id ?? mentionedUser.email ?? mentionedUser.fullName,
       targetUserName: mentionedUser.fullName,
       fromUserId: params.fromUserId,
       fromUserName: params.fromUserName,

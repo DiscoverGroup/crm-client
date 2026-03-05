@@ -38,11 +38,11 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    if (typeof newPassword !== 'string' || !PASSWORD_REGEX.test(newPassword)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Password must be at least 8 characters long' }),
+        body: JSON.stringify({ error: 'Password must be at least 8 characters and include uppercase, lowercase, and a number' }),
       };
     }
 

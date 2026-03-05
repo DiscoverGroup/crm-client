@@ -18,6 +18,7 @@ export interface AuthPayload {
   userId: string;
   email: string;
   role: 'admin' | 'user';
+  fullName?: string;
   iat?: number;
   exp?: number;
 }
@@ -66,16 +67,17 @@ export function verifyAuthToken(authorizationHeader: string | undefined): AuthRe
 
 /**
  * Generates a signed JWT token after successful login.
- * @param userId  MongoDB _id as string
- * @param email   User's email
- * @param role    'admin' | 'user'
+ * @param userId    MongoDB _id as string
+ * @param email     User's email
+ * @param role      'admin' | 'user'
+ * @param fullName  User's display name (stored in token to avoid extra DB lookups)
  */
-export function generateAuthToken(userId: string, email: string, role: 'admin' | 'user'): string {
+export function generateAuthToken(userId: string, email: string, role: 'admin' | 'user', fullName?: string): string {
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured');
   }
   return jwt.sign(
-    { userId, email, role } satisfies Omit<AuthPayload, 'iat' | 'exp'>,
+    { userId, email, role, ...(fullName ? { fullName } : {}) },
     JWT_SECRET,
     { expiresIn: '24h', algorithm: 'HS256' }
   );

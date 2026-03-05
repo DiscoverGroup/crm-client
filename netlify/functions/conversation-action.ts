@@ -43,12 +43,15 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { userId, otherUserId, groupId, action, value } = JSON.parse(event.body || '{}');
+    const { otherUserId, groupId, action, value } = JSON.parse(event.body || '{}');
 
-    if (!userId || !action) {
+    // Always use the authenticated user's ID from the JWT — never trust the body
+    const userId = auth.user!.userId;
+
+    if (!action) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing required fields: userId, action' })
+        body: JSON.stringify({ error: 'Missing required field: action' })
       };
     }
 

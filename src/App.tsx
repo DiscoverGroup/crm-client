@@ -58,7 +58,7 @@ const App: React.FC = () => {
     if (!usersData) return false;
     try {
       const users = JSON.parse(usersData);
-      const user = users.find((u: any) => u.id === currentUser.id);
+      const user = users.find((u: any) => u.id === currentUser.id || u.email === currentUser.email);
       return user && user.role === 'admin';
     } catch {
       return false;
@@ -106,9 +106,9 @@ const App: React.FC = () => {
     setNavigationRequest({ page, params });
   };
 
-  // Load unread message count (admin only)
+  // Load unread message count
   useEffect(() => {
-    if (isLoggedIn && currentUser && isAdmin()) {
+    if (isLoggedIn && currentUser) {
       const updateUnreadCount = async () => {
         const count = await MessagingService.getUnreadCount(currentUser.id);
         setUnreadMessageCount(count);
@@ -263,15 +263,7 @@ const App: React.FC = () => {
                 failCount++;
                 // console.warn(`⚠️ Failed to sync user: ${user.email}`);
               }
-            } else {
-              // User exists, update if needed
-              const result = await MongoDBService.updateUser(user.email, user);
-              if (result.success) {
-                successCount++;
-                // console.log(`✅ Updated user: ${user.fullName} (${user.email})`);
-              }
-            }
-          } catch (error) {
+            } catch (error) {
             failCount++;
             // console.error(`❌ Error syncing user ${user.email}:`, error);
           }

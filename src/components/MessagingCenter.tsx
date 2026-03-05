@@ -108,9 +108,11 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
   const messagePollingIntervalRef = useRef<number | null>(null);
   const lastMessageLoadTimeRef = useRef<number>(0);
   const isLoadingMessagesRef = useRef(false);
+  const isLoadingConversationsRef = useRef(false);
 
-  // Keep ref in sync with state so the polling interval always reads the latest value
+  // Keep refs in sync with state so polling intervals always read the latest value
   useEffect(() => { isLoadingMessagesRef.current = isLoadingMessages; }, [isLoadingMessages]);
+  useEffect(() => { isLoadingConversationsRef.current = isLoadingConversations; }, [isLoadingConversations]);
 
   const loadConversations = async () => {
     if (isLoadingConversations) return; // Prevent concurrent requests
@@ -154,7 +156,7 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     
     // Refresh conversations every 15 seconds
     const interval = setInterval(() => {
-      if (!isLoadingConversations) {
+      if (!isLoadingConversationsRef.current) {
         loadConversations();
       }
     }, 15000);

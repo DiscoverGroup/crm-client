@@ -22,12 +22,13 @@ import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
-const MONGODB_URI      = process.env.MONGODB_URI       || '';
+const MONGODB_URI      = process.env.MONGODB_URI    || '';
 const DB_NAME          = 'dg_crm';
-// Use GMAIL_APP_PASSWORD (already in Netlify) as the one-time gate key.
-const SETUP_SECRET     = process.env.GMAIL_APP_PASSWORD || '';
+// Dedicated secret — set SETUP_SECRET in Netlify env vars (never reuse another credential).
+const SETUP_SECRET     = process.env.SETUP_SECRET   || '';
 const ADMIN_EMAIL      = 'admin@discovergrp.com';
-const ADMIN_PASSWORD   = process.env.ADMIN_PASSWORD || 'Admin@DG2026!';
+// No hardcoded fallback — ADMIN_PASSWORD must be set in Netlify env vars.
+const ADMIN_PASSWORD   = process.env.ADMIN_PASSWORD || '';
 const BCRYPT_ROUNDS    = 12;
 
 export const handler: Handler = async (event) => {
@@ -50,7 +51,16 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 503,
       headers,
-      body: JSON.stringify({ error: 'GMAIL_APP_PASSWORD env var not configured' }),
+      body: JSON.stringify({ error: 'SETUP_SECRET env var not configured' }),
+    };
+  }
+
+  // ── Admin password guard ────────────────────────────────────────────────────
+  if (!ADMIN_PASSWORD) {
+    return {
+      statusCode: 503,
+      headers,
+      body: JSON.stringify({ error: 'ADMIN_PASSWORD env var not configured' }),
     };
   }
 

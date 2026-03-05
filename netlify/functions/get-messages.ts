@@ -45,17 +45,12 @@ export const handler: Handler = async (event) => {
   let client: MongoClient | null = null;
 
   try {
-    const { userId, otherUserId, groupId, before, limit: rawLimit } = JSON.parse(event.body || '{}');
+    const { otherUserId, groupId, before, limit: rawLimit } = JSON.parse(event.body || '{}');
+
+    // Always derive userId from the verified JWT — never trust the request body
+    const userId = auth.user!.userId;
 
     // Input validation
-    if (!userId || typeof userId !== 'string' || userId.length > 100) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'Invalid userId' })
-      };
-    }
-
     if (otherUserId && (typeof otherUserId !== 'string' || otherUserId.length > 100)) {
       return {
         statusCode: 400,

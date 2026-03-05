@@ -74,8 +74,12 @@ class CalendarService {
   }
 
   getEventsForDate(date: Date): CalendarEvent[] {
-    const target = date.toDateString();
-    return this.getAllEvents().filter(e => e.start.toDateString() === target || e.end.toDateString() === target);
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    // Use range overlap so multi-day events appear on every day they span
+    return this.getAllEvents().filter(e => e.start <= endOfDay && e.end >= startOfDay);
   }
 
   getEventsInRange(start: Date, end: Date): CalendarEvent[] {

@@ -43,14 +43,10 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const { userId, otherUserId, groupId } = JSON.parse(event.body || '{}');
+    const { otherUserId, groupId } = JSON.parse(event.body || '{}');
 
-    if (!userId) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing required field: userId' })
-      };
-    }
+    // Always use the authenticated user's ID from the JWT — never trust the body
+    const userId = auth.user!.userId;
 
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,

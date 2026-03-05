@@ -95,6 +95,23 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
       users[userIndex].verifiedAt = new Date().toISOString();
       
       localStorage.setItem('crm_users', JSON.stringify(users));
+
+      // Persist verification to MongoDB
+      fetch('/.netlify/functions/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'users',
+          operation: 'updateOne',
+          filter: { email },
+          update: {
+            isVerified: true,
+            verificationToken: null,
+            verificationTokenExpiry: null,
+            verifiedAt: users[userIndex].verifiedAt
+          }
+        })
+      }).catch(() => { /* non-critical - localStorage already updated */ });
       
       showSuccessToast('Email verified successfully! You can now login to your account.');
     } catch (error) {

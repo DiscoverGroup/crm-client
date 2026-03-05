@@ -61,6 +61,15 @@ export const handler: Handler = async (event) => {
       const storedHash: string = user?.verificationCodeHash || '';
       const storedExpiry: number = user?.verificationCodeExpiry || 0;
 
+      // Check expiry first — gives user actionable feedback before checking the code
+      if (!user || Date.now() > storedExpiry) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ success: false, error: !user ? 'Invalid or expired verification code' : 'Verification code has expired. Please request a new one.' }),
+        };
+      }
+
       // Use timingSafeEqual to prevent timing-based user enumeration
       let codeMatches = false;
       if (storedHash.length === enteredHash.length && storedHash.length > 0) {
@@ -70,19 +79,11 @@ export const handler: Handler = async (event) => {
         );
       }
 
-      if (!user || !codeMatches) {
+      if (!codeMatches) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ success: false, error: 'Invalid or expired verification code' }),
-        };
-      }
-
-      if (Date.now() > storedExpiry) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ success: false, error: 'Verification code has expired. Please request a new one.' }),
+          body: JSON.stringify({ success: false, error: 'Invalid verification code' }),
         };
       }
 
