@@ -263,7 +263,8 @@ const App: React.FC = () => {
                 failCount++;
                 // console.warn(`⚠️ Failed to sync user: ${user.email}`);
               }
-            } catch (error) {
+            }
+          } catch (error) {
             failCount++;
             // console.error(`❌ Error syncing user ${user.email}:`, error);
           }
