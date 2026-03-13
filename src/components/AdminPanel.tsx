@@ -137,19 +137,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     showSuccessToast(`User role changed to ${newRole}`);
   };
 
-  const handleDeleteUser = (email: string) => {
+  const handleDeleteUser = async (email: string) => {
     const updatedUsers = users.filter(user => user.email !== email);
     saveUsers(updatedUsers);
-    // Persist deletion to MongoDB
-    fetch('/.netlify/functions/database', {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        collection: 'users',
-        operation: 'deleteOne',
-        filter: { email }
-      })
-    }).catch(() => { /* non-critical */ });
+    // Delete from MongoDB via dedicated admin endpoint
+    try {
+      const res = await fetch('/.netlify/functions/delete-user', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showErrorToast(data.error || 'Failed to delete user from database');
+      }
+    } catch {
+      showErrorToast('Could not reach server to delete user');
+    }
     setShowDeleteConfirm(null);
     showSuccessToast('User deleted successfully!');
   };
