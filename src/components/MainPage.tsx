@@ -152,6 +152,9 @@ const ClientRecords: React.FC<{
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
   const [packageLink, setPackageLink] = useState("");
   
+  // Resolved client ID — updated to the real CLT-xxx after first save of a new client
+  const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId);
+
   // Log refresh state
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   
@@ -162,7 +165,7 @@ const ClientRecords: React.FC<{
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   
   // Field tracking setup
-  const currentClientId = clientId || tempClientId;
+  const currentClientId = resolvedClientId || clientId || tempClientId;
   const currentUserId = propsCurrentUser?.id || "unknown_user";
   const currentUserName = propsCurrentUser?.fullName || "Current User"; // Use prop or fallback
   
@@ -857,6 +860,10 @@ const ClientRecords: React.FC<{
         });
       }
       
+      // Update resolved client ID and refresh activity log panel
+      setResolvedClientId(savedClientId);
+      setLogRefreshKey(prev => prev + 1);
+
       // Save section changes to log
       saveSection('client-information', 'Client Information');
       
@@ -948,6 +955,7 @@ const ClientRecords: React.FC<{
         profileImageR2Path: getCurrentUserProfileImagePath(),
         details: `Package & travel information updated`
       });
+      setLogRefreshKey(prev => prev + 1);
       
       // Save section changes to log
       saveSection('package-information', 'Package & Companions');
