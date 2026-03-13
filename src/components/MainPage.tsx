@@ -955,14 +955,14 @@ const ClientRecords: React.FC<{
         return;
       }
 
-      // Ensure we have a clientId
-      if (!clientId) {
+      // Ensure we have a clientId (use resolved ID for newly-created clients)
+      if (!currentClientId) {
         showWarningToast('Client ID not found. Please save client information first.');
         return;
       }
 
       // Get the existing client data
-      const existingClient = ClientService.getClientById(clientId);
+      const existingClient = ClientService.getClientById(currentClientId);
       if (!existingClient) {
         showWarningToast('Client not found. Please save client information first.');
         return;
@@ -1053,11 +1053,11 @@ const ClientRecords: React.FC<{
   const handleSaveVisaInfo = async () => {
     setIsSavingVisa(true);
     try {
-      if (!clientId) {
+      if (!currentClientId) {
         showWarningToast('Please save client information first before saving visa details.');
         return;
       }
-      await ClientService.updateClient(clientId, {
+      await ClientService.updateClient(currentClientId, {
         visaService,
         insuranceService,
         etaService: eta,
@@ -1075,11 +1075,11 @@ const ClientRecords: React.FC<{
   const handleSaveEmbassyInfo = async () => {
     setIsSavingEmbassy(true);
     try {
-      if (!clientId) {
+      if (!currentClientId) {
         showWarningToast('Please save client information first before saving embassy details.');
         return;
       }
-      await ClientService.updateClient(clientId, {
+      await ClientService.updateClient(currentClientId, {
         embassyAppointmentDate,
         visaReleaseDate,
         visaResult,
@@ -1329,12 +1329,12 @@ const ClientRecords: React.FC<{
   };
 
   const handleSaveRequestNotes = async () => {
-    if (!clientId) {
+    if (!currentClientId) {
       showWarningToast('Please save client information first before saving request notes.');
       return;
     }
     try {
-      await ClientService.updateClient(clientId, { requestNotes } as any);
+      await ClientService.updateClient(currentClientId, { requestNotes } as any);
       saveSection('request-notes', 'Important Notes/Requests');
       showSuccessToast('Request notes saved successfully!');
     } catch (error) {
