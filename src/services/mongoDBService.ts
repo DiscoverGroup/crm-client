@@ -1,4 +1,6 @@
 // MongoDB Service for syncing data with MongoDB Atlas
+import { authHeaders } from '../utils/authToken';
+
 export class MongoDBService {
   private static readonly FUNCTIONS_BASE = '/.netlify/functions';
 
@@ -7,7 +9,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'users',
           operation: 'insertOne',
@@ -28,7 +30,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'users',
           operation: 'updateOne',
@@ -50,7 +52,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'users',
           operation: 'findOne',
@@ -74,7 +76,7 @@ export class MongoDBService {
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'insertOne',
@@ -98,7 +100,7 @@ export class MongoDBService {
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'updateOne',
@@ -120,7 +122,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'findOne',
@@ -141,7 +143,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'find',
@@ -164,7 +166,7 @@ export class MongoDBService {
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'updateOne',
@@ -203,7 +205,7 @@ export class MongoDBService {
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'clients',
           operation: 'deleteOne',
@@ -235,7 +237,7 @@ export class MongoDBService {
     try {
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'payments',
           operation: 'updateOne',
