@@ -4,6 +4,7 @@ import { MongoDBService } from '../services/mongoDBService';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
+import { authHeaders } from '../utils/authToken';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
@@ -142,7 +143,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     // Persist deletion to MongoDB
     fetch('/.netlify/functions/database', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         collection: 'users',
         operation: 'deleteOne',
