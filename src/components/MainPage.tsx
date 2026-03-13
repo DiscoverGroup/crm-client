@@ -132,7 +132,7 @@ const ClientRecords: React.FC<{
   onClientSelect?: () => void;
   onNavigateBack?: () => void;
   clientId?: string;
-  currentUser?: { fullName: string; username: string };
+  currentUser?: { fullName: string; username: string; id?: string; email?: string };
 }> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser }) => {
   const windowWidth = useWindowWidth();
   // Client form state
@@ -326,13 +326,13 @@ const ClientRecords: React.FC<{
   const [firstPaymentDepositSlip, setFirstPaymentDepositSlip] = useState<File | null>(null);
   const [firstPaymentReceipt, setFirstPaymentReceipt] = useState<File | null>(null);
   
-  const [secondPaymentDate, setSecondPaymentDate] = useState("");
-  const [secondPaymentDepositSlip, setSecondPaymentDepositSlip] = useState<File | null>(null);
-  const [secondPaymentReceipt, setSecondPaymentReceipt] = useState<File | null>(null);
+  const [secondPaymentDate, _setSecondPaymentDate] = useState("");
+  const [secondPaymentDepositSlip, _setSecondPaymentDepositSlip] = useState<File | null>(null);
+  const [secondPaymentReceipt, _setSecondPaymentReceipt] = useState<File | null>(null);
   
-  const [thirdPaymentDate, setThirdPaymentDate] = useState("");
-  const [thirdPaymentDepositSlip, setThirdPaymentDepositSlip] = useState<File | null>(null);
-  const [thirdPaymentReceipt, setThirdPaymentReceipt] = useState<File | null>(null);
+  const [thirdPaymentDate, _setThirdPaymentDate] = useState("");
+  const [thirdPaymentDepositSlip, _setThirdPaymentDepositSlip] = useState<File | null>(null);
+  const [thirdPaymentReceipt, _setThirdPaymentReceipt] = useState<File | null>(null);
   
   const [otherPaymentsEnabled, setOtherPaymentsEnabled] = useState(false);
   const [otherPaymentsDescription, setOtherPaymentsDescription] = useState("");
