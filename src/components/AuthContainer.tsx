@@ -7,9 +7,10 @@ interface AuthContainerProps {
   onLogin: (username: string, password: string) => void;
   onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => Promise<void> | void;
   onAuth0Register?: () => void;
+  onAuth0Login?: () => void;
 }
 
-const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAuth0Register }) => {
+const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAuth0Register, onAuth0Login }) => {
   const windowWidth = useWindowWidth();
   const [showRegister, setShowRegister] = useState(false);
 
@@ -143,7 +144,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
             }}>
               <LoginForm 
                 onLogin={handleLogin} 
-                onSignUp={() => setShowRegister(true)} 
+                onSignUp={() => setShowRegister(true)}
+                onAuth0Login={onAuth0Login}
               />
             </div>
 

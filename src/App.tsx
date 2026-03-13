@@ -33,6 +33,13 @@ const App: React.FC = () => {
   const [messagingTargetUser, setMessagingTargetUser] = useState<{ id: string; name: string } | null>(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Auth0 profile completion — shown when a new Auth0 user hasn't set department/position
+  const [pendingAuth0Profile, setPendingAuth0Profile] = useState<{
+    userId: string;
+    token: string;
+    userData: { fullName: string; username: string; id: string; email: string };
+    allUserData: any;
+  } | null>(null);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -457,13 +464,13 @@ const App: React.FC = () => {
     }
   };
 
-  // ── Auth0 Registration ────────────────────────────────────────────────────
-  const handleAuth0Register = async () => {
+  // ── Auth0 (login OR signup) ────────────────────────────────────────────────
+  const handleAuth0 = async (mode: 'login' | 'signup' = 'signup') => {
     try {
-      // Open Auth0 Universal Login in signup mode
+      // Open Auth0 Universal Login
       await loginWithPopup({
         authorizationParams: {
-          screen_hint: 'signup',
+          ...(mode === 'signup' ? { screen_hint: 'signup' } : {}),
           scope: 'openid profile email',
         },
       });
@@ -482,7 +489,6 @@ const App: React.FC = () => {
       const result = await response.json();
 
       if (result.success && result.user) {
-        // Store CRM JWT and log-in the user
         if (result.token) setAuthToken(result.token);
 
         const userData = {
@@ -491,32 +497,94 @@ const App: React.FC = () => {
           id: result.user.id,
           email: result.user.email,
         };
+
+        // If the user has no department/position yet → show the profile-completion modal
+        if (!result.user.department || !result.user.position) {
+          setPendingAuth0Profile({
+            userId: result.user.id,
+            token: result.token,
+            userData,
+            allUserData: result.user,
+          });
+          return; // don't log-in yet
+        }
+
+        // Existing user with complete profile — log straight in
         setCurrentUser(userData);
         setIsLoggedIn(true);
         saveAuthState(true, userData);
-
-        // Sync to localStorage
-        const usersData = localStorage.getItem('crm_users');
-        let users: any[] = [];
-        try { users = usersData ? JSON.parse(usersData) : []; } catch { users = []; }
-        const idx = users.findIndex((u: any) => u.email === result.user.email);
-        if (idx === -1) users.push({ ...result.user, registeredAt: new Date().toISOString() });
-        else users[idx] = { ...users[idx], ...result.user };
-        localStorage.setItem('crm_users', JSON.stringify(users));
+        syncUserToLocalStorage(result.user);
       } else {
         setModalConfig({
           isOpen: true,
           title: 'Auth0 Sync Failed',
-          message: result.error || 'Could not complete registration. Please try again.',
+          message: result.error || 'Could not complete authentication. Please try again.',
           type: 'error',
         });
       }
     } catch (err: any) {
-      if (err?.error === 'popup_closed_by_user') return; // user dismissed — no toast
+      if (err?.error === 'popup_closed_by_user') return;
       setModalConfig({
         isOpen: true,
         title: 'Auth0 Error',
         message: err?.message || 'Authentication failed. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleAuth0Register = () => handleAuth0('signup');
+  const handleAuth0Login = () => handleAuth0('login');
+
+  // Helper: sync user object to crm_users in localStorage
+  const syncUserToLocalStorage = (user: any) => {
+    const usersData = localStorage.getItem('crm_users');
+    let users: any[] = [];
+    try { users = usersData ? JSON.parse(usersData) : []; } catch { users = []; }
+    const idx = users.findIndex((u: any) => u.email === user.email);
+    if (idx === -1) users.push({ ...user, registeredAt: new Date().toISOString() });
+    else users[idx] = { ...users[idx], ...user };
+    localStorage.setItem('crm_users', JSON.stringify(users));
+  };
+
+  // Called when the new Auth0 user finishes selecting department + position
+  const handleCompleteAuth0Profile = async (department: string, position: string) => {
+    if (!pendingAuth0Profile) return;
+    try {
+      const response = await fetch('/.netlify/functions/update-profile', {
+        method: 'PUT',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: pendingAuth0Profile.userId,
+          department,
+          position,
+          fullName: pendingAuth0Profile.userData.fullName,
+          username: pendingAuth0Profile.userData.username,
+          email: pendingAuth0Profile.userData.email,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save profile');
+
+      const updatedUser = {
+        ...pendingAuth0Profile.allUserData,
+        department,
+        position,
+      };
+
+      setCurrentUser(pendingAuth0Profile.userData);
+      setIsLoggedIn(true);
+      saveAuthState(true, pendingAuth0Profile.userData);
+      syncUserToLocalStorage(updatedUser);
+      setPendingAuth0Profile(null);
+    } catch {
+      setModalConfig({
+        isOpen: true,
+        title: 'Profile Update Failed',
+        message: 'Could not save department and position. Please try again.',
         type: 'error',
       });
     }
@@ -904,7 +972,7 @@ const App: React.FC = () => {
             />
           </>
         ) : (
-          <AuthContainer onLogin={handleLogin} onRegister={handleRegister} onAuth0Register={handleAuth0Register} />
+          <AuthContainer onLogin={handleLogin} onRegister={handleRegister} onAuth0Register={handleAuth0Register} onAuth0Login={handleAuth0Login} />
         )}
       </div>
       <Footer />
@@ -1001,6 +1069,118 @@ const App: React.FC = () => {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Auth0 Complete Profile Modal */}
+      {pendingAuth0Profile && (
+        <CompleteProfileModal
+          userName={pendingAuth0Profile.userData.fullName}
+          onComplete={handleCompleteAuth0Profile}
+          onCancel={() => setPendingAuth0Profile(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// ── Complete Profile Modal (Auth0 new users) ────────────────────────────────
+const DEPARTMENT_POSITIONS: Record<string, string[]> = {
+  "Executives Department": ["Operations Manager","Division Manager","Executive Secretary","Executive Assistant"],
+  "Visa Department": ["Visa Department Head","Team Lead - Visa Officer","Visa Officer","General Admin — Visa","VFS and Airport Assistance Officer","Visa Assistant Facilitator"],
+  "Booking Department": ["Booking Supervisor","Booking Officer","General Admin for Booking"],
+  "Marketing Department": ["Marketing Officer","Graphic Artist"],
+  "Sales Department": ["Travel Sales Agent","General Admin — Sales"],
+  "Customer Service Department": ["Customer Service Refund","Account Relations Manager (ARM)","Team Lead - ARM","General Admin - ARM"],
+  "Human Resource Department": ["HR Assistant — Recruitment","HR Officer","General Admin - HR"],
+  "Information & Technology Department": ["IT Manager","IT Systems Administrator","IT Support","Web Developer"],
+  "Finance Department": ["Finance Officer"],
+  "Research and Development Department": ["Research Development Officer"],
+};
+
+const CompleteProfileModal: React.FC<{
+  userName: string;
+  onComplete: (department: string, position: string) => void;
+  onCancel: () => void;
+}> = ({ userName, onComplete, onCancel }) => {
+  const [department, setDepartment] = React.useState('');
+  const [position, setPosition] = React.useState('');
+  const positions = department ? DEPARTMENT_POSITIONS[department] || [] : [];
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999,
+      backdropFilter: 'blur(4px)',
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '16px', padding: '32px', width: '90%', maxWidth: '440px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }} onClick={e => e.stopPropagation()}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 700, color: '#0d47a1' }}>
+          Complete Your Profile
+        </h2>
+        <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#6b7280' }}>
+          Welcome, <strong>{userName}</strong>! Please select your department and position to continue.
+        </p>
+
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Department</label>
+        <select
+          value={department}
+          onChange={e => { setDepartment(e.target.value); setPosition(''); }}
+          style={{
+            width: '100%', padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '10px',
+            fontSize: '14px', backgroundColor: '#f9fafb', marginBottom: '16px', outline: 'none',
+            color: department ? '#1f2937' : '#9ca3af',
+          }}
+        >
+          <option value="">Select Department</option>
+          {Object.keys(DEPARTMENT_POSITIONS).map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Position</label>
+        <select
+          value={position}
+          onChange={e => setPosition(e.target.value)}
+          disabled={!department}
+          style={{
+            width: '100%', padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '10px',
+            fontSize: '14px', backgroundColor: department ? '#f9fafb' : '#f3f4f6', marginBottom: '24px', outline: 'none',
+            color: position ? '#1f2937' : '#9ca3af',
+            cursor: department ? 'pointer' : 'not-allowed',
+          }}
+        >
+          <option value="">{department ? 'Select Position' : 'Select Department First'}</option>
+          {positions.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '12px', background: '#f3f4f6', color: '#374151',
+              border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600,
+              cursor: 'pointer', textTransform: 'uppercase',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!department || !position}
+            onClick={() => onComplete(department, position)}
+            style={{
+              flex: 1, padding: '12px',
+              background: department && position
+                ? 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)'
+                : '#d1d5db',
+              color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600,
+              cursor: department && position ? 'pointer' : 'not-allowed', textTransform: 'uppercase',
+            }}
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );
