@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthContainer from "./components/AuthContainer";
@@ -14,6 +15,8 @@ import { MessagingService } from "./services/messagingService";
 import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
 
 const App: React.FC = () => {
+  const { loginWithPopup, getAccessTokenSilently, isAuthenticated, user: auth0User } = useAuth0();
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -454,6 +457,71 @@ const App: React.FC = () => {
     }
   };
 
+  // ── Auth0 Registration ────────────────────────────────────────────────────
+  const handleAuth0Register = async () => {
+    try {
+      // Open Auth0 Universal Login in signup mode
+      await loginWithPopup({
+        authorizationParams: {
+          screen_hint: 'signup',
+          scope: 'openid profile email',
+        },
+      });
+
+      // Get access token to call our sync function
+      const accessToken = await getAccessTokenSilently({
+        authorizationParams: { scope: 'openid profile email' },
+      });
+
+      const response = await fetch('/.netlify/functions/auth0-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.user) {
+        // Store CRM JWT and log-in the user
+        if (result.token) setAuthToken(result.token);
+
+        const userData = {
+          fullName: result.user.fullName || result.user.username,
+          username: result.user.username,
+          id: result.user.id,
+          email: result.user.email,
+        };
+        setCurrentUser(userData);
+        setIsLoggedIn(true);
+        saveAuthState(true, userData);
+
+        // Sync to localStorage
+        const usersData = localStorage.getItem('crm_users');
+        let users: any[] = [];
+        try { users = usersData ? JSON.parse(usersData) : []; } catch { users = []; }
+        const idx = users.findIndex((u: any) => u.email === result.user.email);
+        if (idx === -1) users.push({ ...result.user, registeredAt: new Date().toISOString() });
+        else users[idx] = { ...users[idx], ...result.user };
+        localStorage.setItem('crm_users', JSON.stringify(users));
+      } else {
+        setModalConfig({
+          isOpen: true,
+          title: 'Auth0 Sync Failed',
+          message: result.error || 'Could not complete registration. Please try again.',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      if (err?.error === 'popup_closed_by_user') return; // user dismissed — no toast
+      setModalConfig({
+        isOpen: true,
+        title: 'Auth0 Error',
+        message: err?.message || 'Authentication failed. Please try again.',
+        type: 'error',
+      });
+    }
+  };
+
   const handleRegister = async (form: { username: string; email: string; password: string; fullName: string; department: string; position: string; profileImage?: string }) => {
     // Validate all required fields
     if (!form.fullName.trim() || !form.username.trim() || !form.email.trim() || !form.password.trim() || !form.department.trim() || !form.position.trim()) {
@@ -836,7 +904,7 @@ const App: React.FC = () => {
             />
           </>
         ) : (
-          <AuthContainer onLogin={handleLogin} onRegister={handleRegister} />
+          <AuthContainer onLogin={handleLogin} onRegister={handleRegister} onAuth0Register={handleAuth0Register} />
         )}
       </div>
       <Footer />

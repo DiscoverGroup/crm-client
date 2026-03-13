@@ -6,9 +6,10 @@ import { useWindowWidth } from '../hooks/useWindowWidth';
 interface AuthContainerProps {
   onLogin: (username: string, password: string) => void;
   onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => Promise<void> | void;
+  onAuth0Register?: () => void;
 }
 
-const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) => {
+const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAuth0Register }) => {
   const windowWidth = useWindowWidth();
   const [showRegister, setShowRegister] = useState(false);
 
@@ -157,7 +158,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister }) =>
               paddingBottom: windowWidth < 768 ? '2rem' : '1.5rem',
               overflowY: windowWidth < 768 ? 'visible' : 'auto'
             }}>
-              <RegisterForm onRegister={handleRegister} />
+              <RegisterForm onRegister={handleRegister} onAuth0Register={onAuth0Register} />
               <button
                 type="button"
                 onClick={() => setShowRegister(false)}

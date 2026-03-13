@@ -22,6 +22,7 @@ interface RegisterFormProps {
     profileImage?: string;
   }) => void;
   onSignIn?: () => void;
+  onAuth0Register?: () => void;
 }
 
 // Department and Position mapping
@@ -78,7 +79,7 @@ const departmentPositions: Record<string, string[]> = {
   ]
 };
 
-const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
+const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register }) => {
   const windowWidth = useWindowWidth();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -639,6 +640,60 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister }) => {
         >
           Sign Up
         </button>
+
+        {/* Auth0 divider + button */}
+        {onAuth0Register && (
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              margin: '12px 0 4px',
+            }}>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+              <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>or register with</span>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+            </div>
+            <button
+              type="button"
+              onClick={onAuth0Register}
+              style={{
+                width: '100%',
+                padding: windowWidth < 640 ? '14px' : '12px',
+                background: 'white',
+                color: '#1f2937',
+                border: '2px solid #e5e7eb',
+                borderRadius: '10px',
+                fontSize: windowWidth < 640 ? '14px' : '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                touchAction: 'manipulation',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#eb5424';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(235,84,36,0.15)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = '#e5e7eb';
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+              }}
+            >
+              {/* Auth0 logo SVG */}
+              <svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 4L8 14v18c0 13.3 10.5 25.7 24 28 13.5-2.3 24-14.7 24-28V14L32 4z" fill="#eb5424"/>
+                <path d="M32 4v42c13.5-2.3 24-14.7 24-28V14L32 4z" fill="#eb5424" opacity="0.7"/>
+                <path d="M32 24l-8 4 3 9 5-2 5 2 3-9-8-4z" fill="white"/>
+              </svg>
+              Continue with Auth0
+            </button>
+          </>
+        )}
       </form>
     </div>
   );
