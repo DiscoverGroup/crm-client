@@ -15,7 +15,7 @@ import { MessagingService } from "./services/messagingService";
 import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
 
 const App: React.FC = () => {
-  const { loginWithPopup, getAccessTokenSilently, isAuthenticated, user: auth0User } = useAuth0();
+  const { loginWithPopup, getAccessTokenSilently } = useAuth0();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string; email: string } | null>(null);
