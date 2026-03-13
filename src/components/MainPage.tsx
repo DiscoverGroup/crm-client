@@ -789,10 +789,13 @@ const ClientRecords: React.FC<{
       }
 
       // Validation: Client number uniqueness (if manually entered)
+      // Use resolvedClientId (set after first save) so edits to an existing client
+      // are not falsely flagged as duplicates when the clientId prop is still undefined.
       if (clientNo && clientNo.trim()) {
         const existingClients = ClientService.getAllClients();
+        const ownId = resolvedClientId || clientId;
         const duplicate = existingClients.find(c => 
-          c.clientNo === clientNo.trim() && c.id !== clientId
+          c.clientNo === clientNo.trim() && c.id !== ownId
         );
         if (duplicate) {
           showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number or leave blank for auto-generation.`);
