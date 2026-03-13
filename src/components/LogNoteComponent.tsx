@@ -582,6 +582,32 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 }}>
                   {log.details}
                 </p>
+                {/* Field-level change diff */}
+                {log.changes && Object.keys(log.changes).length > 0 && (
+                  <div style={{
+                    marginTop: '6px',
+                    padding: '6px 8px',
+                    background: '#f0f9ff',
+                    borderRadius: '6px',
+                    border: '1px solid #bae6fd',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    {Object.entries(log.changes).map(([field, change]) => (
+                      <div key={field} style={{ fontSize: '11px', lineHeight: '1.6' }}>
+                        <span style={{ fontWeight: 600, color: '#0369a1' }}>{field}:</span>{' '}
+                        <span style={{ textDecoration: 'line-through', color: '#ef4444' }}>
+                          &ldquo;{String(change.old) || '(empty)'}&rdquo;
+                        </span>
+                        <span style={{ color: '#64748b', margin: '0 4px' }}>→</span>
+                        <span style={{ color: '#16a34a', fontWeight: 500 }}>
+                          &ldquo;{String(change.new) || '(empty)'}&rdquo;
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{
                   fontSize: '11px',
                   color: '#64748b'

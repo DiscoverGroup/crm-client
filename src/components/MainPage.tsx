@@ -834,9 +834,33 @@ const ClientRecords: React.FC<{
         companions: companions
       };
 
+      // Capture existing client before overwriting (for change diff)
+      const existingClientSnap = clientId ? ClientService.getClientById(clientId) : null;
+
       // Save client and check if it's new or updated
       const { clientId: savedClientId, isNewClient } = await ClientService.saveClient(clientData);
       
+      // Build field-level change record for edits
+      const CLIENT_FIELD_LABELS: Record<string, string> = {
+        clientNo: 'Client Number',
+        status: 'Status',
+        agent: 'Agent',
+        contactNo: 'Contact Number',
+        contactName: 'Contact Name',
+        email: 'Email',
+        dateOfBirth: 'Date of Birth',
+      };
+      const clientChanges: Record<string, { old: any; new: any }> = {};
+      if (!isNewClient && existingClientSnap) {
+        for (const [key, label] of Object.entries(CLIENT_FIELD_LABELS)) {
+          const oldVal = String((existingClientSnap as any)[key] ?? '');
+          const newVal = String((clientData as any)[key] ?? '');
+          if (oldVal !== newVal) {
+            clientChanges[label] = { old: (existingClientSnap as any)[key] ?? '', new: (clientData as any)[key] ?? '' };
+          }
+        }
+      }
+
       // Log activity
       if (isNewClient) {
         ActivityLogService.addLog({
@@ -846,9 +870,10 @@ const ClientRecords: React.FC<{
           performedBy: currentUserName,
           performedByUser: currentUserName,
           profileImageR2Path: getCurrentUserProfileImagePath(),
-          details: `New client created`
+          details: `New client created`,
         });
       } else {
+        const changedFields = Object.keys(clientChanges);
         ActivityLogService.addLog({
           clientId: savedClientId,
           clientName: contactName || 'Unknown',
@@ -856,7 +881,10 @@ const ClientRecords: React.FC<{
           performedBy: currentUserName,
           performedByUser: currentUserName,
           profileImageR2Path: getCurrentUserProfileImagePath(),
-          details: `Client information updated`
+          details: changedFields.length > 0
+            ? `Updated: ${changedFields.join(', ')}`
+            : 'Client information updated',
+          changes: changedFields.length > 0 ? clientChanges : undefined,
         });
       }
       
@@ -945,6 +973,24 @@ const ClientRecords: React.FC<{
       // Save to ClientService
       await ClientService.saveClient(clientData);
 
+      // Build field-level change record for package fields
+      const PKG_FIELD_LABELS: Record<string, string> = {
+        packageName: 'Package Name',
+        travelDate: 'Travel Date',
+        numberOfPax: 'Number of Pax',
+        bookingConfirmation: 'Booking Confirmation',
+        packageLink: 'Package Link',
+      };
+      const pkgChanges: Record<string, { old: any; new: any }> = {};
+      for (const [key, label] of Object.entries(PKG_FIELD_LABELS)) {
+        const oldVal = String((existingClient as any)[key] ?? '');
+        const newVal = String((clientData as any)[key] ?? '');
+        if (oldVal !== newVal) {
+          pkgChanges[label] = { old: (existingClient as any)[key] ?? '', new: (clientData as any)[key] ?? '' };
+        }
+      }
+      const pkgChangedFields = Object.keys(pkgChanges);
+
       // Log activity
       ActivityLogService.addLog({
         clientId: clientId || currentClientId,
@@ -953,7 +999,10 @@ const ClientRecords: React.FC<{
         performedBy: currentUserName,
         performedByUser: currentUserName,
         profileImageR2Path: getCurrentUserProfileImagePath(),
-        details: `Package & travel information updated`
+        details: pkgChangedFields.length > 0
+          ? `Updated: ${pkgChangedFields.join(', ')}`
+          : 'Package & travel information updated',
+        changes: pkgChangedFields.length > 0 ? pkgChanges : undefined,
       });
       setLogRefreshKey(prev => prev + 1);
       
