@@ -552,7 +552,7 @@ const App: React.FC = () => {
     if (!pendingAuth0Profile) return;
     try {
       const response = await fetch('/.netlify/functions/update-profile', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           ...authHeaders(),
           'Content-Type': 'application/json',

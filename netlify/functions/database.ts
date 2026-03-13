@@ -50,7 +50,8 @@ export const handler: Handler = async (event) => {
     const ALLOWED_COLLECTIONS = [
       'clients', 'messages', 'groups', 'conversation_meta',
       'log_notes', 'activity_logs', 'notifications', 'calendar_events',
-      'file_attachments', 'file_recovery_requests', 'client_recovery_requests'
+      'file_attachments', 'file_recovery_requests', 'client_recovery_requests',
+      'users'
     ];
     if (!collection || !ALLOWED_COLLECTIONS.includes(collection)) {
       return {
