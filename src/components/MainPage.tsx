@@ -837,12 +837,32 @@ const ClientRecords: React.FC<{
         companions: companions
       };
 
-      // Capture existing client before overwriting (for change diff)
-      const existingClientSnap = clientId ? ClientService.getClientById(clientId) : null;
+      // Prefer the resolved (post-first-save) ID over the prop so that editing
+      // a just-created client in the same session always goes through updateClient.
+      const ownId = resolvedClientId || clientId;
 
-      // Save client and check if it's new or updated
-      const { clientId: savedClientId, isNewClient } = await ClientService.saveClient(clientData);
-      
+      // Capture existing client before overwriting (for field-level change diff)
+      const existingClientSnap = ownId ? ClientService.getClientById(ownId) : null;
+
+      // ── Save: update if we already have an id, create otherwise ─────────────
+      let savedClientId: string;
+      let isNewClient: boolean;
+
+      if (ownId) {
+        // Existing client — update by id (not by clientNo, which may have changed)
+        await ClientService.updateClient(ownId, {
+          ...clientData,
+          updatedAt: new Date().toISOString(),
+        });
+        savedClientId = ownId;
+        isNewClient = false;
+      } else {
+        // Brand-new client
+        const result = await ClientService.saveClient(clientData);
+        savedClientId = result.clientId;
+        isNewClient = result.isNewClient;
+      }
+
       // Build field-level change record for edits
       const CLIENT_FIELD_LABELS: Record<string, string> = {
         clientNo: 'Client Number',
@@ -898,8 +918,8 @@ const ClientRecords: React.FC<{
       // Save section changes to log
       saveSection('client-information', 'Client Information');
       
-      // If this is a new client (no existing clientId), update file associations
-      if (!clientId && savedClientId && tempClientId !== savedClientId) {
+      // If this is a brand-new client, migrate temp file/payment associations to the real id
+      if (isNewClient && savedClientId && tempClientId !== savedClientId) {
         FileService.updateClientIdForTempFiles(tempClientId, savedClientId);
         // Migrate payment data from temp key to real client ID
         PaymentService.migratePaymentData(tempClientId, savedClientId);
