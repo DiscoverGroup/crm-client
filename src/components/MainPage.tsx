@@ -3073,28 +3073,76 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport1Attachment(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-1-attachment', 'passport-info');
+                        setPassport1Attachment(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport1Attachment && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport1Attachment.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-1-attachment') || passport1Attachment?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-attachment', 'passport-info'); setPassport1Attachment(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={label}>Visa</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport1Visa(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-1-visa', 'passport-info');
+                        setPassport1Visa(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport1Visa && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport1Visa.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-1-visa') || passport1Visa?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-visa', 'passport-info'); setPassport1Visa(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -3120,28 +3168,76 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport2Attachment(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-2-attachment', 'passport-info');
+                        setPassport2Attachment(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport2Attachment && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport2Attachment.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-2-attachment') || passport2Attachment?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-attachment', 'passport-info'); setPassport2Attachment(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={label}>Visa</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport2Visa(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-2-visa', 'passport-info');
+                        setPassport2Visa(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport2Visa && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport2Visa.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-2-visa') || passport2Visa?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-visa', 'passport-info'); setPassport2Visa(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -3167,28 +3263,76 @@ const ClientRecords: React.FC<{
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport3Attachment(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-3-attachment', 'passport-info');
+                        setPassport3Attachment(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport3Attachment && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport3Attachment.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-3-attachment') || passport3Attachment?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-attachment', 'passport-info'); setPassport3Attachment(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={label}>Visa</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
-                    onChange={e => setPassport3Visa(e.target.files?.[0] || null)}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'passport-3-visa', 'passport-info');
+                        setPassport3Visa(file);
+                      }
+                    }}
                     style={{ fontSize: "14px" }}
                   />
-                  {passport3Visa && (
-                    <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                      ✓ {passport3Visa.name}
-                    </div>
-                  )}
+                  {(() => {
+                    const uploadedFile = attachments.find(att =>
+                      att.category === 'other' &&
+                      att.source === 'passport-info' &&
+                      (att.file.name.includes('passport-3-visa') || passport3Visa?.name === att.file.name)
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button
+                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-visa', 'passport-info'); setPassport3Visa(null); }}
+                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                            title="Remove file"
+                          >✕</button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>
