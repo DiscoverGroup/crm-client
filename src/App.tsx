@@ -947,7 +947,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       {showOTPVerification && (
         <OTPVerification
           email={pendingUserEmail}
@@ -977,7 +977,7 @@ const App: React.FC = () => {
         unreadMessageCount={unreadMessageCount}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {isLoggedIn ? (
           <>
             {/* Sidebar Overlay for mobile */}
