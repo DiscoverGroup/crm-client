@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeText, containsAttackPatterns } from '../utils/formSanitizer';
 import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
@@ -152,7 +152,7 @@ const ClientRecords: React.FC<{
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
   const [packageLink, setPackageLink] = useState("");
   
-  // Resolved client ID � updated to the real CLT-xxx after first save of a new client
+  // Resolved client ID — updated to the real CLT-xxx after first save of a new client
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId);
 
   // Log refresh state
@@ -553,7 +553,7 @@ const ClientRecords: React.FC<{
     }
 
     try {
-      // console.log('??? Removing file:', fileId);
+      // console.log('🗑️ Removing file:', fileId);
       
       // Delete file from FileService
       const success = await FileService.deleteFile(fileId, currentUserName);
@@ -593,12 +593,12 @@ const ClientRecords: React.FC<{
         // Trigger file update event
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
         
-        // console.log('? File removed successfully');
+        // console.log('✅ File removed successfully');
       } else {
         showErrorToast('Failed to remove file. Please try again.');
       }
     } catch (error) {
-      // console.error('? Error removing file:', error);
+      // console.error('❌ Error removing file:', error);
       showErrorToast('Failed to remove file. Please try again.');
     }
   };
@@ -652,7 +652,7 @@ const ClientRecords: React.FC<{
     }
 
     try {
-      // console.log('??? Removing file:', fileId);
+      // console.log('🗑️ Removing file:', fileId);
       const success = await FileService.deleteFile(fileId, currentUserName);
       
       if (success) {
@@ -663,12 +663,12 @@ const ClientRecords: React.FC<{
         logAttachment(section, 'deleted', 'File removed', fileType);
         window.dispatchEvent(new Event('fileAttachmentUpdated'));
         
-        // console.log('? File removed successfully');
+        // console.log('✅ File removed successfully');
       } else {
         showErrorToast('Failed to remove file. Please try again.');
       }
     } catch (error) {
-      // console.error('? Error removing file:', error);
+      // console.error('❌ Error removing file:', error);
       showErrorToast('Failed to remove file. Please try again.');
     }
   };
@@ -849,12 +849,12 @@ const ClientRecords: React.FC<{
       // Capture existing client before overwriting (for field-level change diff)
       const existingClientSnap = ownId ? ClientService.getClientById(ownId) : null;
 
-      // -- Save: update if we already have an id, create otherwise -------------
+      // ── Save: update if we already have an id, create otherwise ─────────────
       let savedClientId: string;
       let isNewClient: boolean;
 
       if (ownId) {
-        // Existing client � update by id (not by clientNo, which may have changed)
+        // Existing client — update by id (not by clientNo, which may have changed)
         await ClientService.updateClient(ownId, {
           ...clientData,
           updatedAt: new Date().toISOString(),
@@ -1489,7 +1489,7 @@ const ClientRecords: React.FC<{
             }}></div>
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: windowWidth < 640 ? '8px' : '12px' }}>
-                <span style={{ fontSize: windowWidth < 640 ? '24px' : '28px' }}>??</span>
+                <span style={{ fontSize: windowWidth < 640 ? '24px' : '28px' }}>👤</span>
                 <h1 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
@@ -1524,7 +1524,7 @@ const ClientRecords: React.FC<{
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
             >
-              ? Back to Dashboard
+              ← Back to Dashboard
             </button>
           </div>
           
@@ -1532,7 +1532,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+              <span style={{ fontSize: '24px', marginRight: '12px' }}>📋</span>
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -1628,7 +1628,7 @@ const ClientRecords: React.FC<{
             {/* Save Button */}
             <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
               <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
-                ?? Remember to save changes before leaving!
+                ⚠️ Remember to save changes before leaving!
               </span>
               <button
                 type="button"
@@ -1636,7 +1636,7 @@ const ClientRecords: React.FC<{
                 disabled={isSavingClient}
                 style={{ ...saveButtonStyle(isSavingClient), width: windowWidth < 640 ? '100%' : 'auto' }}
               >
-                {isSavingClient ? "Saving..." : "?? Save Client Info"}
+                {isSavingClient ? "Saving..." : "💾 Save Client Info"}
               </button>
             </div>
           </div>
@@ -1645,7 +1645,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+              <span style={{ fontSize: '24px', marginRight: '12px' }}>🎒</span>
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -1740,7 +1740,7 @@ const ClientRecords: React.FC<{
                         cursor: "pointer",
                         fontWeight: "bold",
                         fontSize: 17,
-                      }}>�</button>
+                      }}>×</button>
                     <div>
                       <label style={label}>Name</label>
                       <input
@@ -1866,7 +1866,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+              <span style={{ fontSize: '24px', marginRight: '12px' }}>💳</span>
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -1978,7 +1978,7 @@ const ClientRecords: React.FC<{
                               return (
                                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: "12px", color: "#059669" }}>
-                                    ? {uploadedFile.file.name}
+                                    ✓ {uploadedFile.file.name}
                                   </span>
                                   <R2DownloadButton
                                     url={uploadedFile.file.data}
@@ -2002,7 +2002,7 @@ const ClientRecords: React.FC<{
                                     }}
                                     title="Remove file"
                                   >
-                                    ?
+                                    ✕
                                   </button>
                                 </div>
                               );
@@ -2027,7 +2027,7 @@ const ClientRecords: React.FC<{
                               return (
                                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: "12px", color: "#059669" }}>
-                                    ? {uploadedFile.file.name}
+                                    ✓ {uploadedFile.file.name}
                                   </span>
                                   <R2DownloadButton
                                     url={uploadedFile.file.data}
@@ -2051,7 +2051,7 @@ const ClientRecords: React.FC<{
                                     }}
                                     title="Remove file"
                                   >
-                                    ?
+                                    ✕
                                   </button>
                                 </div>
                               );
@@ -2110,14 +2110,14 @@ const ClientRecords: React.FC<{
                         if (uploadedFile) {
                           return (
                             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                               <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               <button
                                 type="button"
                                 onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'first-payment-deposit', 'first-payment'); setFirstPaymentDepositSlip(null); }}
                                 style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                                 title="Remove file"
-                              >?</button>
+                              >✕</button>
                             </div>
                           );
                         }
@@ -2147,14 +2147,14 @@ const ClientRecords: React.FC<{
                         if (uploadedFile) {
                           return (
                             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                               <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               <button
                                 type="button"
                                 onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'first-payment-receipt', 'first-payment'); setFirstPaymentReceipt(null); }}
                                 style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                                 title="Remove file"
-                              >?</button>
+                              >✕</button>
                             </div>
                           );
                         }
@@ -2207,14 +2207,14 @@ const ClientRecords: React.FC<{
                         if (uploadedFile) {
                           return (
                             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                               <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               <button
                                 type="button"
                                 onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'other-payment-attachment', 'other-payment'); setOtherPaymentsAttachment(null); }}
                                 style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                                 title="Remove file"
-                              >?</button>
+                              >✕</button>
                             </div>
                           );
                         }
@@ -2236,14 +2236,14 @@ const ClientRecords: React.FC<{
               return (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(16, 185, 129, 0.06)', borderRadius: '8px', border: '1px dashed rgba(16, 185, 129, 0.3)' }}>
                   <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#065f46' }}>
-                    ?? Previously Uploaded Payment Files ({allLegacy.length})
+                    📁 Previously Uploaded Payment Files ({allLegacy.length})
                   </p>
                   <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#059669' }}>
                     Re-upload to the correct field above, then remove these.
                   </p>
                   {allLegacy.map(att => (
                     <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '12px', color: '#059669' }}>? {att.file.name}</span>
+                      <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
                       <span style={{ fontSize: '11px', color: '#6b7280' }}>({att.source})</span>
                       <R2DownloadButton r2Path={att.file.r2Path} className="" />
                       <button
@@ -2251,7 +2251,7 @@ const ClientRecords: React.FC<{
                         onClick={() => handleGenericFileRemove(att.file.id, 'legacy', att.source || 'first-payment')}
                         style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
                         title="Remove file"
-                      >?</button>
+                      >✕</button>
                     </div>
                   ))}
                 </div>
@@ -2275,7 +2275,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+              <span style={{ fontSize: '24px', marginRight: '12px' }}>🛂</span>
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -2296,7 +2296,7 @@ const ClientRecords: React.FC<{
                   checked={visaService}
                   onChange={e => setVisaService(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>?? Visa Service</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>🛂 Visa Service</span>
               </label>
               <label style={checkboxLabel}>
                 <input
@@ -2305,7 +2305,7 @@ const ClientRecords: React.FC<{
                   checked={insuranceService}
                   onChange={e => setInsuranceService(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>??? Insurance Service</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>🛡️ Insurance Service</span>
               </label>
               <label style={checkboxLabel}>
                 <input
@@ -2314,7 +2314,7 @@ const ClientRecords: React.FC<{
                   checked={eta}
                   onChange={e => setEta(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>?? ETA</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>✈️ ETA</span>
               </label>
             </div>
 
@@ -2383,13 +2383,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.depositSlip.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
                           }
                           return null;
                         })()}
@@ -2411,13 +2411,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.receipt.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
                           }
                           return null;
                         })()}
@@ -2460,7 +2460,7 @@ const ClientRecords: React.FC<{
             }}>
               {/* Section Header */}
               <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎫</span>
                 <h2 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
@@ -2475,7 +2475,7 @@ const ClientRecords: React.FC<{
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
                 <div>
-                  <label style={label}>?? International Flight</label>
+                  <label style={label}>✈️ International Flight</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2498,7 +2498,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2521,7 +2521,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2532,7 +2532,7 @@ const ClientRecords: React.FC<{
 
                 {/* Local Flight 1 */}
                 <div>
-                  <label style={label}>??? Local Flight 1</label>
+                  <label style={label}>🛩️ Local Flight 1</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2555,7 +2555,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2578,7 +2578,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2589,7 +2589,7 @@ const ClientRecords: React.FC<{
 
                 {/* Local Flight 2 */}
                 <div>
-                  <label style={label}>??? Local Flight 2</label>
+                  <label style={label}>🛩️ Local Flight 2</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2612,7 +2612,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2635,7 +2635,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2646,7 +2646,7 @@ const ClientRecords: React.FC<{
 
                 {/* Local Flight 3 */}
                 <div>
-                  <label style={label}>??? Local Flight 3</label>
+                  <label style={label}>🛩️ Local Flight 3</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2669,7 +2669,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2692,7 +2692,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2703,7 +2703,7 @@ const ClientRecords: React.FC<{
 
                 {/* Local Flight 4 */}
                 <div>
-                  <label style={label}>??? Local Flight 4</label>
+                  <label style={label}>🛩️ Local Flight 4</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2726,7 +2726,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2749,7 +2749,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2760,7 +2760,7 @@ const ClientRecords: React.FC<{
 
                 {/* Hotel Voucher */}
                 <div>
-                  <label style={label}>?? Hotel Voucher</label>
+                  <label style={label}>🏨 Hotel Voucher</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2783,7 +2783,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2806,7 +2806,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2817,7 +2817,7 @@ const ClientRecords: React.FC<{
 
                 {/* Other Files */}
                 <div>
-                  <label style={label}>?? Other Files</label>
+                  <label style={label}>📄 Other Files</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -2840,7 +2840,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton
                             r2Path={uploadedFile.file.r2Path}
@@ -2863,7 +2863,7 @@ const ClientRecords: React.FC<{
                             }}
                             title="Remove file"
                           >
-                            ?
+                            ✕
                           </button>
                         </div>
                       );
@@ -2881,21 +2881,21 @@ const ClientRecords: React.FC<{
                 return (
                   <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
                     <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
-                      ?? Previously Uploaded Files ({legacyFiles.length})
+                      📁 Previously Uploaded Files ({legacyFiles.length})
                     </p>
                     <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
                       These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
                     </p>
                     {legacyFiles.map(att => (
                       <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '12px', color: '#059669' }}>? {att.file.name}</span>
+                        <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
                         <R2DownloadButton r2Path={att.file.r2Path} className="" />
                         <button
                           type="button"
                           onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
                           style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
                           title="Remove file"
-                        >?</button>
+                        >✕</button>
                       </div>
                     ))}
                   </div>
@@ -2915,7 +2915,7 @@ const ClientRecords: React.FC<{
             }}>
               {/* Section Header */}
               <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>📝</span>
                 <h2 style={{ 
                   margin: 0, 
                   color: "#92400e", 
@@ -3022,7 +3022,7 @@ const ClientRecords: React.FC<{
                   onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
                   onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                 >
-                  ? Add a Line!
+                  ➕ Add a Line!
                 </button>
                 <button
                   type="button"
@@ -3043,7 +3043,7 @@ const ClientRecords: React.FC<{
                   onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
                   onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                 >
-                  ?? Save Notes
+                  💾 Save Notes
                 </button>
               </div>
             </div>
@@ -3113,13 +3113,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.depositSlip.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
                           }
                           return null;
                         })()}
@@ -3141,13 +3141,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.receipt.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
                           }
                           return null;
                         })()}
@@ -3243,13 +3243,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.depositSlip.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
                           }
                           return null;
                         })()}
@@ -3271,13 +3271,13 @@ const ClientRecords: React.FC<{
                           if (uploadedFile) {
                             return (
                               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>? {uploadedFile.file.name}</span>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                                 <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                               </div>
                             );
                           }
                           if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>? {payment.receipt.name}</div>;
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
                           }
                           return null;
                         })()}
@@ -3353,7 +3353,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3361,7 +3361,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-attachment', 'passport-info'); setPassport1Attachment(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3392,7 +3392,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3400,7 +3400,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-visa', 'passport-info'); setPassport1Visa(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3450,7 +3450,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3458,7 +3458,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-attachment', 'passport-info'); setPassport2Attachment(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3489,7 +3489,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3497,7 +3497,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-visa', 'passport-info'); setPassport2Visa(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3547,7 +3547,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3555,7 +3555,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-attachment', 'passport-info'); setPassport3Attachment(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3586,7 +3586,7 @@ const ClientRecords: React.FC<{
                       return (
                         <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ? {uploadedFile.file.name}
+                            ✓ {uploadedFile.file.name}
                           </span>
                           <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
                           <button
@@ -3594,7 +3594,7 @@ const ClientRecords: React.FC<{
                             onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-visa', 'passport-info'); setPassport3Visa(null); }}
                             style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
                             title="Remove file"
-                          >?</button>
+                          >✕</button>
                         </div>
                       );
                     }
@@ -3612,21 +3612,21 @@ const ClientRecords: React.FC<{
               return (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(99, 102, 241, 0.06)', borderRadius: '8px', border: '1px dashed rgba(99, 102, 241, 0.3)' }}>
                   <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#4338ca' }}>
-                    ?? Previously Uploaded Passport Files ({legacyPassportFiles.length})
+                    📁 Previously Uploaded Passport Files ({legacyPassportFiles.length})
                   </p>
                   <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#6366f1' }}>
                     Re-upload to the correct field above, then remove these.
                   </p>
                   {legacyPassportFiles.map(att => (
                     <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '12px', color: '#059669' }}>? {att.file.name}</span>
+                      <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
                       <R2DownloadButton r2Path={att.file.r2Path} className="" />
                       <button
                         type="button"
                         onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'passport-info')}
                         style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
                         title="Remove file"
-                      >?</button>
+                      >✕</button>
                     </div>
                   ))}
                 </div>
@@ -3722,7 +3722,7 @@ const ClientRecords: React.FC<{
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>??</span>
+              <span style={{ fontSize: '24px', marginRight: '12px' }}>📎</span>
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -3838,7 +3838,7 @@ const ClientRecords: React.FC<{
             }}
             title="Toggle Activity Log"
           >
-            ??
+            📋
           </button>
 
           {/* Mobile Activity Log Modal */}
@@ -3894,7 +3894,7 @@ const ClientRecords: React.FC<{
                       color: '#6b7280'
                     }}
                   >
-                    ?
+                    ✕
                   </button>
                 </div>
 
@@ -4575,7 +4575,7 @@ const MainPage: React.FC<MainPageProps> = ({
             borderRadius: '10px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ fontSize: '24px', marginBottom: '16px' }}>?</div>
+            <div style={{ fontSize: '24px', marginBottom: '16px' }}>⏳</div>
             <p>Loading clients...</p>
           </div>
         ) : clients.length === 0 ? (
@@ -4587,7 +4587,7 @@ const MainPage: React.FC<MainPageProps> = ({
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
             <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>
-              ??
+              👥
             </div>
             <h3 style={{ color: '#6c757d', margin: '0 0 8px 0' }}>
               {searchQuery || statusFilter ? 'No Clients Found' : 'No Clients Yet'}
@@ -4768,14 +4768,14 @@ const MainPage: React.FC<MainPageProps> = ({
                         color: '#6c757d',
                         fontSize: '13px'
                       }}>
-                        ?? {client.email || 'No email'}
+                        📧 {client.email || 'No email'}
                       </td>
                       <td style={{
                         padding: '16px 20px',
                         color: '#6c757d',
                         fontSize: '13px'
                       }}>
-                        ?? {client.contactNo || 'No phone'}
+                        📞 {client.contactNo || 'No phone'}
                       </td>
                       <td style={{
                         padding: '16px 20px',
@@ -4815,7 +4815,7 @@ const MainPage: React.FC<MainPageProps> = ({
                             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
                             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
                           >
-                            ?? Edit
+                            ✏️ Edit
                           </button>
                           <button
                             onClick={async (e) => {
@@ -4856,7 +4856,7 @@ const MainPage: React.FC<MainPageProps> = ({
                             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c82333'}
                             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
                           >
-                            ??? Delete
+                            🗑️ Delete
                           </button>
                         </div>
                       </td>
