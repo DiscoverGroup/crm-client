@@ -602,7 +602,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     flexDirection: 'column',
                     gap: '4px'
                   }}>
-                    {Object.entries(log.changes).map(([field, change]) => (
+                    {Object.entries(log.changes).map(([field, change]: [string, any]) => (
                       <div key={field} style={{ fontSize: '11px', lineHeight: '1.6' }}>
                         <span style={{ fontWeight: 600, color: '#0369a1' }}>{field}:</span>{' '}
                         <span style={{ textDecoration: 'line-through', color: '#ef4444' }}>
