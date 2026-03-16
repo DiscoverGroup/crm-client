@@ -4214,9 +4214,9 @@ const MainPage: React.FC<MainPageProps> = ({
   };
 
   return (
-    <>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {viewingForm ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={handleNavigateToClientRecords}
             onNavigateToProfile={() => {
@@ -4245,7 +4245,9 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-              minHeight: '100vh',
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
               backgroundColor: '#f5f5f5'
             }}>
             <ClientRecords
@@ -4257,7 +4259,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : viewProfile ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={() => setViewProfile(false)}
             onNavigateToProfile={() => setViewProfile(true)}
@@ -4283,7 +4285,9 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            minHeight: '100vh',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
             backgroundColor: '#f5f5f5'
           }}>
             <UserProfile
@@ -4303,7 +4307,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : viewDeleted ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={() => {
               setViewDeleted(false);
@@ -4333,7 +4337,9 @@ const MainPage: React.FC<MainPageProps> = ({
             className="main-content"
             style={{
             padding: '20px',
-            minHeight: '100vh',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
             backgroundColor: '#f5f5f5'
           }}>
             <DeletedClients
@@ -4346,7 +4352,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : viewActivityLog ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={() => {
               setViewActivityLog(false);
@@ -4376,7 +4382,9 @@ const MainPage: React.FC<MainPageProps> = ({
             className="main-content"
             style={{
             padding: '20px',
-            minHeight: '100vh',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
             backgroundColor: '#f5f5f5'
           }}>
             <ActivityLogViewer
@@ -4385,7 +4393,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : viewAdminPanel && isAdmin() ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={() => {
               setViewAdminPanel(false);
@@ -4414,7 +4422,9 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            minHeight: '100vh'
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto'
           }}>
             <AdminPanel
               onBack={() => setViewAdminPanel(false)}
@@ -4422,7 +4432,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : viewCalendar ? (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={() => {
               setViewCalendar(false);
@@ -4451,7 +4461,9 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content"
             style={{
-            minHeight: '100vh',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
             backgroundColor: '#f5f5f5'
           }}>
             <TeamCalendar
@@ -4461,7 +4473,7 @@ const MainPage: React.FC<MainPageProps> = ({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
             onNavigateToClientRecords={handleNavigateToClientRecords}
             onNavigateToProfile={() => setViewProfile(true)}
@@ -4482,7 +4494,9 @@ const MainPage: React.FC<MainPageProps> = ({
             className="main-content"
             style={{
             padding: '20px',
-            minHeight: '100vh',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
             backgroundColor: '#f5f5f5',
             display: 'flex',
             flexDirection: 'column'
@@ -4909,7 +4923,7 @@ const MainPage: React.FC<MainPageProps> = ({
       </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

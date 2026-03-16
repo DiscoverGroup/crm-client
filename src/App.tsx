@@ -977,7 +977,7 @@ const App: React.FC = () => {
         unreadMessageCount={unreadMessageCount}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {isLoggedIn ? (
           <>
             {/* Sidebar Overlay for mobile */}
