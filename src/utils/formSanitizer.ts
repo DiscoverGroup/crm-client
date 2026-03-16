@@ -441,7 +441,7 @@ export function validateVisaInfoForm(data: Record<string, string>): ValidationRe
 
 // Admin panel – role change
 export function validateRoleChange(data: { email: string; newRole: string }): ValidationResult {
-  const ALLOWED_ROLES = ['admin', 'user', 'manager', 'viewer'];
+  const ALLOWED_ROLES = ['admin', 'user', 'manager', 'viewer', 'intern'];
   return makeResult(collect([
     ['email',   validateRequired(sanitizeEmail(data.email), 'Email') ?? validateEmail(sanitizeEmail(data.email))],
     ['newRole', ALLOWED_ROLES.includes(data.newRole) ? null : 'Invalid role selected'],

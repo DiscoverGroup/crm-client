@@ -149,7 +149,7 @@ export const handler: Handler = async (event) => {
     const token = generateAuthToken(
       String(user._id),
       user.email,
-      (user.role as 'admin' | 'user') ?? 'user',
+      (user.role as 'admin' | 'user' | 'intern') ?? 'user',
       user.fullName
     );
 

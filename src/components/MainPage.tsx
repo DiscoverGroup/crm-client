@@ -2071,18 +2071,78 @@ const ClientRecords: React.FC<{
                       style={modernInput}
                       placeholder="Date"
                     />
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={e => setFirstPaymentDepositSlip(e.target.files?.[0] || null)}
-                      style={{ fontSize: "14px" }}
-                    />
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={e => setFirstPaymentReceipt(e.target.files?.[0] || null)}
-                      style={{ fontSize: "14px" }}
-                    />
+                    <div style={{ flex: 1 }}>
+                      <label style={label}>Deposit Slip</label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleGenericFileUpload(file, 'other', 'first-payment-deposit', 'first-payment');
+                            setFirstPaymentDepositSlip(file);
+                          }
+                        }}
+                        style={{ fontSize: "14px" }}
+                      />
+                      {(() => {
+                        const uploadedFile = attachments.find(att =>
+                          att.category === 'other' &&
+                          att.source === 'first-payment' &&
+                          (att.file.name.includes('first-payment-deposit') || firstPaymentDepositSlip?.name === att.file.name)
+                        );
+                        if (uploadedFile) {
+                          return (
+                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                              <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              <button
+                                onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'first-payment-deposit', 'first-payment'); setFirstPaymentDepositSlip(null); }}
+                                style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                                title="Remove file"
+                              >✕</button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={label}>Receipt</label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleGenericFileUpload(file, 'other', 'first-payment-receipt', 'first-payment');
+                            setFirstPaymentReceipt(file);
+                          }
+                        }}
+                        style={{ fontSize: "14px" }}
+                      />
+                      {(() => {
+                        const uploadedFile = attachments.find(att =>
+                          att.category === 'other' &&
+                          att.source === 'first-payment' &&
+                          (att.file.name.includes('first-payment-receipt') || firstPaymentReceipt?.name === att.file.name)
+                        );
+                        if (uploadedFile) {
+                          return (
+                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                              <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              <button
+                                onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'first-payment-receipt', 'first-payment'); setFirstPaymentReceipt(null); }}
+                                style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                                title="Remove file"
+                              >✕</button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2106,12 +2166,42 @@ const ClientRecords: React.FC<{
                       style={modernInput}
                       placeholder="Description"
                     />
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={e => setOtherPaymentsAttachment(e.target.files?.[0] || null)}
-                      style={{ fontSize: "14px" }}
-                    />
+                    <div style={{ flex: 1 }}>
+                      <label style={label}>Attachment</label>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleGenericFileUpload(file, 'other', 'other-payment-attachment', 'other-payment');
+                            setOtherPaymentsAttachment(file);
+                          }
+                        }}
+                        style={{ fontSize: "14px" }}
+                      />
+                      {(() => {
+                        const uploadedFile = attachments.find(att =>
+                          att.category === 'other' &&
+                          att.source === 'other-payment' &&
+                          (att.file.name.includes('other-payment-attachment') || otherPaymentsAttachment?.name === att.file.name)
+                        );
+                        if (uploadedFile) {
+                          return (
+                            <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                              <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              <button
+                                onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'other-payment-attachment', 'other-payment'); setOtherPaymentsAttachment(null); }}
+                                style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                                title="Remove file"
+                              >✕</button>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>
@@ -2233,11 +2323,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleVisaPaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.depositSlip && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.depositSlip.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'deposit-slip' &&
+                            att.source === 'visa-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.depositSlip) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={label}>Receipt</label>
@@ -2247,11 +2351,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleVisaPaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.receipt && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.receipt.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'receipt' &&
+                            att.source === 'visa-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.receipt) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -2899,11 +3017,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleInsurancePaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.depositSlip && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.depositSlip.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'deposit-slip' &&
+                            att.source === 'insurance-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.depositSlip) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={label}>Receipt</label>
@@ -2913,11 +3045,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleInsurancePaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.receipt && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.receipt.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'receipt' &&
+                            att.source === 'insurance-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.receipt) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -3001,11 +3147,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleEtaPaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.depositSlip && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.depositSlip.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'deposit-slip' &&
+                            att.source === 'eta-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.depositSlip) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={label}>Receipt</label>
@@ -3015,11 +3175,25 @@ const ClientRecords: React.FC<{
                           onChange={e => handleEtaPaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
-                        {payment.receipt && (
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>
-                            ✓ {payment.receipt.name}
-                          </div>
-                        )}
+                        {(() => {
+                          const uploadedFile = attachments.find(att =>
+                            att.category === 'receipt' &&
+                            att.source === 'eta-service' &&
+                            att.paymentIndex === idx
+                          );
+                          if (uploadedFile) {
+                            return (
+                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                              </div>
+                            );
+                          }
+                          if (payment.receipt) {
+                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -3869,18 +4043,58 @@ const MainPage: React.FC<MainPageProps> = ({
   };
 
   const handleNavigateToClientRecords = () => {
-    // This function is no longer needed since we're on the records page by default
+    setViewingForm(null);
+    setViewProfile(false);
+    setViewDeleted(false);
+    setViewActivityLog(false);
+    setViewAdminPanel(false);
+    setViewCalendar(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <>
       {viewingForm ? (
-        <ClientRecords
-          onClientSelect={() => {}}
-          onNavigateBack={() => setViewingForm(null)}
-          clientId={viewingForm.clientId}
-          currentUser={currentUser}
-        />
+        <div style={{ display: 'flex' }}>
+          <Sidebar 
+            onNavigateToClientRecords={handleNavigateToClientRecords}
+            onNavigateToProfile={() => {
+              setViewingForm(null);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => {
+              setViewingForm(null);
+              setViewDeleted(true);
+            }}
+            onNavigateToActivityLog={() => {
+              setViewingForm(null);
+              setViewActivityLog(true);
+            }}
+            onNavigateToCalendar={() => {
+              setViewingForm(null);
+              setViewCalendar(true);
+            }}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewingForm(null);
+              setViewAdminPanel(true);
+            } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
+          />
+          <div
+            className="main-content"
+            style={{
+              minHeight: '100vh',
+              backgroundColor: '#f5f5f5'
+            }}>
+            <ClientRecords
+              onClientSelect={() => {}}
+              onNavigateBack={() => setViewingForm(null)}
+              clientId={viewingForm.clientId}
+              currentUser={currentUser}
+            />
+          </div>
+        </div>
       ) : viewProfile ? (
         <div style={{ display: 'flex' }}>
           <Sidebar 

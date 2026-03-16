@@ -659,6 +659,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             {users.filter(u => u.role === 'admin').length}
           </p>
         </div>
+        <div style={{
+          background: 'white',
+          padding: '20px',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Interns</p>
+          <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#f59e0b' }}>
+            {users.filter(u => u.role === 'intern').length}
+          </p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -701,6 +712,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
             <option value="user">User</option>
+            <option value="intern">Intern</option>
           </select>
           <select
             value={filterVerified}
@@ -781,14 +793,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         border: '1px solid #e2e8f0',
                         borderRadius: '6px',
                         fontSize: '13px',
-                        background: user.role === 'admin' ? '#dbeafe' : '#f1f5f9',
-                        color: user.role === 'admin' ? '#1e40af' : '#475569',
+                        background: user.role === 'admin' ? '#dbeafe' : user.role === 'intern' ? '#fef3c7' : '#f1f5f9',
+                        color: user.role === 'admin' ? '#1e40af' : user.role === 'intern' ? '#92400e' : '#475569',
                         fontWeight: '600',
                         cursor: 'pointer'
                       }}
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
+                      <option value="intern">Intern</option>
                     </select>
                   </td>
                   <td style={{ padding: '16px' }}>

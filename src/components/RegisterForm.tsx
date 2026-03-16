@@ -76,6 +76,17 @@ const departmentPositions: Record<string, string[]> = {
   ],
   "Research and Development Department": [
     "Research Development Officer"
+  ],
+  "Intern": [
+    "Intern — Visa",
+    "Intern — Booking",
+    "Intern — Marketing",
+    "Intern — Sales",
+    "Intern — Customer Service",
+    "Intern — HR",
+    "Intern — IT",
+    "Intern — Finance",
+    "Intern — General"
   ]
 };
 

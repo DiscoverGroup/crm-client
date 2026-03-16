@@ -127,6 +127,7 @@ export const handler: Handler = async (event) => {
       // Create new user
       // Automatically assign admin role to admin@discovergrp.com
       const isAdminEmail = email.trim().toLowerCase() === 'admin@discovergrp.com';
+      const isIntern = department.trim() === 'Intern';
       
       const newUser = {
         username: username.trim(),
@@ -136,7 +137,7 @@ export const handler: Handler = async (event) => {
         department: department.trim(),
         position: position.trim(),
         profileImage: profileImage || '',
-        role: isAdminEmail ? 'admin' : 'user', // Admin role for admin email
+        role: isAdminEmail ? 'admin' : isIntern ? 'intern' : 'user', // Admin / Intern / User
         isVerified: isAdminEmail ? true : false, // Auto-verify admin
         createdAt: new Date(),
         updatedAt: new Date()

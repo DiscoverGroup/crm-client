@@ -1095,6 +1095,7 @@ const DEPARTMENT_POSITIONS: Record<string, string[]> = {
   "Information & Technology Department": ["IT Manager","IT Systems Administrator","IT Support","Web Developer"],
   "Finance Department": ["Finance Officer"],
   "Research and Development Department": ["Research Development Officer"],
+  "Intern": ["Intern — Visa","Intern — Booking","Intern — Marketing","Intern — Sales","Intern — Customer Service","Intern — HR","Intern — IT","Intern — Finance","Intern — General"],
 };
 
 const CompleteProfileModal: React.FC<{
