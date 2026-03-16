@@ -20,6 +20,7 @@ export interface FileAttachment {
   paymentType?: 'regular' | 'first' | 'second' | 'third' | 'other';
   clientId?: string; // Associate files with specific clients
   source?: 'payment-terms' | 'visa-service' | 'insurance-service' | 'eta-service' | 'booking-voucher' | 'passport-info' | 'first-payment' | 'other-payment'; // Track upload source
+  fileType?: string; // Sub-field identifier (e.g., 'international-flight', 'local-flight-1', 'passport-1-attachment')
 }
 
 export class FileService {
@@ -88,7 +89,8 @@ export class FileService {
     paymentIndex?: number, 
     paymentType?: FileAttachment['paymentType'],
     source?: FileAttachment['source'],
-    currentUser?: string
+    currentUser?: string,
+    fileType?: string
   ): Promise<string> {
     try {
       // Determine folder based on category
@@ -101,7 +103,8 @@ export class FileService {
         clientId,
         paymentIndex,
         paymentType,
-        source
+        source,
+        fileType
       };
 
       const existingAttachments = this.getAllFileAttachments();

@@ -357,16 +357,16 @@ const ClientRecords: React.FC<{
   
   // Passport attachments (for up to 3 passports)
   const [passport1Name, setPassport1Name] = useState("");
-  const [passport1Attachment, setPassport1Attachment] = useState<File | null>(null);
-  const [passport1Visa, setPassport1Visa] = useState<File | null>(null);
+  const [_passport1Attachment, setPassport1Attachment] = useState<File | null>(null);
+  const [_passport1Visa, setPassport1Visa] = useState<File | null>(null);
   
   const [passport2Name, setPassport2Name] = useState("");
-  const [passport2Attachment, setPassport2Attachment] = useState<File | null>(null);
-  const [passport2Visa, setPassport2Visa] = useState<File | null>(null);
+  const [_passport2Attachment, setPassport2Attachment] = useState<File | null>(null);
+  const [_passport2Visa, setPassport2Visa] = useState<File | null>(null);
   
   const [passport3Name, setPassport3Name] = useState("");
-  const [passport3Attachment, setPassport3Attachment] = useState<File | null>(null);
-  const [passport3Visa, setPassport3Visa] = useState<File | null>(null);
+  const [_passport3Attachment, setPassport3Attachment] = useState<File | null>(null);
+  const [_passport3Visa, setPassport3Visa] = useState<File | null>(null);
   
   // Embassy information
   const [embassyAppointmentDate, setEmbassyAppointmentDate] = useState("");
@@ -395,13 +395,13 @@ const ClientRecords: React.FC<{
   ]);
 
   // Booking/Voucher section states
-  const [intlFlight, setIntlFlight] = useState<File | null>(null);
-  const [localFlight1, setLocalFlight1] = useState<File | null>(null);
-  const [localFlight2, setLocalFlight2] = useState<File | null>(null);
-  const [localFlight3, setLocalFlight3] = useState<File | null>(null);
-  const [localFlight4, setLocalFlight4] = useState<File | null>(null);
-  const [hotelVoucher, setHotelVoucher] = useState<File | null>(null);
-  const [otherFiles, setOtherFiles] = useState<File | null>(null);
+  const [_intlFlight, setIntlFlight] = useState<File | null>(null);
+  const [_localFlight1, setLocalFlight1] = useState<File | null>(null);
+  const [_localFlight2, setLocalFlight2] = useState<File | null>(null);
+  const [_localFlight3, setLocalFlight3] = useState<File | null>(null);
+  const [_localFlight4, setLocalFlight4] = useState<File | null>(null);
+  const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
+  const [_otherFiles, setOtherFiles] = useState<File | null>(null);
 
   // Important Notes/Requests section states
   type RequestNote = {
@@ -626,7 +626,7 @@ const ClientRecords: React.FC<{
       }
 
       const currentClientId = clientId || tempClientId;
-      await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName);
+      await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName, fileType);
       
       logAttachment(section, 'uploaded', file.name, fileType);
       
@@ -2105,7 +2105,7 @@ const ClientRecords: React.FC<{
                         const uploadedFile = attachments.find(att =>
                           att.category === 'other' &&
                           att.source === 'first-payment' &&
-                          (att.file.name.includes('first-payment-deposit') || firstPaymentDepositSlip?.name === att.file.name)
+                          att.fileType === 'first-payment-deposit'
                         );
                         if (uploadedFile) {
                           return (
@@ -2141,7 +2141,7 @@ const ClientRecords: React.FC<{
                         const uploadedFile = attachments.find(att =>
                           att.category === 'other' &&
                           att.source === 'first-payment' &&
-                          (att.file.name.includes('first-payment-receipt') || firstPaymentReceipt?.name === att.file.name)
+                          att.fileType === 'first-payment-receipt'
                         );
                         if (uploadedFile) {
                           return (
@@ -2200,7 +2200,7 @@ const ClientRecords: React.FC<{
                         const uploadedFile = attachments.find(att =>
                           att.category === 'other' &&
                           att.source === 'other-payment' &&
-                          (att.file.name.includes('other-payment-attachment') || otherPaymentsAttachment?.name === att.file.name)
+                          att.fileType === 'other-payment-attachment'
                         );
                         if (uploadedFile) {
                           return (
@@ -2457,7 +2457,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      att.file.name.includes('international-flight') || intlFlight?.name === att.file.name
+                      att.fileType === 'international-flight'
                     );
                     if (uploadedFile) {
                       return (
@@ -2513,7 +2513,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('local-flight-1') || localFlight1?.name === att.file.name)
+                      att.fileType === 'local-flight-1'
                     );
                     if (uploadedFile) {
                       return (
@@ -2569,7 +2569,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('local-flight-2') || localFlight2?.name === att.file.name)
+                      att.fileType === 'local-flight-2'
                     );
                     if (uploadedFile) {
                       return (
@@ -2625,7 +2625,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('local-flight-3') || localFlight3?.name === att.file.name)
+                      att.fileType === 'local-flight-3'
                     );
                     if (uploadedFile) {
                       return (
@@ -2681,7 +2681,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('local-flight-4') || localFlight4?.name === att.file.name)
+                      att.fileType === 'local-flight-4'
                     );
                     if (uploadedFile) {
                       return (
@@ -2737,7 +2737,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('hotel-voucher') || hotelVoucher?.name === att.file.name)
+                      att.fileType === 'hotel-voucher'
                     );
                     if (uploadedFile) {
                       return (
@@ -2793,7 +2793,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att => 
                       att.category === 'other' && 
                       att.source === 'booking-voucher' &&
-                      (att.file.name.includes('other-files') || otherFiles?.name === att.file.name)
+                      att.fileType === 'other-files'
                     );
                     if (uploadedFile) {
                       return (
@@ -3276,7 +3276,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-1-attachment') || passport1Attachment?.name === att.file.name)
+                      att.fileType === 'passport-1-attachment'
                     );
                     if (uploadedFile) {
                       return (
@@ -3314,7 +3314,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-1-visa') || passport1Visa?.name === att.file.name)
+                      att.fileType === 'passport-1-visa'
                     );
                     if (uploadedFile) {
                       return (
@@ -3371,7 +3371,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-2-attachment') || passport2Attachment?.name === att.file.name)
+                      att.fileType === 'passport-2-attachment'
                     );
                     if (uploadedFile) {
                       return (
@@ -3409,7 +3409,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-2-visa') || passport2Visa?.name === att.file.name)
+                      att.fileType === 'passport-2-visa'
                     );
                     if (uploadedFile) {
                       return (
@@ -3466,7 +3466,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-3-attachment') || passport3Attachment?.name === att.file.name)
+                      att.fileType === 'passport-3-attachment'
                     );
                     if (uploadedFile) {
                       return (
@@ -3504,7 +3504,7 @@ const ClientRecords: React.FC<{
                     const uploadedFile = attachments.find(att =>
                       att.category === 'other' &&
                       att.source === 'passport-info' &&
-                      (att.file.name.includes('passport-3-visa') || passport3Visa?.name === att.file.name)
+                      att.fileType === 'passport-3-visa'
                     );
                     if (uploadedFile) {
                       return (
