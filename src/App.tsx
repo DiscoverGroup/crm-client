@@ -355,6 +355,7 @@ const App: React.FC = () => {
     setIsLoggedIn(false);
     setCurrentUser(null);
     localStorage.removeItem('crm_auth');
+    sessionStorage.removeItem('crm_current_view');
     clearAuthToken(); // Invalidate the JWT on the client side
   };
 
@@ -420,22 +421,21 @@ const App: React.FC = () => {
         localStorage.setItem('crm_users', JSON.stringify(users));
 
         // Show success modal then login
+        const userData = { 
+          fullName: result.user.fullName || result.user.username, 
+          username: result.user.username,
+          id: result.user.id || result.user.email,
+          email: result.user.email
+        };
+        setCurrentUser(userData);
+        setIsLoggedIn(true);
+        saveAuthState(true, userData);
+        
         setModalConfig({
           isOpen: true,
           title: 'Login Successful!',
           message: `Welcome back, ${result.user.fullName || result.user.username}!`,
-          type: 'success',
-          onConfirm: () => {
-            const userData = { 
-              fullName: result.user.fullName || result.user.username, 
-              username: result.user.username,
-              id: result.user.id || result.user.email,
-              email: result.user.email
-            };
-            setCurrentUser(userData);
-            setIsLoggedIn(true);
-            saveAuthState(true, userData);
-          }
+          type: 'success'
         });
       } else if (result.needsVerification) {
         setModalConfig({

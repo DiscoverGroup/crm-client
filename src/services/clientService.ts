@@ -430,14 +430,7 @@ export class ClientService {
       // Permanently delete from MongoDB
       try {
         const result = await MongoDBService.permanentlyDeleteClient(clientId);
-        if (result.success) {
-          window.dispatchEvent(new CustomEvent('showToast', {
-            detail: {
-              type: 'success',
-              message: 'Client permanently deleted successfully.'
-            }
-          }));
-        } else {
+        if (!result.success) {
           throw new Error(result.message || 'MongoDB deletion failed');
         }
       } catch (error) {
@@ -477,10 +470,9 @@ export class ClientService {
         // Non-critical: file cleanup failure doesn't affect client deletion
       }
       
-      // Trigger sync to refresh data
-      this.syncFromMongoDB().catch(() => {
-        // Sync failed, but deletion already completed
-      });
+      // Do NOT call syncFromMongoDB here — it would re-fetch from MongoDB
+      // before the deletion propagates, restoring the deleted record in localStorage.
+      // The next scheduled sync will pick up the correct state.
       
       return true;
     } catch (error) {

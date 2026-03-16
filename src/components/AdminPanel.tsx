@@ -9,6 +9,7 @@ import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
+import StressTest from './StressTest';
 
 interface User {
   fullName: string;
@@ -36,7 +37,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
@@ -495,7 +496,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         >
           🗺️ Territory Management
         </button>
+        <button
+          onClick={() => setActiveTab('stress-test')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'stress-test' ? 'white' : 'transparent',
+            color: activeTab === 'stress-test' ? '#3b82f6' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'stress-test' ? '3px solid #3b82f6' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px'
+          }}
+        >
+          🧪 Stress Test
+        </button>
       </div>
+
+      {/* Stress Test Tab */}
+      {activeTab === 'stress-test' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <StressTest onClose={() => setActiveTab('users')} />
+        </div>
+      )}
 
       {/* Version Info Tab */}
       {activeTab === 'version' && (
