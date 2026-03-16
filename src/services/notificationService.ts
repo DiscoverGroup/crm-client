@@ -1,5 +1,6 @@
 import type { Notification } from '../types/notification';
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from './realtimeSyncService';
 
 const DB_API = '/.netlify/functions/database';
 
@@ -30,7 +31,9 @@ export class NotificationService {
     }
 
     // Fire-and-forget sync to MongoDB
-    this.saveNotificationToMongoDB(newNotification).catch(() => {});
+    this.saveNotificationToMongoDB(newNotification).then(() => {
+      realtimeSync.signalChange('notifications');
+    }).catch(() => {});
   }
 
   static getAllNotifications(): Notification[] {

@@ -45,6 +45,15 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
     calendarService.syncFromMongoDB().then(() => {
       setEvents(calendarService.getAllEvents());
     }).catch(() => {});
+
+    // Listen for real-time sync events
+    const onSync = () => {
+      calendarService.syncFromMongoDB().then(() => {
+        setEvents(calendarService.getAllEvents());
+      }).catch(() => {});
+    };
+    window.addEventListener('sync:calendar_events', onSync);
+
     const storedUsers = localStorage.getItem('crm_users');
     if (storedUsers) {
       try {
@@ -58,6 +67,8 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
         setUsers([]);
       }
     }
+
+    return () => window.removeEventListener('sync:calendar_events', onSync);
   }, []);
 
   useEffect(() => {

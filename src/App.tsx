@@ -16,6 +16,7 @@ import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
 import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
+import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
   const { loginWithPopup, getAccessTokenSilently } = useAuth0();
@@ -325,14 +326,18 @@ const App: React.FC = () => {
       syncAllFromMongoDB();
     }, 1500);
 
-    // Periodic sync every 60 seconds for cross-device/cross-account updates
+    // Start real-time sync polling (5-second lightweight check)
+    realtimeSync.start();
+
+    // Periodic full sync every 120 seconds as fallback
     const interval = setInterval(() => {
       syncAllFromMongoDB();
-    }, 60000);
+    }, 120000);
 
     return () => {
       clearTimeout(timer);
       clearInterval(interval);
+      realtimeSync.stop();
     };
   }, [isLoggedIn]);
 

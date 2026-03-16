@@ -29,6 +29,15 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
     ActivityLogService.syncFromMongoDB().then(() => {
       loadLogs();
     }).catch(() => {});
+
+    // Listen for real-time sync events
+    const onSync = () => {
+      ActivityLogService.syncFromMongoDB().then(() => {
+        loadLogs();
+      }).catch(() => {});
+    };
+    window.addEventListener('sync:activity_logs', onSync);
+    return () => window.removeEventListener('sync:activity_logs', onSync);
   }, [clientId]);
 
   const loadLogs = () => {

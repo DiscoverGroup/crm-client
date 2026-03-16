@@ -2,6 +2,7 @@ import { uploadFileToR2, deleteFileFromR2 } from './r2UploadService';
 import { ActivityLogService } from './activityLogService';
 import { ClientService } from './clientService';
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from './realtimeSyncService';
 
 const DB_API = '/.netlify/functions/database';
 
@@ -118,7 +119,9 @@ export class FileService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
       
       // Fire-and-forget sync to MongoDB
-      this.saveAttachmentToMongoDB(attachment).catch(() => {});
+      this.saveAttachmentToMongoDB(attachment).then(() => {
+        realtimeSync.signalChange('file_attachments');
+      }).catch(() => {});
       
       // Helper function to get current user's profile image R2 path
       const getUserProfileImagePath = (userName: string): string | undefined => {
@@ -224,7 +227,9 @@ export class FileService {
       // console.log('✅ localStorage updated');
       
       // Delete from MongoDB
-      this.deleteAttachmentFromMongoDB(fileId).catch(() => {});
+      this.deleteAttachmentFromMongoDB(fileId).then(() => {
+        realtimeSync.signalChange('file_attachments');
+      }).catch(() => {});
       
       // Verify the save
       const verification = localStorage.getItem(this.STORAGE_KEY);

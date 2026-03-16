@@ -44,9 +44,20 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       loadNotifications();
     });
     
-    // Refresh notifications every 10 seconds
-    const interval = setInterval(loadNotifications, 10000);
-    return () => clearInterval(interval);
+    // Refresh notifications every 30 seconds
+    const interval = setInterval(loadNotifications, 30000);
+
+    // Listen for real-time sync events
+    const onSync = () => {
+      NotificationService.syncFromMongoDB().then(() => {
+        loadNotifications();
+      }).catch(() => {});
+    };
+    window.addEventListener('sync:notifications', onSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('sync:notifications', onSync);
+    };
   }, [currentUser.fullName]);
 
   // Close dropdown when clicking outside

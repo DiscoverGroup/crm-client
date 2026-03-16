@@ -1,5 +1,6 @@
 import type { CalendarEvent } from '../types/calendar';
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from './realtimeSyncService';
 
 const CALENDAR_STORAGE_KEY = 'crm_calendar_events';
 const CALENDAR_SYNC_KEY = 'crm_calendar_events_last_sync';
@@ -48,7 +49,9 @@ class CalendarService {
     localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(events.map(serializeEvent)));
 
     // Fire-and-forget sync to MongoDB
-    this.saveEventToMongoDB(serializeEvent(newEvent)).catch(() => {});
+    this.saveEventToMongoDB(serializeEvent(newEvent)).then(() => {
+      realtimeSync.signalChange('calendar_events');
+    }).catch(() => {});
 
     return newEvent;
   }
@@ -70,7 +73,9 @@ class CalendarService {
     localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(events.map(serializeEvent)));
 
     // Fire-and-forget sync to MongoDB
-    this.saveEventToMongoDB(serializeEvent(updated)).catch(() => {});
+    this.saveEventToMongoDB(serializeEvent(updated)).then(() => {
+      realtimeSync.signalChange('calendar_events');
+    }).catch(() => {});
 
     return updated;
   }
@@ -83,7 +88,9 @@ class CalendarService {
     localStorage.setItem(CALENDAR_STORAGE_KEY, JSON.stringify(filtered.map(serializeEvent)));
 
     // Fire-and-forget delete from MongoDB
-    this.deleteEventFromMongoDB(id).catch(() => {});
+    this.deleteEventFromMongoDB(id).then(() => {
+      realtimeSync.signalChange('calendar_events');
+    }).catch(() => {});
 
     return true;
   }

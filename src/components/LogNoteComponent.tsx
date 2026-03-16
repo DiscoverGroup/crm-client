@@ -8,6 +8,7 @@ import { NotificationService } from '../services/notificationService';
 import { ClientService } from '../services/clientService';
 import Loader from './Loader';
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from '../services/realtimeSyncService';
 
 interface LogNoteComponentProps {
   clientId: string;
@@ -138,6 +139,37 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     ActivityLogService.syncFromMongoDB().then(() => {
       setActivityLogs(ActivityLogService.getLogsByClient(clientId));
     }).catch(() => {});
+
+    // Listen for real-time sync events
+    const onActivitySync = () => {
+      ActivityLogService.syncFromMongoDB().then(() => {
+        setActivityLogs(ActivityLogService.getLogsByClient(clientId));
+      }).catch(() => {});
+    };
+    const onLogNoteSync = () => {
+      // Reload log notes from MongoDB
+      fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, {
+        headers: authHeaders(),
+      }).then(r => r.json()).then(data => {
+        if (data.success) {
+          const notes = data.logNotes.map((note: any) => ({
+            ...note,
+            timestamp: new Date(note.timestamp),
+            replies: (note.replies || []).map((reply: any) => ({
+              ...reply,
+              timestamp: new Date(reply.timestamp)
+            }))
+          }));
+          setLogNotes(notes);
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('sync:activity_logs', onActivitySync);
+    window.addEventListener('sync:log_notes', onLogNoteSync);
+    return () => {
+      window.removeEventListener('sync:activity_logs', onActivitySync);
+      window.removeEventListener('sync:log_notes', onLogNoteSync);
+    };
   }, [clientId]);
 
   const handleAddComment = async () => {
@@ -172,6 +204,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
       const logNote = data.logNote;
       setLogNotes(prev => [{ ...logNote, timestamp: new Date(logNote.timestamp), replies: [] }, ...prev]);
+      
+      // Signal other devices about the new log note
+      realtimeSync.signalChange('log_notes');
       
       // Check for mentions and create notifications
       const mentionRegex = /@([\w-]+)/g;

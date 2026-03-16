@@ -461,8 +461,15 @@ const ClientRecords: React.FC<{
     }).catch(() => {});
     
     // Listen for file updates
+    const onFileSync = () => {
+      FileService.syncFromMongoDB().then(() => loadAttachments()).catch(() => {});
+    };
     window.addEventListener('fileAttachmentUpdated', loadAttachments);
-    return () => window.removeEventListener('fileAttachmentUpdated', loadAttachments);
+    window.addEventListener('sync:file_attachments', onFileSync);
+    return () => {
+      window.removeEventListener('fileAttachmentUpdated', loadAttachments);
+      window.removeEventListener('sync:file_attachments', onFileSync);
+    };
   }, [clientId, tempClientId]);
 
   const handlePaymentDetailChange = async (
@@ -4136,9 +4143,11 @@ const MainPage: React.FC<MainPageProps> = ({
     };
     
     window.addEventListener('clientDataUpdated', handleClientUpdate);
+    window.addEventListener('sync:clients', handleClientUpdate);
     
     return () => {
       window.removeEventListener('clientDataUpdated', handleClientUpdate);
+      window.removeEventListener('sync:clients', handleClientUpdate);
     };
   }, [loadClients]);
 

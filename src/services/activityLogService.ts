@@ -2,6 +2,7 @@
 // Syncs to MongoDB for cross-device access, with localStorage as cache/fallback
 
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from './realtimeSyncService';
 
 export interface ActivityLog {
   id: string;
@@ -37,7 +38,9 @@ export class ActivityLogService {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(logs));
 
     // Fire-and-forget sync to MongoDB
-    this.saveToMongoDB(newLog).catch(() => {
+    this.saveToMongoDB(newLog).then(() => {
+      realtimeSync.signalChange('activity_logs');
+    }).catch(() => {
       // Silently fail — localStorage has the data
     });
   }

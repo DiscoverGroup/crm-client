@@ -1,6 +1,7 @@
 ﻿import { MongoDBService } from './mongoDBService';
 import { FileService } from './fileService';
 import { authHeaders } from '../utils/authToken';
+import { realtimeSync } from './realtimeSyncService';
 
 export interface ClientData {
   id: string;
@@ -148,6 +149,7 @@ export class ClientService {
             ...clientData,
             updatedAt: new Date().toISOString()
           });
+          realtimeSync.signalChange('clients');
         } catch {
           // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
@@ -177,6 +179,7 @@ export class ClientService {
         // Save to MongoDB
         try {
           await MongoDBService.saveClient(newClient);
+          realtimeSync.signalChange('clients');
         } catch {
           // console.error('MongoDB sync failed:', err);
           window.dispatchEvent(new CustomEvent('showToast', {
@@ -220,6 +223,7 @@ export class ClientService {
           ...clientData,
           updatedAt: new Date().toISOString()
         });
+        realtimeSync.signalChange('clients');
       } catch {
         // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
@@ -357,7 +361,9 @@ export class ClientService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
       
       // Soft delete in MongoDB (async, fire-and-forget)
-      MongoDBService.deleteClient(clientId, deletedByUser).catch(() => {
+      MongoDBService.deleteClient(clientId, deletedByUser).then(() => {
+        realtimeSync.signalChange('clients');
+      }).catch(() => {
         // Sync failure is non-critical; localStorage is already updated
       });
       
@@ -392,6 +398,7 @@ export class ClientService {
           deletedBy: null,
           updatedAt: clients[clientIndex].updatedAt
         });
+        realtimeSync.signalChange('clients');
       } catch {
         // console.error('MongoDB sync failed:', err);
         window.dispatchEvent(new CustomEvent('showToast', {
