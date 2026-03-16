@@ -455,6 +455,11 @@ const ClientRecords: React.FC<{
     
     loadAttachments();
     
+    // Sync from MongoDB and reload
+    FileService.syncFromMongoDB().then(() => {
+      loadAttachments();
+    }).catch(() => {});
+    
     // Listen for file updates
     window.addEventListener('fileAttachmentUpdated', loadAttachments);
     return () => window.removeEventListener('fileAttachmentUpdated', loadAttachments);

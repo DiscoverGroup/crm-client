@@ -12,6 +12,9 @@ import MessagingCenter from "./components/MessagingCenter";
 import { MongoDBService } from "./services/mongoDBService";
 import { FileService } from "./services/fileService";
 import { MessagingService } from "./services/messagingService";
+import { ActivityLogService } from "./services/activityLogService";
+import { NotificationService } from "./services/notificationService";
+import calendarService from "./services/calendarService";
 import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
 
 const App: React.FC = () => {
@@ -298,20 +301,27 @@ const App: React.FC = () => {
 
   // Sync clients from MongoDB on app load
   useEffect(() => {
-    const syncClientsFromMongoDB = async () => {
+    const syncAllFromMongoDB = async () => {
       try {
-        // console.log('🔄 Loading clients from MongoDB on app startup...');
         // Import ClientService dynamically to avoid circular dependency
         const { ClientService } = await import('./services/clientService');
         await ClientService.syncFromMongoDB();
+        
+        // Sync activity logs, file attachments, calendar events, and notifications
+        await Promise.allSettled([
+          ActivityLogService.syncFromMongoDB(),
+          FileService.syncFromMongoDB(),
+          calendarService.syncFromMongoDB(),
+          NotificationService.syncFromMongoDB()
+        ]);
       } catch (error) {
-        // console.error('Error syncing clients from MongoDB:', error);
+        // console.error('Error syncing from MongoDB:', error);
       }
     };
 
     // Run sync after user sync completes
     const timer = setTimeout(() => {
-      syncClientsFromMongoDB();
+      syncAllFromMongoDB();
     }, 3000);
 
     return () => clearTimeout(timer);

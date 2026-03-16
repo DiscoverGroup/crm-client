@@ -1,7 +1,12 @@
 import type { Notification } from '../types/notification';
+import { authHeaders } from '../utils/authToken';
+
+const DB_API = '/.netlify/functions/database';
 
 export class NotificationService {
   private static readonly STORAGE_KEY = 'crm_notifications';
+  private static readonly LAST_SYNC_KEY = 'crm_notifications_last_sync';
+  private static syncInProgress = false;
 
   static addNotification(notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>): void {
     const notifications = this.getAllNotifications();
@@ -23,6 +28,9 @@ export class NotificationService {
     } else {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notifications));
     }
+
+    // Fire-and-forget sync to MongoDB
+    this.saveNotificationToMongoDB(newNotification).catch(() => {});
   }
 
   static getAllNotifications(): Notification[] {
@@ -54,23 +62,33 @@ export class NotificationService {
     if (notification) {
       notification.isRead = true;
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notifications));
+      // Sync to MongoDB
+      this.updateNotificationInMongoDB(notificationId, { isRead: true }).catch(() => {});
     }
   }
 
   static markAllAsRead(userId: string): void {
     const notifications = this.getAllNotifications();
+    const updatedIds: string[] = [];
     notifications.forEach(n => {
-      if (n.targetUserId === userId) {
+      if (n.targetUserId === userId && !n.isRead) {
         n.isRead = true;
+        updatedIds.push(n.id);
       }
     });
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notifications));
+    // Sync each to MongoDB
+    for (const id of updatedIds) {
+      this.updateNotificationInMongoDB(id, { isRead: true }).catch(() => {});
+    }
   }
 
   static deleteNotification(notificationId: string): void {
     const notifications = this.getAllNotifications();
     const filtered = notifications.filter(n => n.id !== notificationId);
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filtered));
+    // Sync deletion to MongoDB
+    this.deleteNotificationFromMongoDB(notificationId).catch(() => {});
   }
 
   // Helper: Create mention notification
@@ -126,5 +144,110 @@ export class NotificationService {
     });
     
     // console.log('✅ Notification created successfully');
+  }
+
+  // ─── MongoDB Sync ─────────────────────────────────────────────────────
+
+  static async syncFromMongoDB(): Promise<void> {
+    if (this.syncInProgress) return;
+    this.syncInProgress = true;
+
+    try {
+      const response = await fetch(DB_API, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'notifications',
+          operation: 'find',
+          filter: {}
+        })
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        const mongoNotifications: Notification[] = result.data.map((d: any) => ({
+          id: d.id,
+          type: d.type,
+          title: d.title,
+          message: d.message,
+          targetUserId: d.targetUserId,
+          targetUserName: d.targetUserName,
+          fromUserId: d.fromUserId,
+          fromUserName: d.fromUserName,
+          clientId: d.clientId,
+          clientName: d.clientName,
+          logNoteId: d.logNoteId,
+          activityLogId: d.activityLogId,
+          isRead: d.isRead,
+          timestamp: new Date(d.timestamp),
+          link: d.link
+        }));
+
+        // Merge: MongoDB + local-only
+        const mongoIds = new Set(mongoNotifications.map(n => n.id));
+        const localOnly = this.getAllNotifications().filter(n => !mongoIds.has(n.id));
+
+        // Re-sync local-only to MongoDB
+        for (const notif of localOnly) {
+          this.saveNotificationToMongoDB(notif).catch(() => {});
+        }
+
+        const merged = [...localOnly, ...mongoNotifications];
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+      }
+    } catch {
+      // Network error — keep localStorage data
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  private static async saveNotificationToMongoDB(notification: Notification): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'notifications',
+        operation: 'updateOne',
+        filter: { id: notification.id },
+        update: {
+          ...notification,
+          timestamp: notification.timestamp instanceof Date 
+            ? notification.timestamp.toISOString() 
+            : notification.timestamp
+        },
+        upsert: true
+      })
+    });
+  }
+
+  private static async updateNotificationInMongoDB(notificationId: string, update: Record<string, any>): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'notifications',
+        operation: 'updateOne',
+        filter: { id: notificationId },
+        update
+      })
+    });
+  }
+
+  private static async deleteNotificationFromMongoDB(notificationId: string): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'notifications',
+        operation: 'deleteOne',
+        filter: { id: notificationId }
+      })
+    });
   }
 }

@@ -25,6 +25,10 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
 
   useEffect(() => {
     loadLogs();
+    // Also sync from MongoDB and reload
+    ActivityLogService.syncFromMongoDB().then(() => {
+      loadLogs();
+    }).catch(() => {});
   }, [clientId]);
 
   const loadLogs = () => {

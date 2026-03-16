@@ -41,6 +41,10 @@ const TeamCalendar: React.FC<TeamCalendarProps> = ({ currentUser, onBack }) => {
 
   useEffect(() => {
     setEvents(calendarService.getAllEvents());
+    // Sync from MongoDB and reload
+    calendarService.syncFromMongoDB().then(() => {
+      setEvents(calendarService.getAllEvents());
+    }).catch(() => {});
     const storedUsers = localStorage.getItem('crm_users');
     if (storedUsers) {
       try {

@@ -129,8 +129,16 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     loadNotes();
   }, [clientId]);
 
-  // Get activity logs for this client
-  const activityLogs = ActivityLogService.getLogsByClient(clientId);
+  // Sync activity logs from MongoDB then read from cache
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  useEffect(() => {
+    // First load from local cache immediately
+    setActivityLogs(ActivityLogService.getLogsByClient(clientId));
+    // Then sync from MongoDB and reload
+    ActivityLogService.syncFromMongoDB().then(() => {
+      setActivityLogs(ActivityLogService.getLogsByClient(clientId));
+    }).catch(() => {});
+  }, [clientId]);
 
   const handleAddComment = async () => {
     const cleanComment = sanitizeComment(newComment, 5000);

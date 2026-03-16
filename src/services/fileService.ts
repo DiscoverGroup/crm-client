@@ -1,6 +1,9 @@
 import { uploadFileToR2, deleteFileFromR2 } from './r2UploadService';
 import { ActivityLogService } from './activityLogService';
 import { ClientService } from './clientService';
+import { authHeaders } from '../utils/authToken';
+
+const DB_API = '/.netlify/functions/database';
 
 export interface StoredFile {
   name: string;
@@ -25,7 +28,9 @@ export interface FileAttachment {
 
 export class FileService {
   private static STORAGE_KEY = 'crm_file_attachments';
+  private static LAST_SYNC_KEY = 'crm_file_attachments_last_sync';
   private static R2_BUCKET = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
+  private static syncInProgress = false;
 
   // Convert File to StoredFile with R2 upload
   static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
@@ -111,6 +116,9 @@ export class FileService {
       existingAttachments.push(attachment);
       
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
+      
+      // Fire-and-forget sync to MongoDB
+      this.saveAttachmentToMongoDB(attachment).catch(() => {});
       
       // Helper function to get current user's profile image R2 path
       const getUserProfileImagePath = (userName: string): string | undefined => {
@@ -215,10 +223,18 @@ export class FileService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
       // console.log('✅ localStorage updated');
       
+      // Delete from MongoDB
+      this.deleteAttachmentFromMongoDB(fileId).catch(() => {});
+      
       // Verify the save
       const verification = localStorage.getItem(this.STORAGE_KEY);
       JSON.parse(verification || '[]');
       // console.log('✓ Verification - attachments in storage:', verifiedAttachments.length);
+
+      // Fire-and-forget delete from MongoDB
+      if (attachment) {
+        this.deleteAttachmentFromMongoDB(attachment.file.id).catch(() => {});
+      }
       
       // Delete from R2 in the background (non-blocking)
       if (attachment && attachment.file.isR2 && attachment.file.r2Path) {
@@ -276,6 +292,10 @@ export class FileService {
         return att;
       });
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+      
+      // Fire-and-forget sync updated IDs to MongoDB
+      this.updateClientIdInMongoDB(tempClientId, realClientId).catch(() => {});
+      
       return true;
     } catch (error) {
       // console.error('Error updating client IDs:', error);
@@ -383,5 +403,96 @@ export class FileService {
       att.source === source && 
       att.fileType === `${source}_legacy`
     );
+  }
+
+  // ─── MongoDB Sync Methods ─────────────────────────────────────────────
+
+  // Sync from MongoDB → localStorage (call on app load)
+  static async syncFromMongoDB(): Promise<void> {
+    if (this.syncInProgress) return;
+    this.syncInProgress = true;
+
+    try {
+      const response = await fetch(DB_API, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collection: 'file_attachments',
+          operation: 'find',
+          filter: {}
+        })
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        const mongoAttachments: FileAttachment[] = result.data.map((d: any) => ({
+          file: d.file,
+          category: d.category,
+          paymentIndex: d.paymentIndex,
+          paymentType: d.paymentType,
+          clientId: d.clientId,
+          source: d.source,
+          fileType: d.fileType
+        }));
+
+        // Merge: MongoDB + any local-only entries
+        const mongoFileIds = new Set(mongoAttachments.map(a => a.file?.id));
+        const localOnly = this.getAllFileAttachments().filter(a => a.file?.id && !mongoFileIds.has(a.file.id));
+
+        // Re-sync local-only entries to MongoDB
+        for (const att of localOnly) {
+          this.saveAttachmentToMongoDB(att).catch(() => {});
+        }
+
+        const merged = [...mongoAttachments, ...localOnly];
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+        localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+      }
+    } catch {
+      // Network error — keep using localStorage data
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  private static async saveAttachmentToMongoDB(attachment: FileAttachment): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'file_attachments',
+        operation: 'updateOne',
+        filter: { 'file.id': attachment.file.id },
+        update: attachment,
+        upsert: true
+      })
+    });
+  }
+
+  private static async deleteAttachmentFromMongoDB(fileId: string): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'file_attachments',
+        operation: 'deleteOne',
+        filter: { 'file.id': fileId }
+      })
+    });
+  }
+
+  private static async updateClientIdInMongoDB(oldClientId: string, newClientId: string): Promise<void> {
+    await fetch(DB_API, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'file_attachments',
+        operation: 'updateMany',
+        filter: { clientId: oldClientId },
+        update: { clientId: newClientId }
+      })
+    });
   }
 }

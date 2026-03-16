@@ -37,7 +37,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
   };
 
   useEffect(() => {
-    loadNotifications();
+    // Sync from MongoDB first, then load
+    NotificationService.syncFromMongoDB().then(() => {
+      loadNotifications();
+    }).catch(() => {
+      loadNotifications();
+    });
     
     // Refresh notifications every 10 seconds
     const interval = setInterval(loadNotifications, 10000);
