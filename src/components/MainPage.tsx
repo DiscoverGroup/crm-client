@@ -158,6 +158,9 @@ const ClientRecords: React.FC<{
   // Log refresh state
   const [logRefreshKey, setLogRefreshKey] = useState(0);
   
+  // Incremented when sync:clients fires so the form reloads fresh data
+  const [clientDataVersion, setClientDataVersion] = useState(0);
+  
   // Mobile Activity Log toggle state
   const [showMobileActivityLog, setShowMobileActivityLog] = useState(false);
   
@@ -196,7 +199,18 @@ const ClientRecords: React.FC<{
     onLogAdded: () => setLogRefreshKey(prev => prev + 1)
   });
 
-  // Load existing client data if clientId is provided
+  // Listen for real-time sync:clients to refresh form data from other devices
+  useEffect(() => {
+    const onClientsSync = () => {
+      ClientService.syncFromMongoDB().then(() => {
+        setClientDataVersion(v => v + 1);
+      }).catch(() => {});
+    };
+    window.addEventListener('sync:clients', onClientsSync);
+    return () => window.removeEventListener('sync:clients', onClientsSync);
+  }, []);
+
+  // Load existing client data if clientId is provided (or when synced data arrives)
   useEffect(() => {
     if (clientId) {
       setIsLoadingClients(true);
@@ -251,7 +265,7 @@ const ClientRecords: React.FC<{
         setIsLoadingClients(false);
       }
     }
-  }, [clientId]);
+  }, [clientId, clientDataVersion]);
 
   // Enhanced setters with section tracking
   const setClientNoTracked = (value: string) => {
