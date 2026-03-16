@@ -227,6 +227,11 @@ const ClientRecords: React.FC<{
           setVisaResult(existingClient.visaResult || '');
           setAdvisoryDate(existingClient.advisoryDate || '');
 
+          // Load request notes
+          if ((existingClient as any).requestNotes && Array.isArray((existingClient as any).requestNotes)) {
+            setRequestNotes((existingClient as any).requestNotes);
+          }
+
           // Load saved payment data for existing client
           const savedPayment = PaymentService.getPaymentData(clientId);
           if (savedPayment) {
@@ -1335,7 +1340,18 @@ const ClientRecords: React.FC<{
     }
     try {
       await ClientService.updateClient(currentClientId, { requestNotes } as any);
-      saveSection('request-notes', 'Important Notes/Requests');
+      
+      // Log activity for request notes save
+      const filledNotes = requestNotes.filter(n => n.department || n.request || n.date || n.agent);
+      if (filledNotes.length > 0) {
+        const notesSummary = filledNotes.map((n, i) => 
+          `Note ${i + 1}: Dept="${n.department || '(empty)'}" Request="${n.request || '(empty)'}" Date="${n.date || '(empty)'}" Agent="${n.agent || '(empty)'}"`
+        ).join('\n');
+        logSectionAction('Important Notes/Requests', 'Saved', `${filledNotes.length} request note(s):\n${notesSummary}`);
+      } else {
+        logSectionAction('Important Notes/Requests', 'Saved', 'Request notes (empty)');
+      }
+      
       showSuccessToast('Request notes saved successfully!');
     } catch (error) {
       showErrorToast('An error occurred while saving request notes.');

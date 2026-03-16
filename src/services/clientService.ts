@@ -36,9 +36,10 @@ export interface ClientData {
   bookingVoucher?: string;
   // Important Notes/Requests
   requestNotes?: Array<{
-    id: string;
-    note: string;
-    createdAt: string;
+    department: string;
+    request: string;
+    date: string;
+    agent: string;
   }>;
   // Passport Information
   passportInfo?: Array<{
