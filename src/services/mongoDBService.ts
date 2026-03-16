@@ -71,8 +71,8 @@ export class MongoDBService {
   // Save client to MongoDB
   static async saveClient(clientData: any): Promise<{ success: boolean; message?: string }> {
     try {
-      // Don't save images/files - only client information
-      const { profileImage, attachments, ...clientInfo } = clientData;
+      // Don't save images/files and strip MongoDB _id
+      const { profileImage, attachments, _id, ...clientInfo } = clientData;
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
@@ -95,8 +95,8 @@ export class MongoDBService {
   // Update client in MongoDB
   static async updateClient(clientId: string, updates: any): Promise<{ success: boolean; message?: string }> {
     try {
-      // Don't save images/files - only client information
-      const { profileImage, attachments, ...clientInfo } = updates;
+      // Don't save images/files and strip MongoDB _id (immutable, breaks $set)
+      const { profileImage, attachments, _id, ...clientInfo } = updates;
       
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',

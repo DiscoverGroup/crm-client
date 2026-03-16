@@ -94,8 +94,10 @@ export class ClientService {
       const result = await response.json();
       
       if (result.success && result.data) {
-        // Update localStorage with MongoDB data
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(result.data));
+        // Strip MongoDB _id before storing — _id in localStorage would leak
+        // into subsequent $set operations and cause MongoDB update failures.
+        const cleanData = (result.data as any[]).map(({ _id, ...rest }) => rest);
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleanData));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
         window.dispatchEvent(new Event('syncSuccess'));
       } else {

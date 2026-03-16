@@ -81,24 +81,34 @@ class RealtimeSyncService {
   // ─── Signal that a collection was modified (call after every write) ───
 
   async signalChange(collection: SyncCollection): Promise<void> {
-    // Update local lastSeen immediately so our own poll doesn't re-trigger
-    const now = new Date().toISOString();
-    this.lastSeen[collection] = now;
-
     // Notify other tabs instantly via BroadcastChannel
     try {
       this.broadcastChannel?.postMessage({ type: 'sync', collection });
     } catch { /* ignore */ }
 
-    // Tell MongoDB so other devices pick it up on their next poll
+    // Tell MongoDB so other devices pick it up on their next poll.
+    // Use the SERVER's timestamp as lastSeen so our own poll never
+    // re-triggers due to client/server clock skew.
     try {
-      await fetch('/.netlify/functions/sync-signal', {
+      const res = await fetch('/.netlify/functions/sync-signal', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ collection })
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.timestamp) {
+          this.lastSeen[collection] = data.timestamp;
+        }
+      }
     } catch {
       // Non-critical — other devices will eventually sync anyway
+    }
+
+    // Fallback: if signal failed, set a far-future sentinel so the next
+    // poll cycle won't self-trigger
+    if (!this.lastSeen[collection]) {
+      this.lastSeen[collection] = new Date(Date.now() + 30000).toISOString();
     }
   }
 
