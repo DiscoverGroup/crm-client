@@ -70,44 +70,55 @@ export class ClientService {
   private static syncInProgress = false;
 
   // Load clients from MongoDB and sync to localStorage
+  private static syncPromise: Promise<void> | null = null;
+
   static async syncFromMongoDB(): Promise<void> {
-    // Prevent concurrent syncs
-    if (this.syncInProgress) return;
+    // If a sync is already in progress, wait for it instead of skipping.
+    // This ensures callers always get fresh data after the promise resolves.
+    if (this.syncInProgress && this.syncPromise) {
+      return this.syncPromise;
+    }
     
     this.syncInProgress = true;
     window.dispatchEvent(new Event('syncStart'));
-    try {
-      const response = await fetch('/.netlify/functions/database', {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          collection: 'clients',
-          operation: 'find',
-          filter: {}
-        })
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch clients from MongoDB: HTTP ${response.status}`);
-      }
+    this.syncPromise = (async () => {
+      try {
+        const response = await fetch('/.netlify/functions/database', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collection: 'clients',
+            operation: 'find',
+            filter: {}
+          })
+        });
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        // Strip MongoDB _id before storing — _id in localStorage would leak
-        // into subsequent $set operations and cause MongoDB update failures.
-        const cleanData = (result.data as any[]).map(({ _id, ...rest }) => rest);
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleanData));
-        localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        window.dispatchEvent(new Event('syncSuccess'));
-      } else {
-        throw new Error(result.error || 'No data returned from MongoDB');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch clients from MongoDB: HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          // Strip MongoDB _id before storing — _id in localStorage would leak
+          // into subsequent $set operations and cause MongoDB update failures.
+          const cleanData = (result.data as any[]).map(({ _id, ...rest }: any) => rest);
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleanData));
+          localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+          window.dispatchEvent(new Event('syncSuccess'));
+        } else {
+          throw new Error(result.error || 'No data returned from MongoDB');
+        }
+      } catch {
+        window.dispatchEvent(new Event('syncError'));
+      } finally {
+        this.syncInProgress = false;
+        this.syncPromise = null;
       }
-    } catch {
-      window.dispatchEvent(new Event('syncError'));
-    } finally {
-      this.syncInProgress = false;
-    }
+    })();
+
+    return this.syncPromise;
   }
 
   // Check if sync is needed

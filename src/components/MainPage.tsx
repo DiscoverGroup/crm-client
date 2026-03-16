@@ -199,18 +199,25 @@ const ClientRecords: React.FC<{
     onLogAdded: () => setLogRefreshKey(prev => prev + 1)
   });
 
-  // Reload form fields whenever a client sync completes (cross-device or periodic).
-  // syncSuccess is dispatched by ClientService.syncFromMongoDB AFTER localStorage
-  // is updated, so getClientById is guaranteed to return fresh data.
+  // Reload form fields whenever client data changes on another device.
+  // sync:clients fires BEFORE localStorage is updated, so we must call
+  // syncFromMongoDB first to fetch fresh data, then bump the version to
+  // make the form re-read from the now-updated localStorage.
   useEffect(() => {
-    const onSyncDone = () => {
+    const onClientsSync = () => {
+      ClientService.syncFromMongoDB().then(() => {
+        setClientDataVersion(v => v + 1);
+      }).catch(() => {});
+    };
+    // syncSuccess fires after any sync completes (periodic, etc.)
+    const onSyncSuccess = () => {
       setClientDataVersion(v => v + 1);
     };
-    window.addEventListener('syncSuccess', onSyncDone);
-    window.addEventListener('sync:clients', onSyncDone);
+    window.addEventListener('sync:clients', onClientsSync);
+    window.addEventListener('syncSuccess', onSyncSuccess);
     return () => {
-      window.removeEventListener('syncSuccess', onSyncDone);
-      window.removeEventListener('sync:clients', onSyncDone);
+      window.removeEventListener('sync:clients', onClientsSync);
+      window.removeEventListener('syncSuccess', onSyncSuccess);
     };
   }, []);
 
