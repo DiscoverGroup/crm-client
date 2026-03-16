@@ -299,11 +299,12 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Sync clients from MongoDB on app load
+  // Sync all data from MongoDB — runs when user becomes authenticated and every 60s
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const syncAllFromMongoDB = async () => {
       try {
-        // Import ClientService dynamically to avoid circular dependency
         const { ClientService } = await import('./services/clientService');
         await ClientService.syncFromMongoDB();
         
@@ -319,13 +320,21 @@ const App: React.FC = () => {
       }
     };
 
-    // Run sync after user sync completes
+    // Initial sync shortly after login is confirmed
     const timer = setTimeout(() => {
       syncAllFromMongoDB();
-    }, 3000);
+    }, 1500);
 
-    return () => clearTimeout(timer);
-  }, []);
+    // Periodic sync every 60 seconds for cross-device/cross-account updates
+    const interval = setInterval(() => {
+      syncAllFromMongoDB();
+    }, 60000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [isLoggedIn]);
 
   // Check for existing authentication on app load
   useEffect(() => {
