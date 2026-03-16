@@ -147,6 +147,7 @@ const Modal: React.FC<ModalProps> = ({
         }}>
           {cancelText && (
             <button
+              type="button"
               onClick={onClose}
               style={{
                 padding: windowWidth < 640 ? '12px 20px' : '10px 24px',
@@ -175,6 +176,7 @@ const Modal: React.FC<ModalProps> = ({
             </button>
           )}
           <button
+            type="button"
             onClick={handleConfirm}
             style={{
               padding: windowWidth < 640 ? '12px 20px' : '10px 24px',
