@@ -181,6 +181,8 @@ const App: React.FC = () => {
   useEffect(() => {
     // Fix any R2 URLs that were stored with incorrect domain
     FileService.fixR2URLs();
+    // Migrate legacy file attachments that don't have fileType
+    FileService.migrateFileTypes();
     
     const checkConnections = async () => {
       // Check if running on Netlify by checking the hostname

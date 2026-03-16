@@ -338,12 +338,50 @@ export class FileService {
 
       if (fixed > 0) {
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
-        // console.log(`✅ Fixed ${fixed} R2 file URLs`);
-      } else {
-        // console.log('No R2 URLs needed fixing');
       }
     } catch (error) {
       // console.error('Error fixing R2 URLs:', error);
     }
+  }
+
+  // Migrate legacy attachments that don't have fileType property
+  // This tags them so they can appear in the correct UI field
+  static migrateFileTypes(): number {
+    try {
+      const attachments = this.getAllFileAttachments();
+      let migrated = 0;
+      
+      const updatedAttachments = attachments.map(att => {
+        // Skip if already has fileType
+        if (att.fileType) return att;
+        // Skip if no source (can't determine field)
+        if (!att.source) return att;
+        
+        // Try to infer fileType from r2Path which contains the folder structure
+        // R2 paths look like: other-files/booking-voucher/<timestamp>_<original-filename>
+        // The fileType was passed as a log label but never stored, so we can't be 100% sure
+        // For legacy files, we tag them with source + '_legacy' so they appear in a legacy section
+        att.fileType = `${att.source}_legacy`;
+        migrated++;
+        return att;
+      });
+
+      if (migrated > 0) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+      }
+      
+      return migrated;
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  // Get legacy files for a given source (files uploaded before fileType was added)
+  static getLegacyFilesBySource(clientId: string, source: string): FileAttachment[] {
+    const attachments = this.getFilesByClient(clientId);
+    return attachments.filter(att => 
+      att.source === source && 
+      att.fileType === `${source}_legacy`
+    );
   }
 }

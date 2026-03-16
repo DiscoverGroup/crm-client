@@ -2223,6 +2223,37 @@ const ClientRecords: React.FC<{
               </div>
             </div>
 
+            {/* Legacy Payment Files (uploaded before field tracking) */}
+            {(() => {
+              const currentClientId3 = clientId || tempClientId;
+              const legacyFirstPay = FileService.getLegacyFilesBySource(currentClientId3, 'first-payment');
+              const legacyOtherPay = FileService.getLegacyFilesBySource(currentClientId3, 'other-payment');
+              const allLegacy = [...legacyFirstPay, ...legacyOtherPay];
+              if (allLegacy.length === 0) return null;
+              return (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(16, 185, 129, 0.06)', borderRadius: '8px', border: '1px dashed rgba(16, 185, 129, 0.3)' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#065f46' }}>
+                    📁 Previously Uploaded Payment Files ({allLegacy.length})
+                  </p>
+                  <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#059669' }}>
+                    Re-upload to the correct field above, then remove these.
+                  </p>
+                  {allLegacy.map(att => (
+                    <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
+                      <span style={{ fontSize: '11px', color: '#6b7280' }}>({att.source})</span>
+                      <R2DownloadButton r2Path={att.file.r2Path} className="" />
+                      <button
+                        onClick={() => handleGenericFileRemove(att.file.id, 'legacy', att.source || 'first-payment')}
+                        style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
+                        title="Remove file"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             {/* Save Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
               <button
@@ -2830,6 +2861,34 @@ const ClientRecords: React.FC<{
                   })()}
                 </div>
               </div>
+
+              {/* Legacy Booking/Voucher Files (uploaded before field tracking) */}
+              {(() => {
+                const currentClientId = clientId || tempClientId;
+                const legacyFiles = FileService.getLegacyFilesBySource(currentClientId, 'booking-voucher');
+                if (legacyFiles.length === 0) return null;
+                return (
+                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
+                      📁 Previously Uploaded Files ({legacyFiles.length})
+                    </p>
+                    <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
+                      These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
+                    </p>
+                    {legacyFiles.map(att => (
+                      <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
+                        <R2DownloadButton r2Path={att.file.r2Path} className="" />
+                        <button
+                          onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
+                          style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
+                          title="Remove file"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Important Notes/Requests Section */}
@@ -3526,6 +3585,34 @@ const ClientRecords: React.FC<{
                 </div>
               </div>
             </div>
+
+            {/* Legacy Passport Files (uploaded before field tracking) */}
+            {(() => {
+              const currentClientId2 = clientId || tempClientId;
+              const legacyPassportFiles = FileService.getLegacyFilesBySource(currentClientId2, 'passport-info');
+              if (legacyPassportFiles.length === 0) return null;
+              return (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(99, 102, 241, 0.06)', borderRadius: '8px', border: '1px dashed rgba(99, 102, 241, 0.3)' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#4338ca' }}>
+                    📁 Previously Uploaded Passport Files ({legacyPassportFiles.length})
+                  </p>
+                  <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#6366f1' }}>
+                    Re-upload to the correct field above, then remove these.
+                  </p>
+                  {legacyPassportFiles.map(att => (
+                    <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
+                      <R2DownloadButton r2Path={att.file.r2Path} className="" />
+                      <button
+                        onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'passport-info')}
+                        style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
+                        title="Remove file"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Embassy Information */}
             <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
