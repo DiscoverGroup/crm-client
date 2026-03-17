@@ -21,6 +21,7 @@ export interface LogReply {
   userName: string;
   timestamp: Date;
   message: string;
+  replies?: LogReply[];
 }
 
 export interface LogNoteFormData {

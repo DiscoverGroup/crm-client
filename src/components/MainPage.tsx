@@ -146,7 +146,7 @@ const ClientRecords: React.FC<{
   const [packageName, setPackageName] = useState("");
   const [travelDate, setTravelDate] = useState("");
   const [numberOfPax, setNumberOfPax] = useState<number>(1);
-  const [bookingConfirmation, setBookingConfirmation] = useState("");
+  const [bookingConfirmations, setBookingConfirmations] = useState<string[]>([""]);
   
   // Generate temporary client ID for new clients
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
@@ -238,7 +238,13 @@ const ClientRecords: React.FC<{
           setPackageName(existingClient.packageName || '');
           setTravelDate(existingClient.travelDate || '');
           setNumberOfPax(existingClient.numberOfPax || 1);
-          setBookingConfirmation(existingClient.bookingConfirmation || '');
+          setBookingConfirmations(
+            Array.isArray(existingClient.bookingConfirmations)
+              ? existingClient.bookingConfirmations
+              : existingClient.bookingConfirmation
+                ? [existingClient.bookingConfirmation]
+                : [""]
+          );
           setPackageLink(existingClient.packageLink || '');
           if (existingClient.companions) {
             setCompanions(existingClient.companions);
@@ -329,9 +335,20 @@ const ClientRecords: React.FC<{
     setNumberOfPax(value);
   };
   
-  const setBookingConfirmationTracked = (value: string) => {
-    trackSectionField('package-information', 'bookingConfirmation', value, 'Booking Confirmation');
-    setBookingConfirmation(value);
+  const handleBookingConfirmationChange = (index: number, value: string) => {
+    const updated = [...bookingConfirmations];
+    updated[index] = value;
+    trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
+    setBookingConfirmations(updated);
+  };
+
+  const handleAddBookingConfirmation = () => {
+    setBookingConfirmations(prev => [...prev, ""]);
+  };
+
+  const handleRemoveBookingConfirmation = (index: number) => {
+    if (bookingConfirmations.length <= 1) return;
+    setBookingConfirmations(prev => prev.filter((_, i) => i !== index));
   };
 
   // Payment state
@@ -376,6 +393,7 @@ const ClientRecords: React.FC<{
   const [isSavingPackage, setIsSavingPackage] = useState(false);
 
   // Visa section states
+  const [visaFOC, setVisaFOC] = useState(false);
   const [visaService, setVisaService] = useState(false);
   const [insuranceService, setInsuranceService] = useState(false);
   const [eta, setEta] = useState(false);
@@ -400,6 +418,13 @@ const ClientRecords: React.FC<{
   const [advisoryDate, setAdvisoryDate] = useState("");
   const [isSavingVisa, setIsSavingVisa] = useState(false);
   const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
+
+  // Travel Funds workflow states
+  const [travelFundRequestDate, setTravelFundRequestDate] = useState("");
+  const [travelFundApprovalStatus, setTravelFundApprovalStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [travelFundApprovalDate, setTravelFundApprovalDate] = useState("");
+  const [travelFundReleaseDate, setTravelFundReleaseDate] = useState("");
+  const [travelFundReleasedAmount, setTravelFundReleasedAmount] = useState("");
 
   // Visa payment state
   type VisaPayment = {
@@ -428,7 +453,7 @@ const ClientRecords: React.FC<{
   const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
   const [_otherFiles, setOtherFiles] = useState<File | null>(null);
 
-  // Important Notes/Requests section states
+  // Notes/Request/Endorsements section states
   type RequestNote = {
     department: string;
     request: string;
@@ -840,7 +865,7 @@ const ClientRecords: React.FC<{
           c.clientNo === clientNo.trim() && c.id !== ownId
         );
         if (duplicate) {
-          showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number or leave blank for auto-generation.`);
+          showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number.`);
           setIsSavingClient(false);
           return;
         }
@@ -862,7 +887,13 @@ const ClientRecords: React.FC<{
         return;
       }
 
-      const generatedClientNo = clientNo || `CLT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      // Client number is now required - no auto-generation
+      if (!clientNo || !clientNo.trim()) {
+        showWarningToast('Client Number is required. Please enter a client number.');
+        setIsSavingClient(false);
+        return;
+      }
+      const generatedClientNo = clientNo.trim();
       const clientData = {
         clientNo: generatedClientNo,
         status,
@@ -874,7 +905,7 @@ const ClientRecords: React.FC<{
         packageName: cleanPackageName,
         travelDate,
         numberOfPax,
-        bookingConfirmation,
+        bookingConfirmations: bookingConfirmations.filter(b => b.trim()),
         packageLink: cleanPackageLink,
         companions: companions
       };
@@ -1012,13 +1043,13 @@ const ClientRecords: React.FC<{
 
       // Sanitise package inputs before saving
       const cleanPackageName = sanitizeName(packageName || '', 500);
-      const cleanBookingConfirmation = sanitizeText(bookingConfirmation || '', 200);
+      const cleanBookingConfirmations = bookingConfirmations.map(b => sanitizeText(b || '', 200)).filter(b => b.trim());
       const cleanPackageLink = sanitizeText(packageLink || '', 1000);
       const cleanCompanions = companions.map(c => ({
         ...c,
         name: sanitizeName(c.name, 200),
       }));
-      if ([cleanPackageName, cleanBookingConfirmation, cleanPackageLink].some(v => v && containsAttackPatterns(v))) {
+      if ([cleanPackageName, ...cleanBookingConfirmations, cleanPackageLink].some(v => v && containsAttackPatterns(v))) {
         showWarningToast('Invalid characters detected in package info. Please review and try again.');
         setIsSavingPackage(false);
         return;
@@ -1030,7 +1061,7 @@ const ClientRecords: React.FC<{
         packageName: cleanPackageName,
         travelDate,
         numberOfPax,
-        bookingConfirmation: cleanBookingConfirmation,
+        bookingConfirmations: cleanBookingConfirmations,
         packageLink: cleanPackageLink,
         companions: cleanCompanions
       };
@@ -1043,7 +1074,7 @@ const ClientRecords: React.FC<{
         packageName: 'Package Name',
         travelDate: 'Travel Date',
         numberOfPax: 'Number of Pax',
-        bookingConfirmation: 'Booking Confirmation',
+        bookingConfirmations: 'Booking Confirmation',
         packageLink: 'Package Link',
       };
       const pkgChanges: Record<string, { old: any; new: any }> = {};
@@ -1384,9 +1415,9 @@ const ClientRecords: React.FC<{
         const notesSummary = filledNotes.map((n, i) => 
           `Note ${i + 1}: Dept="${n.department || '(empty)'}" Request="${n.request || '(empty)'}" Date="${n.date || '(empty)'}" Agent="${n.agent || '(empty)'}"`
         ).join('\n');
-        logSectionAction('Important Notes/Requests', 'Saved', `${filledNotes.length} request note(s):\n${notesSummary}`);
+        logSectionAction('Notes/Request/Endorsements', 'Saved', `${filledNotes.length} request note(s):\n${notesSummary}`);
       } else {
-        logSectionAction('Important Notes/Requests', 'Saved', 'Request notes (empty)');
+        logSectionAction('Notes/Request/Endorsements', 'Saved', 'Request notes (empty)');
       }
       
       showSuccessToast('Request notes saved successfully!');
@@ -1582,13 +1613,14 @@ const ClientRecords: React.FC<{
             </div>
             <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
-                <label style={label}>Client No</label>
+                <label style={label}>Client No <span style={{ color: '#ef4444', fontSize: '13px' }}>*</span></label>
                 <input 
                   style={modernInput} 
                   type="text" 
-                  placeholder="Auto-generated or enter client number"
+                  placeholder="Enter client number"
                   value={clientNo}
                   onChange={e => setClientNoTracked(e.target.value)}
+                  required
                 />
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
@@ -1602,15 +1634,16 @@ const ClientRecords: React.FC<{
                   <option>Float</option>
                   <option>Refund</option>
                   <option>Travel Funds</option>
+                  <option>Rebook</option>
                   <option>Cancelled</option>
                 </select>
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
-                <label style={label}>Agent</label>
+                <label style={label}>Agent/Officer</label>
                 <input 
                   style={modernInput} 
                   type="text" 
-                  placeholder="Enter agent name"
+                  placeholder="Enter agent/officer name"
                   maxLength={100}
                   value={agent}
                   onChange={e => setAgentTracked(e.target.value)}
@@ -1728,15 +1761,65 @@ const ClientRecords: React.FC<{
             </div>
             <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
-                <label style={label}>Booking Confirmation</label>
-                <input
-                  style={modernInput}
-                  type="text"
-                  placeholder="Enter booking confirmation number"
-                  maxLength={50}
-                  value={bookingConfirmation}
-                  onChange={e => setBookingConfirmationTracked(e.target.value)}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <label style={label}>Booking Confirmation</label>
+                  <button
+                    type="button"
+                    onClick={handleAddBookingConfirmation}
+                    style={{
+                      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      color: "white",
+                      border: "none",
+                      width: 24,
+                      height: 24,
+                      borderRadius: "50%",
+                      cursor: "pointer",
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      lineHeight: 1,
+                      padding: 0
+                    }}
+                    title="Add another booking confirmation"
+                  >+</button>
+                </div>
+                {bookingConfirmations.map((bc, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: idx > 0 ? 8 : 0 }}>
+                    <input
+                      style={{ ...modernInput, flex: 1 }}
+                      type="text"
+                      placeholder={`Booking confirmation #${idx + 1}`}
+                      maxLength={50}
+                      value={bc}
+                      onChange={e => handleBookingConfirmationChange(idx, e.target.value)}
+                    />
+                    {bookingConfirmations.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveBookingConfirmation(idx)}
+                        style={{
+                          background: "#dc3545",
+                          color: "white",
+                          border: "none",
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: "bold",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          lineHeight: 1,
+                          padding: 0
+                        }}
+                        title="Remove this booking confirmation"
+                      >×</button>
+                    )}
+                  </div>
+                ))}
               </div>
               <div style={{ flex: windowWidth < 640 ? '1' : '2', minWidth: windowWidth < 640 ? "100%" : "auto" }}>
                 <label style={label}>Package Link</label>
@@ -1924,7 +2007,7 @@ const ClientRecords: React.FC<{
                   )}
                 </select>
               </div>
-              {showTermCount && (
+              {paymentTerm !== "travel_funds" && showTermCount && (
                 <div style={{ flex: 1 }}>
                   <label style={label}>Terms</label>
                   <input
@@ -1945,6 +2028,7 @@ const ClientRecords: React.FC<{
                   <span style={subLabel}>(1 to {currentOption.terms} terms allowed)</span>
                 </div>
               )}
+              {paymentTerm !== "travel_funds" && (
               <div style={{ flex: 2 }}>
                 <label style={label}>Payment Counts</label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -1970,10 +2054,130 @@ const ClientRecords: React.FC<{
                   ))}
                 </div>
               </div>
+              )}
             </div>
 
+            {/* Travel Funds Workflow (shown when Travel Funds is selected) */}
+            {paymentTerm === "travel_funds" && (
+              <div style={{
+                marginBottom: 24,
+                padding: 20,
+                background: "linear-gradient(145deg, rgba(236, 253, 245, 0.9) 0%, rgba(209, 250, 229, 0.7) 100%)",
+                borderRadius: 12,
+                border: "1px solid rgba(16, 185, 129, 0.3)"
+              }}>
+                <h4 style={{ margin: "0 0 16px 0", color: "#065f46", fontSize: "16px", fontWeight: "600" }}>
+                  💰 Travel Fund Request Workflow
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                  <div>
+                    <label style={label}>Travel Fund Request Date</label>
+                    <input
+                      style={modernInput}
+                      type="date"
+                      value={travelFundRequestDate}
+                      onChange={e => {
+                        trackSectionField('payment-terms-schedule', 'travelFundRequestDate', e.target.value, 'Travel Fund Request Date');
+                        setTravelFundRequestDate(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={label}>Waiting for Approval</label>
+                    <div style={{
+                      padding: "14px 16px",
+                      borderRadius: "12px",
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      background: travelFundApprovalStatus === 'approved'
+                        ? "rgba(16, 185, 129, 0.15)"
+                        : travelFundApprovalStatus === 'rejected'
+                        ? "rgba(239, 68, 68, 0.15)"
+                        : "rgba(245, 158, 11, 0.15)",
+                      color: travelFundApprovalStatus === 'approved'
+                        ? "#065f46"
+                        : travelFundApprovalStatus === 'rejected'
+                        ? "#991b1b"
+                        : "#92400e",
+                      border: `2px solid ${travelFundApprovalStatus === 'approved' ? 'rgba(16, 185, 129, 0.3)' : travelFundApprovalStatus === 'rejected' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                    }}>
+                      <span style={{ fontSize: "18px" }}>
+                        {travelFundApprovalStatus === 'approved' ? '✅' : travelFundApprovalStatus === 'rejected' ? '❌' : '⏳'}
+                      </span>
+                      <select
+                        value={travelFundApprovalStatus}
+                        onChange={e => {
+                          const val = e.target.value as 'pending' | 'approved' | 'rejected';
+                          trackSectionField('payment-terms-schedule', 'travelFundApprovalStatus', val, 'Travel Fund Approval Status');
+                          setTravelFundApprovalStatus(val);
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "none",
+                          fontSize: "15px",
+                          fontWeight: 600,
+                          color: "inherit",
+                          cursor: "pointer",
+                          outline: "none",
+                          flex: 1
+                        }}
+                      >
+                        <option value="pending">Pending Approval</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={label}>Approval Date</label>
+                    <input
+                      style={modernInput}
+                      type="date"
+                      value={travelFundApprovalDate}
+                      onChange={e => {
+                        trackSectionField('payment-terms-schedule', 'travelFundApprovalDate', e.target.value, 'Travel Fund Approval Date');
+                        setTravelFundApprovalDate(e.target.value);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={label}>Fund Release Date</label>
+                    <input
+                      style={modernInput}
+                      type="date"
+                      value={travelFundReleaseDate}
+                      max={travelFundApprovalDate ? (() => { const d = new Date(travelFundApprovalDate); d.setFullYear(d.getFullYear() + 2); return d.toISOString().split('T')[0]; })() : undefined}
+                      onChange={e => {
+                        trackSectionField('payment-terms-schedule', 'travelFundReleaseDate', e.target.value, 'Travel Fund Release Date');
+                        setTravelFundReleaseDate(e.target.value);
+                      }}
+                    />
+                    <span style={subLabel}>{travelFundApprovalDate ? '(Up to 2 years from approval date)' : '(Set approval date first)'}</span>
+                  </div>
+                  <div>
+                    <label style={label}>Released Amount</label>
+                    <input
+                      style={modernInput}
+                      type="text"
+                      placeholder="Enter released amount"
+                      value={travelFundReleasedAmount}
+                      onChange={e => {
+                        // Allow only numbers, decimals, and commas
+                        const val = e.target.value.replace(/[^0-9.,]/g, '');
+                        trackSectionField('payment-terms-schedule', 'travelFundReleasedAmount', val, 'Travel Fund Released Amount');
+                        setTravelFundReleasedAmount(val);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Payment Details Table */}
-            {paymentBoxes.length > 0 && (
+            {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
@@ -2324,7 +2528,32 @@ const ClientRecords: React.FC<{
               </h2>
             </div>
             
-            {/* Visa Service Options */}
+            {/* Visa FOC (Free of Charge) Checkbox */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                ...checkboxLabel,
+                background: visaFOC ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.7)",
+                border: visaFOC ? "2px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(147, 197, 253, 0.2)",
+              }}>
+                <input
+                  type="checkbox"
+                  style={modernCheckbox}
+                  checked={visaFOC}
+                  onChange={e => setVisaFOC(e.target.checked)}
+                />
+                <span style={{ fontSize: "15px", color: visaFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
+                  🎁 Visa FOC (Free of Charge)
+                </span>
+                {visaFOC && (
+                  <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
+                    — Promo applied, visa services hidden
+                  </span>
+                )}
+              </label>
+            </div>
+
+            {/* Visa Service Options (hidden when FOC is checked) */}
+            {!visaFOC && (
             <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
               <label style={checkboxLabel}>
                 <input
@@ -2354,9 +2583,10 @@ const ClientRecords: React.FC<{
                 <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>✈️ ETA</span>
               </label>
             </div>
+            )}
 
-            {/* Visa Service Payment Form (shown when Visa Service is checked) */}
-            {visaService && (
+            {/* Visa Service Payment Form (shown when Visa Service is checked and NOT FOC) */}
+            {!visaFOC && visaService && (
               <div style={{ marginTop: 20, marginBottom: 20 }}>
                 <h4 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
                   Visa Service Payments
@@ -2484,606 +2714,6 @@ const ClientRecords: React.FC<{
                 </button>
               </div>
             )}
-
-            {/* Booking/Tour Voucher Section */}
-            <div style={{
-              ...sectionStyle(windowWidth),
-              marginTop: "24px",
-              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
-              border: "2px solid rgba(147, 197, 253, 0.3)",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
-            }}>
-              {/* Section Header */}
-              <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎫</span>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: "#1e293b", 
-                  fontSize: "20px", 
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em"
-                }}>
-                  Booking/Tour Voucher
-                </h2>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
-                {/* International Flight */}
-                <div>
-                  <label style={label}>✈️ International Flight</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'international-flight', 'booking-voucher');
-                        setIntlFlight(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'international-flight'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'international-flight', 'booking-voucher');
-                              setIntlFlight(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Local Flight 1 */}
-                <div>
-                  <label style={label}>🛩️ Local Flight 1</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-1', 'booking-voucher');
-                        setLocalFlight1(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-1'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-1', 'booking-voucher');
-                              setLocalFlight1(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Local Flight 2 */}
-                <div>
-                  <label style={label}>🛩️ Local Flight 2</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-2', 'booking-voucher');
-                        setLocalFlight2(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-2'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-2', 'booking-voucher');
-                              setLocalFlight2(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Local Flight 3 */}
-                <div>
-                  <label style={label}>🛩️ Local Flight 3</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-3', 'booking-voucher');
-                        setLocalFlight3(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-3'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-3', 'booking-voucher');
-                              setLocalFlight3(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Local Flight 4 */}
-                <div>
-                  <label style={label}>🛩️ Local Flight 4</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-4', 'booking-voucher');
-                        setLocalFlight4(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-4'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-4', 'booking-voucher');
-                              setLocalFlight4(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Hotel Voucher */}
-                <div>
-                  <label style={label}>🏨 Hotel Voucher</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'hotel-voucher', 'booking-voucher');
-                        setHotelVoucher(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'hotel-voucher'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'hotel-voucher', 'booking-voucher');
-                              setHotelVoucher(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Other Files */}
-                <div>
-                  <label style={label}>📄 Other Files</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'other-files', 'booking-voucher');
-                        setOtherFiles(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'other-files'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'other-files', 'booking-voucher');
-                              setOtherFiles(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-
-              {/* Legacy Booking/Voucher Files (uploaded before field tracking) */}
-              {(() => {
-                const currentClientId = clientId || tempClientId;
-                const legacyFiles = FileService.getLegacyFilesBySource(currentClientId, 'booking-voucher');
-                if (legacyFiles.length === 0) return null;
-                return (
-                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
-                      📁 Previously Uploaded Files ({legacyFiles.length})
-                    </p>
-                    <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
-                      These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
-                    </p>
-                    {legacyFiles.map(att => (
-                      <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
-                        <R2DownloadButton r2Path={att.file.r2Path} className="" />
-                        <button
-                          type="button"
-                          onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
-                          style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                          title="Remove file"
-                        >✕</button>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Important Notes/Requests Section */}
-            <div style={{
-              ...sectionStyle(windowWidth),
-              marginTop: "24px",
-              background: "linear-gradient(145deg, rgba(255, 248, 220, 0.95) 0%, rgba(254, 249, 195, 0.9) 100%)",
-              border: "2px solid rgba(251, 191, 36, 0.3)",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 8px 32px rgba(251, 191, 36, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
-            }}>
-              {/* Section Header */}
-              <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>📝</span>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: "#92400e", 
-                  fontSize: "20px", 
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em"
-                }}>
-                  Important Notes/Requests
-                </h2>
-              </div>
-
-              <div style={{ marginTop: "16px" }}>
-                {requestNotes.map((note, idx) => (
-                  <div key={idx} style={{ 
-                    marginBottom: 16, 
-                    padding: 16, 
-                    backgroundColor: "rgba(255, 255, 255, 0.8)", 
-                    borderRadius: 12,
-                    border: "1px solid rgba(251, 191, 36, 0.2)",
-                    boxShadow: "0 2px 8px rgba(251, 191, 36, 0.1)"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h5 style={{ margin: 0, color: "#92400e", fontSize: "14px", fontWeight: "600" }}>
-                        Request Note {idx + 1}
-                      </h5>
-                      {requestNotes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveRequestNote(idx)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                      <div>
-                        <label style={label}>Department</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter department"
-                          value={note.department}
-                          onChange={e => handleRequestNoteChange(idx, "department", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Request</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter request details"
-                          value={note.request}
-                          onChange={e => handleRequestNoteChange(idx, "request", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Date</label>
-                        <input
-                          style={modernInput}
-                          type="date"
-                          value={note.date}
-                          onChange={e => handleRequestNoteChange(idx, "date", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Agent</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter agent name"
-                          value={note.agent}
-                          onChange={e => handleRequestNoteChange(idx, "agent", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={handleAddRequestNote}
-                  style={{
-                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "12px 20px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "transform 0.2s",
-                    boxShadow: "0 4px 12px rgba(251, 191, 36, 0.3)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  ➕ Add a Line!
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveRequestNotes}
-                  style={{
-                    background: "linear-gradient(135deg, #b45309 0%, #92400e 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "12px 20px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "transform 0.2s",
-                    boxShadow: "0 4px 12px rgba(180, 83, 9, 0.3)",
-                    marginLeft: "12px"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  💾 Save Notes
-                </button>
-              </div>
-            </div>
 
             {/* Insurance Service Payment Form (shown when Insurance Service is checked) */}
             {insuranceService && (
@@ -3751,6 +3381,607 @@ const ClientRecords: React.FC<{
                 {isSavingVisa ? "Saving..." : "Save Visa Information"}
               </button>
             </div>
+
+            {/* Booking/Tour Voucher Section */}
+            <div style={{
+              ...sectionStyle(windowWidth),
+              marginTop: "24px",
+              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+              border: "2px solid rgba(147, 197, 253, 0.3)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
+            }}>
+              {/* Section Header */}
+              <div style={sectionHeader}>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎫</span>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#1e293b", 
+                  fontSize: "20px", 
+                  fontWeight: 700,
+                  letterSpacing: "-0.025em"
+                }}>
+                  Booking/Tour Voucher
+                </h2>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
+                {/* International Flight */}
+                <div>
+                  <label style={label}>✈️ International Flight</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'international-flight', 'booking-voucher');
+                        setIntlFlight(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'international-flight'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'international-flight', 'booking-voucher');
+                              setIntlFlight(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Local Flight 1 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 1</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-1', 'booking-voucher');
+                        setLocalFlight1(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'local-flight-1'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-1', 'booking-voucher');
+                              setLocalFlight1(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Local Flight 2 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 2</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-2', 'booking-voucher');
+                        setLocalFlight2(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'local-flight-2'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-2', 'booking-voucher');
+                              setLocalFlight2(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Local Flight 3 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 3</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-3', 'booking-voucher');
+                        setLocalFlight3(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'local-flight-3'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-3', 'booking-voucher');
+                              setLocalFlight3(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Local Flight 4 */}
+                <div>
+                  <label style={label}>🛩️ Local Flight 4</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'local-flight-4', 'booking-voucher');
+                        setLocalFlight4(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'local-flight-4'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-4', 'booking-voucher');
+                              setLocalFlight4(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Hotel Voucher */}
+                <div>
+                  <label style={label}>🏨 Hotel Voucher</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'hotel-voucher', 'booking-voucher');
+                        setHotelVoucher(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'hotel-voucher'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'hotel-voucher', 'booking-voucher');
+                              setHotelVoucher(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
+                {/* Other Files */}
+                <div>
+                  <label style={label}>📄 Other Files</label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleGenericFileUpload(file, 'other', 'other-files', 'booking-voucher');
+                        setOtherFiles(file);
+                      }
+                    }}
+                    style={{ fontSize: "14px", width: "100%" }}
+                  />
+                  {(() => {
+                    const uploadedFile = attachments.find(att => 
+                      att.category === 'other' && 
+                      att.source === 'booking-voucher' &&
+                      att.fileType === 'other-files'
+                    );
+                    if (uploadedFile) {
+                      return (
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>
+                            ✓ {uploadedFile.file.name}
+                          </span>
+                          <R2DownloadButton
+                            r2Path={uploadedFile.file.r2Path}
+                            className=""
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenericFileRemove(uploadedFile.file.id, 'other-files', 'booking-voucher');
+                              setOtherFiles(null);
+                            }}
+                            style={{
+                              fontSize: "14px",
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "1px solid #ef4444",
+                              borderRadius: "4px",
+                              padding: "2px 6px",
+                              cursor: "pointer"
+                            }}
+                            title="Remove file"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              </div>
+
+              {/* Legacy Booking/Voucher Files (uploaded before field tracking) */}
+              {(() => {
+                const currentClientId = clientId || tempClientId;
+                const legacyFiles = FileService.getLegacyFilesBySource(currentClientId, 'booking-voucher');
+                if (legacyFiles.length === 0) return null;
+                return (
+                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
+                      📁 Previously Uploaded Files ({legacyFiles.length})
+                    </p>
+                    <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
+                      These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
+                    </p>
+                    {legacyFiles.map(att => (
+                      <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
+                        <R2DownloadButton r2Path={att.file.r2Path} className="" />
+                        <button
+                          type="button"
+                          onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
+                          style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
+                          title="Remove file"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Notes/Request/Endorsements Section */}
+            <div style={{
+              ...sectionStyle(windowWidth),
+              marginTop: "24px",
+              background: "linear-gradient(145deg, rgba(255, 248, 220, 0.95) 0%, rgba(254, 249, 195, 0.9) 100%)",
+              border: "2px solid rgba(251, 191, 36, 0.3)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(251, 191, 36, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
+            }}>
+              {/* Section Header */}
+              <div style={sectionHeader}>
+                <span style={{ fontSize: '24px', marginRight: '12px' }}>📝</span>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#92400e", 
+                  fontSize: "20px", 
+                  fontWeight: 700,
+                  letterSpacing: "-0.025em"
+                }}>
+                  Notes/Request/Endorsements
+                </h2>
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                {requestNotes.map((note, idx) => (
+                  <div key={idx} style={{ 
+                    marginBottom: 16, 
+                    padding: 16, 
+                    backgroundColor: "rgba(255, 255, 255, 0.8)", 
+                    borderRadius: 12,
+                    border: "1px solid rgba(251, 191, 36, 0.2)",
+                    boxShadow: "0 2px 8px rgba(251, 191, 36, 0.1)"
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <h5 style={{ margin: 0, color: "#92400e", fontSize: "14px", fontWeight: "600" }}>
+                        Request Note {idx + 1}
+                      </h5>
+                      {requestNotes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRequestNote(idx)}
+                          style={{
+                            background: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            fontSize: "12px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                      <div>
+                        <label style={label}>Department</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter department"
+                          value={note.department}
+                          onChange={e => handleRequestNoteChange(idx, "department", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Request</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter request details"
+                          value={note.request}
+                          onChange={e => handleRequestNoteChange(idx, "request", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Date</label>
+                        <input
+                          style={modernInput}
+                          type="date"
+                          value={note.date}
+                          onChange={e => handleRequestNoteChange(idx, "date", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label style={label}>Agent/Officer</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Enter agent/officer name"
+                          value={note.agent}
+                          onChange={e => handleRequestNoteChange(idx, "agent", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={handleAddRequestNote}
+                  style={{
+                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    transition: "transform 0.2s",
+                    boxShadow: "0 4px 12px rgba(251, 191, 36, 0.3)"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  ➕ Add a Line!
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveRequestNotes}
+                  style={{
+                    background: "linear-gradient(135deg, #b45309 0%, #92400e 100%)",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    transition: "transform 0.2s",
+                    boxShadow: "0 4px 12px rgba(180, 83, 9, 0.3)",
+                    marginLeft: "12px"
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  💾 Save Notes
+                </button>
+              </div>
+            </div>
+
           </div>
 
           {/* Activity Log Section - Moved to Right Sidebar */}

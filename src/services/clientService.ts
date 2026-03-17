@@ -16,6 +16,7 @@ export interface ClientData {
   travelDate?: string;
   numberOfPax?: number;
   bookingConfirmation?: string;
+  bookingConfirmations?: string[];
   packageLink?: string;
   companions?: Array<{
     name: string;

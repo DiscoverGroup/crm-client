@@ -5,6 +5,15 @@ export class LogNoteService {
   private static logNoteCounter = 1;
   private static replyCounter = 1;
 
+  // Recursively restore dates on replies
+  private static restoreReplyDates(replies: any[]): LogReply[] {
+    return (replies || []).map((reply: any) => ({
+      ...reply,
+      timestamp: new Date(reply.timestamp),
+      replies: reply.replies ? this.restoreReplyDates(reply.replies) : []
+    }));
+  }
+
   // Load from localStorage
   private static loadFromStorage(): Map<string, LogNote[]> {
     try {
@@ -16,10 +25,7 @@ export class LogNoteService {
           data[clientId] = data[clientId].map((log: any) => ({
             ...log,
             timestamp: new Date(log.timestamp),
-            replies: log.replies.map((reply: any) => ({
-              ...reply,
-              timestamp: new Date(reply.timestamp)
-            }))
+            replies: this.restoreReplyDates(log.replies)
           }));
         });
         return new Map(Object.entries(data));
@@ -40,6 +46,20 @@ export class LogNoteService {
     }
   }
 
+  // Recursively find max reply ID
+  private static maxReplyIdInReplies(replies: LogReply[]): number {
+    let max = 0;
+    for (const reply of replies) {
+      const replyId = parseInt(reply.id.replace('reply_', ''), 10);
+      if (!isNaN(replyId) && replyId > max) max = replyId;
+      if (reply.replies && reply.replies.length > 0) {
+        const nested = this.maxReplyIdInReplies(reply.replies);
+        if (nested > max) max = nested;
+      }
+    }
+    return max;
+  }
+
   // Initialize counters based on existing data
   private static initializeCounters(): void {
     const logNotes = this.loadFromStorage();
@@ -51,10 +71,8 @@ export class LogNoteService {
         const logId = parseInt(log.id.replace('log_', ''), 10);
         if (!isNaN(logId) && logId > maxLogId) maxLogId = logId;
         
-        log.replies.forEach(reply => {
-          const replyId = parseInt(reply.id.replace('reply_', ''), 10);
-          if (!isNaN(replyId) && replyId > maxReplyId) maxReplyId = replyId;
-        });
+        const nested = this.maxReplyIdInReplies(log.replies);
+        if (nested > maxReplyId) maxReplyId = nested;
       });
     });
     
@@ -123,10 +141,59 @@ export class LogNoteService {
       userId,
       userName,
       timestamp: new Date(),
-      message
+      message,
+      replies: []
     };
 
     logNote.replies.push(reply);
+    logNotes.set(clientId, clientLogs);
+    this.saveToStorage(logNotes);
+
+    return reply;
+  }
+
+  // Find a reply by ID recursively within a replies tree
+  private static findReplyById(replies: LogReply[], replyId: string): LogReply | null {
+    for (const reply of replies) {
+      if (reply.id === replyId) return reply;
+      if (reply.replies && reply.replies.length > 0) {
+        const found = this.findReplyById(reply.replies, replyId);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  static addNestedReply(
+    logNoteId: string,
+    parentReplyId: string,
+    clientId: string,
+    userId: string,
+    userName: string,
+    message: string
+  ): LogReply | null {
+    const logNotes = this.loadFromStorage();
+    const clientLogs = logNotes.get(clientId) || [];
+    const logNote = clientLogs.find(log => log.id === logNoteId);
+    
+    if (!logNote) return null;
+
+    const parentReply = this.findReplyById(logNote.replies, parentReplyId);
+    if (!parentReply) return null;
+
+    if (!parentReply.replies) parentReply.replies = [];
+
+    const reply: LogReply = {
+      id: `reply_${this.replyCounter++}`,
+      logNoteId,
+      userId,
+      userName,
+      timestamp: new Date(),
+      message,
+      replies: []
+    };
+
+    parentReply.replies.push(reply);
     logNotes.set(clientId, clientLogs);
     this.saveToStorage(logNotes);
 
