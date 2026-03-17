@@ -32,7 +32,7 @@ export const handler = async (event: any) => {
   }
 
   try {
-    const { clientId, userId, userName, type, action, description, status, fieldChanged, oldValue, newValue } = JSON.parse(event.body || '{}');
+    const { clientId, userId, userName, type, action, description, status, fieldChanged, oldValue, newValue, parentActivityLogId } = JSON.parse(event.body || '{}');
 
     if (!clientId || !userId || !userName || !action || !description) {
       return {
@@ -75,6 +75,7 @@ export const handler = async (event: any) => {
       fieldChanged: fieldChanged || null,
       oldValue: oldValue || null,
       newValue: newValue || null,
+      parentActivityLogId: parentActivityLogId || null,
       replies: []
     };
 

@@ -277,130 +277,160 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     }
   };
 
-  const handleAddReply = (logNoteId: string) => {
+  const handleAddReply = async (logNoteId: string) => {
     const cleanReply = sanitizeComment(replyText, 2000);
     if (!cleanReply) return;
 
-    const reply = LogNoteService.addReply(
-      logNoteId,
-      clientId,
-      currentUserId,
-      currentUserName,
-      cleanReply
-    );
+    try {
+      // Save reply to MongoDB via API
+      const response = await fetch('/.netlify/functions/add-log-reply', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logNoteId,
+          userId: currentUserId,
+          userName: currentUserName,
+          message: cleanReply
+        })
+      });
+      const data = await response.json();
 
-    if (reply) {
-      // Check for mentions in reply and create notifications
-      const mentionRegex = /@([\w-]+)/g;
-      const mentions = cleanReply.match(mentionRegex);
-      
-      if (mentions) {
-        const client = ClientService.getClientById(clientId);
-        const clientName = client?.contactName || 'Unknown Client';
+      if (data.success) {
+        // Check for mentions in reply and create notifications
+        const mentionRegex = /@([\w-]+)/g;
+        const mentions = cleanReply.match(mentionRegex);
         
-        // Get all users for @everyone
-        const allUsersStr = localStorage.getItem('crm_users');
-        const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
-        
-        mentions.forEach(mention => {
-          const username = mention.substring(1); // Remove @ symbol
+        if (mentions) {
+          const client = ClientService.getClientById(clientId);
+          const clientName = client?.contactName || 'Unknown Client';
+          const allUsersStr = localStorage.getItem('crm_users');
+          const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
           
-          // Check if it's @everyone
-          if (username.toLowerCase() === 'everyone') {
-            // Notify all users except the current user
-            allUsers.forEach((user: any) => {
-              if (user.id !== currentUserId) {
-                NotificationService.createMentionNotification({
-                  mentionedUsername: user.username,
-                  fromUserId: currentUserId,
-                  fromUserName: currentUserName,
-                  clientId: clientId,
-                  clientName: clientName,
-                  logNoteId: logNoteId,
-                  commentText: cleanReply
-                });
-              }
-            });
-          } else {
-            // Notify specific user
-            NotificationService.createMentionNotification({
-              mentionedUsername: username,
-              fromUserId: currentUserId,
-              fromUserName: currentUserName,
-              clientId: clientId,
-              clientName: clientName,
-              logNoteId: logNoteId,
-              commentText: cleanReply
-            });
-          }
+          mentions.forEach(mention => {
+            const username = mention.substring(1);
+            if (username.toLowerCase() === 'everyone') {
+              allUsers.forEach((user: any) => {
+                if (user.id !== currentUserId) {
+                  NotificationService.createMentionNotification({
+                    mentionedUsername: user.username, fromUserId: currentUserId, fromUserName: currentUserName,
+                    clientId, clientName, logNoteId, commentText: cleanReply
+                  });
+                }
+              });
+            } else {
+              NotificationService.createMentionNotification({
+                mentionedUsername: username, fromUserId: currentUserId, fromUserName: currentUserName,
+                clientId, clientName, logNoteId, commentText: cleanReply
+              });
+            }
+          });
+        }
+
+        // Refresh log notes from MongoDB
+        const notesResp = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, {
+          headers: authHeaders(),
         });
+        const notesData = await notesResp.json();
+        if (notesData.success) {
+          const notes = notesData.logNotes.map((note: any) => ({
+            ...note,
+            timestamp: new Date(note.timestamp),
+            replies: restoreReplyTimestamps(note.replies)
+          }));
+          setLogNotes(notes);
+        }
+        realtimeSync.signalChange('log_notes');
+      } else {
+        throw new Error('API failed');
       }
-      
-      const notes = LogNoteService.getLogNotes(clientId);
-      setLogNotes(notes);
-      setReplyText('');
-      setReplyingTo(null);
+    } catch {
+      // Fallback to localStorage
+      const reply = LogNoteService.addReply(logNoteId, clientId, currentUserId, currentUserName, cleanReply);
+      if (reply) {
+        const notes = LogNoteService.getLogNotes(clientId);
+        setLogNotes(notes);
+      }
     }
+    setReplyText('');
+    setReplyingTo(null);
   };
 
-  const handleAddNestedReply = (logNoteId: string, parentReplyId: string) => {
+  const handleAddNestedReply = async (logNoteId: string, parentReplyId: string) => {
     const cleanReply = sanitizeComment(replyText, 2000);
     if (!cleanReply) return;
 
-    const reply = LogNoteService.addNestedReply(
-      logNoteId,
-      parentReplyId,
-      clientId,
-      currentUserId,
-      currentUserName,
-      cleanReply
-    );
+    try {
+      // Save nested reply to MongoDB via API
+      const response = await fetch('/.netlify/functions/add-log-reply', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logNoteId,
+          userId: currentUserId,
+          userName: currentUserName,
+          message: cleanReply,
+          parentReplyId
+        })
+      });
+      const data = await response.json();
 
-    if (reply) {
-      const mentionRegex = /@([\w-]+)/g;
-      const mentions = cleanReply.match(mentionRegex);
-      
-      if (mentions) {
-        const client = ClientService.getClientById(clientId);
-        const clientName = client?.contactName || 'Unknown Client';
-        const allUsersStr = localStorage.getItem('crm_users');
-        const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+      if (data.success) {
+        const mentionRegex = /@([\w-]+)/g;
+        const mentions = cleanReply.match(mentionRegex);
         
-        mentions.forEach(mention => {
-          const username = mention.substring(1);
-          if (username.toLowerCase() === 'everyone') {
-            allUsers.forEach((user: any) => {
-              if (user.id !== currentUserId) {
-                NotificationService.createMentionNotification({
-                  mentionedUsername: user.username,
-                  fromUserId: currentUserId,
-                  fromUserName: currentUserName,
-                  clientId: clientId,
-                  clientName: clientName,
-                  logNoteId: logNoteId,
-                  commentText: cleanReply
-                });
-              }
-            });
-          } else {
-            NotificationService.createMentionNotification({
-              mentionedUsername: username,
-              fromUserId: currentUserId,
-              fromUserName: currentUserName,
-              clientId: clientId,
-              clientName: clientName,
-              logNoteId: logNoteId,
-              commentText: cleanReply
-            });
-          }
+        if (mentions) {
+          const client = ClientService.getClientById(clientId);
+          const clientName = client?.contactName || 'Unknown Client';
+          const allUsersStr = localStorage.getItem('crm_users');
+          const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+          
+          mentions.forEach(mention => {
+            const username = mention.substring(1);
+            if (username.toLowerCase() === 'everyone') {
+              allUsers.forEach((user: any) => {
+                if (user.id !== currentUserId) {
+                  NotificationService.createMentionNotification({
+                    mentionedUsername: user.username, fromUserId: currentUserId, fromUserName: currentUserName,
+                    clientId, clientName, logNoteId, commentText: cleanReply
+                  });
+                }
+              });
+            } else {
+              NotificationService.createMentionNotification({
+                mentionedUsername: username, fromUserId: currentUserId, fromUserName: currentUserName,
+                clientId, clientName, logNoteId, commentText: cleanReply
+              });
+            }
+          });
+        }
+
+        // Refresh log notes from MongoDB
+        const notesResp = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, {
+          headers: authHeaders(),
         });
+        const notesData = await notesResp.json();
+        if (notesData.success) {
+          const notes = notesData.logNotes.map((note: any) => ({
+            ...note,
+            timestamp: new Date(note.timestamp),
+            replies: restoreReplyTimestamps(note.replies)
+          }));
+          setLogNotes(notes);
+        }
+        realtimeSync.signalChange('log_notes');
+      } else {
+        throw new Error('API failed');
       }
-      
-      const notes = LogNoteService.getLogNotes(clientId);
-      setLogNotes(notes);
-      setReplyText('');
-      setReplyingTo(null);
+    } catch {
+      // Fallback to localStorage
+      const reply = LogNoteService.addNestedReply(logNoteId, parentReplyId, clientId, currentUserId, currentUserName, cleanReply);
+      if (reply) {
+        const notes = LogNoteService.getLogNotes(clientId);
+        setLogNotes(notes);
+      }
     }
+    setReplyText('');
+    setReplyingTo(null);
   };
 
   const handleStatusChange = (logNoteId: string, newStatus: 'pending' | 'done' | 'on hold') => {
@@ -816,67 +846,69 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             Cancel
                           </button>
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
                               if (!replyText.trim()) return;
-                              
-                              // Create a new log note as a reply to the activity log
-                              const logNote = LogNoteService.addLogNote(
-                                clientId,
-                                currentUserId,
-                                currentUserName,
-                                'manual',
-                                `Reply to ${log.action.replace('_', ' ')}`,
-                                replyText,
-                                'pending',
-                                undefined,
-                                undefined,
-                                undefined,
-                                log.id
-                              );
-                              
-                              // Check for mentions
-                              const mentionRegex = /@([\w-]+)/g;
-                              const mentions = replyText.match(mentionRegex);
-                              
-                              if (mentions) {
-                                const client = ClientService.getClientById(clientId);
-                                const clientName = client?.contactName || 'Unknown Client';
-                                const allUsersStr = localStorage.getItem('crm_users');
-                                const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
-                                
-                                mentions.forEach(mention => {
-                                  const username = mention.substring(1);
-                                  
-                                  if (username.toLowerCase() === 'everyone') {
-                                    allUsers.forEach((user: any) => {
-                                      if (user.id !== currentUserId) {
+                              const cleanReply = sanitizeComment(replyText, 2000);
+                              if (!cleanReply) return;
+
+                              try {
+                                // Save to MongoDB via API
+                                const response = await fetch('/.netlify/functions/save-log-note', {
+                                  method: 'POST',
+                                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    clientId,
+                                    userId: currentUserId,
+                                    userName: currentUserName,
+                                    type: 'manual',
+                                    action: `Reply to ${log.action.replace('_', ' ')}`,
+                                    description: cleanReply,
+                                    status: 'pending',
+                                    parentActivityLogId: log.id
+                                  })
+                                });
+                                const data = await response.json();
+                                if (data.success) {
+                                  const logNote = { ...data.logNote, timestamp: new Date(data.logNote.timestamp), replies: [] };
+                                  // Check for mentions
+                                  const mentionRegex = /@([\w-]+)/g;
+                                  const mentions = cleanReply.match(mentionRegex);
+                                  if (mentions) {
+                                    const client = ClientService.getClientById(clientId);
+                                    const clientName = client?.contactName || 'Unknown Client';
+                                    const allUsersStr = localStorage.getItem('crm_users');
+                                    const allUsers = allUsersStr ? JSON.parse(allUsersStr) : [];
+                                    mentions.forEach(mention => {
+                                      const username = mention.substring(1);
+                                      if (username.toLowerCase() === 'everyone') {
+                                        allUsers.forEach((user: any) => {
+                                          if (user.id !== currentUserId) {
+                                            NotificationService.createMentionNotification({
+                                              mentionedUsername: user.username, fromUserId: currentUserId, fromUserName: currentUserName,
+                                              clientId, clientName, logNoteId: logNote.id, commentText: cleanReply
+                                            });
+                                          }
+                                        });
+                                      } else {
                                         NotificationService.createMentionNotification({
-                                          mentionedUsername: user.username,
-                                          fromUserId: currentUserId,
-                                          fromUserName: currentUserName,
-                                          clientId: clientId,
-                                          clientName: clientName,
-                                          logNoteId: logNote.id,
-                                          commentText: replyText
+                                          mentionedUsername: username, fromUserId: currentUserId, fromUserName: currentUserName,
+                                          clientId, clientName, logNoteId: logNote.id, commentText: cleanReply
                                         });
                                       }
                                     });
-                                  } else {
-                                    NotificationService.createMentionNotification({
-                                      mentionedUsername: username,
-                                      fromUserId: currentUserId,
-                                      fromUserName: currentUserName,
-                                      clientId: clientId,
-                                      clientName: clientName,
-                                      logNoteId: logNote.id,
-                                      commentText: replyText
-                                    });
                                   }
-                                });
+                                  setLogNotes(prev => [logNote, ...prev]);
+                                  realtimeSync.signalChange('log_notes');
+                                } else {
+                                  throw new Error('API failed');
+                                }
+                              } catch {
+                                // Fallback to localStorage
+                                const logNote = LogNoteService.addLogNote(clientId, currentUserId, currentUserName, 'manual',
+                                  `Reply to ${log.action.replace('_', ' ')}`, cleanReply, 'pending', undefined, undefined, undefined, log.id);
+                                setLogNotes(prev => [logNote, ...prev]);
                               }
-                              
-                              setLogNotes(prev => [logNote, ...prev]);
                               setReplyText('');
                               setReplyingTo(null);
                             }}

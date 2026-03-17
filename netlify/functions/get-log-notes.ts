@@ -74,6 +74,7 @@ export const handler = async (event: any) => {
       fieldChanged: note.fieldChanged,
       oldValue: note.oldValue,
       newValue: note.newValue,
+      parentActivityLogId: note.parentActivityLogId || null,
       replies: note.replies || []
     }));
 
