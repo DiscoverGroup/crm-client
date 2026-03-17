@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react';
 import { LogNoteService } from '../services/logNoteService';
+import { authHeaders } from '../utils/authToken';
 
 interface UseSectionTrackingOptions {
   clientId: string;
@@ -14,6 +15,40 @@ interface SectionChange {
   oldValue: string;
   newValue: string;
 }
+
+// Helper to save log note to MongoDB (fire-and-forget with localStorage fallback already done by caller)
+const saveLogNoteToMongoDB = async (
+  clientId: string,
+  userId: string,
+  userName: string,
+  action: string,
+  description: string,
+  status: 'pending' | 'done' | 'on hold' = 'done',
+  fieldChanged?: string,
+  oldValue?: string,
+  newValue?: string
+) => {
+  try {
+    await fetch('/.netlify/functions/save-log-note', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientId,
+        userId,
+        userName,
+        type: 'auto',
+        action,
+        description,
+        status,
+        fieldChanged: fieldChanged || null,
+        oldValue: oldValue || null,
+        newValue: newValue || null
+      })
+    });
+  } catch {
+    // Silently fail — localStorage fallback already saved by LogNoteService
+  }
+};
 
 export const useSectionTracking = (options: UseSectionTrackingOptions) => {
   const sectionChanges = useRef<Map<string, SectionChange[]>>(new Map());
@@ -75,12 +110,21 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
       
       const description = `Updated ${sectionDisplayName || sectionName}:\n${changeDescriptions}`;
       
-      // Create the log entry
+      // Create the log entry in localStorage
       LogNoteService.logSectionUpdate(
         options.clientId,
         options.userId,
         options.userName,
         sectionDisplayName || sectionName,
+        description
+      );
+
+      // Also persist to MongoDB
+      saveLogNoteToMongoDB(
+        options.clientId,
+        options.userId,
+        options.userName,
+        `Section Updated: ${sectionDisplayName || sectionName}`,
         description
       );
       
@@ -108,6 +152,15 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
       sectionName,
       description
     );
+
+    // Also persist to MongoDB
+    saveLogNoteToMongoDB(
+      options.clientId,
+      options.userId,
+      options.userName,
+      `Section Updated: ${sectionName}`,
+      description
+    );
     
     options.onLogAdded?.();
   }, [options]);
@@ -124,6 +177,16 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
       options.userId,
       options.userName,
       sectionName,
+      `${action}: ${description}`,
+      status
+    );
+
+    // Also persist to MongoDB
+    saveLogNoteToMongoDB(
+      options.clientId,
+      options.userId,
+      options.userName,
+      `Section Updated: ${sectionName}`,
       `${action}: ${description}`,
       status
     );

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeText, containsAttackPatterns } from '../utils/formSanitizer';
 import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
@@ -115,7 +115,7 @@ const saveButtonStyle = (isSaving: boolean) => ({
 const paymentOptions = [
   { value: "full_cash", label: "Full Cash (1 time payment)", terms: 1 },
   { value: "installment", label: "Installment (up to 10 terms)", terms: 10 },
-  { value: "travel_funds", label: "Travel Funds (up to 10 terms)", terms: 10 },
+  { value: "travel_funds", label: "Travel Funds", terms: 0 },
   { value: "down_payment", label: "Down Payment (2 time payment)", terms: 2 }
 ];
 
@@ -261,6 +261,7 @@ const ClientRecords: React.FC<{
           // Load request notes
           if ((existingClient as any).requestNotes && Array.isArray((existingClient as any).requestNotes)) {
             setRequestNotes((existingClient as any).requestNotes);
+            savedRequestNotesRef.current = JSON.parse(JSON.stringify((existingClient as any).requestNotes));
           }
 
           // Load saved payment data for existing client
@@ -464,14 +465,15 @@ const ClientRecords: React.FC<{
   const [requestNotes, setRequestNotes] = useState<RequestNote[]>([
     { department: "", request: "", date: "", agent: "" }
   ]);
+  const savedRequestNotesRef = useRef<RequestNote[]>([]);
 
   // File attachment state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // PaymentTerm-driven behavior
   const currentOption = paymentOptions.find(opt => opt.value === paymentTerm)!;
-  const showTermCount = paymentTerm === "installment" || paymentTerm === "travel_funds";
-  const paymentBoxes = Array.from({ length: currentOption.value === "installment" || currentOption.value === "travel_funds" ? termCount : currentOption.terms }, (_, i) => i + 1);
+  const showTermCount = paymentTerm === "installment";
+  const paymentBoxes = Array.from({ length: currentOption.value === "installment" ? termCount : currentOption.terms }, (_, i) => i + 1);
 
   // Sync paymentDetails rows with termCount
   useEffect(() => {
@@ -1410,16 +1412,56 @@ const ClientRecords: React.FC<{
     try {
       await ClientService.updateClient(currentClientId, { requestNotes } as any);
       
-      // Log activity for request notes save
-      const filledNotes = requestNotes.filter(n => n.department || n.request || n.date || n.agent);
-      if (filledNotes.length > 0) {
-        const notesSummary = filledNotes.map((n, i) => 
-          `Note ${i + 1}: Dept="${n.department || '(empty)'}" Request="${n.request || '(empty)'}" Date="${n.date || '(empty)'}" Agent="${n.agent || '(empty)'}"`
-        ).join('\n');
-        logSectionAction('Notes/Request/Endorsements', 'Saved', `${filledNotes.length} request note(s):\n${notesSummary}`);
-      } else {
-        logSectionAction('Notes/Request/Endorsements', 'Saved', 'Request notes (empty)');
+      // Build detailed change log comparing old vs new notes
+      const oldNotes = savedRequestNotesRef.current;
+      const changes: string[] = [];
+
+      // Check for modified and new notes
+      requestNotes.forEach((note, i) => {
+        const old = oldNotes[i];
+        const isFilled = note.department || note.request || note.date || note.agent;
+        if (!old) {
+          // New note added
+          if (isFilled) {
+            changes.push(`Added Note ${i + 1}: Dept="${note.department || '(empty)'}" Request="${note.request || '(empty)'}" Date="${note.date || '(empty)'}" Agent/Officer="${note.agent || '(empty)'}"`);
+          }
+        } else {
+          // Existing note — check each field
+          const fields: { key: keyof RequestNote; label: string }[] = [
+            { key: 'department', label: 'Department' },
+            { key: 'request', label: 'Request' },
+            { key: 'date', label: 'Date' },
+            { key: 'agent', label: 'Agent/Officer' }
+          ];
+          fields.forEach(({ key, label }) => {
+            if ((note[key] || '') !== (old[key] || '')) {
+              changes.push(`Note ${i + 1} ${label}: "${old[key] || '(empty)'}" → "${note[key] || '(empty)'}"`);
+            }
+          });
+        }
+      });
+
+      // Check for removed notes
+      if (oldNotes.length > requestNotes.length) {
+        for (let i = requestNotes.length; i < oldNotes.length; i++) {
+          const old = oldNotes[i];
+          if (old.department || old.request || old.date || old.agent) {
+            changes.push(`Removed Note ${i + 1}: Dept="${old.department || '(empty)'}" Request="${old.request || '(empty)'}"`);
+          }
+        }
       }
+
+      if (changes.length > 0) {
+        logSectionAction('Notes/Request/Endorsements', 'Updated', changes.join('\n'));
+      } else {
+        const filledNotes = requestNotes.filter(n => n.department || n.request || n.date || n.agent);
+        if (filledNotes.length > 0) {
+          logSectionAction('Notes/Request/Endorsements', 'Saved', `${filledNotes.length} request note(s) (no changes)`);
+        }
+      }
+
+      // Update the saved reference for future comparisons
+      savedRequestNotesRef.current = JSON.parse(JSON.stringify(requestNotes));
       
       showSuccessToast('Request notes saved successfully!');
     } catch (error) {
@@ -1490,7 +1532,7 @@ const ClientRecords: React.FC<{
     trackSectionField('payment-terms-schedule', 'paymentTerm', selected, 'Payment Terms');
     setPaymentTerm(selected);
     const opt = paymentOptions.find(o => o.value === selected)!;
-    if (selected === "installment" || selected === "travel_funds") {
+    if (selected === "installment") {
       setTermCount(1); // start at 1, let user choose
       trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
     } else {
