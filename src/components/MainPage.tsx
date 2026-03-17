@@ -394,6 +394,7 @@ const ClientRecords: React.FC<{
 
   // Visa section states
   const [visaFOC, setVisaFOC] = useState(false);
+  const [insuranceFOC, setInsuranceFOC] = useState(false);
   const [visaService, setVisaService] = useState(false);
   const [insuranceService, setInsuranceService] = useState(false);
   const [eta, setEta] = useState(false);
@@ -2552,6 +2553,30 @@ const ClientRecords: React.FC<{
               </label>
             </div>
 
+            {/* Insurance FOC (Free of Charge) Checkbox */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{
+                ...checkboxLabel,
+                background: insuranceFOC ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.7)",
+                border: insuranceFOC ? "2px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(147, 197, 253, 0.2)",
+              }}>
+                <input
+                  type="checkbox"
+                  style={modernCheckbox}
+                  checked={insuranceFOC}
+                  onChange={e => setInsuranceFOC(e.target.checked)}
+                />
+                <span style={{ fontSize: "15px", color: insuranceFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
+                  🎁 Insurance FOC (Free of Charge)
+                </span>
+                {insuranceFOC && (
+                  <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
+                    — Promo applied, insurance services hidden
+                  </span>
+                )}
+              </label>
+            </div>
+
             {/* Visa Service Options (hidden when FOC is checked) */}
             {!visaFOC && (
             <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
@@ -2715,8 +2740,8 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
-            {/* Insurance Service Payment Form (shown when Insurance Service is checked) */}
-            {insuranceService && (
+            {/* Insurance Service Payment Form (shown when Insurance Service is checked and NOT FOC) */}
+            {!insuranceFOC && insuranceService && (
               <div style={{ marginTop: 20, marginBottom: 20 }}>
                 <h4 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
                   Insurance Service Payments

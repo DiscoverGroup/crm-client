@@ -828,7 +828,11 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                                 'manual',
                                 `Reply to ${log.action.replace('_', ' ')}`,
                                 replyText,
-                                'pending'
+                                'pending',
+                                undefined,
+                                undefined,
+                                undefined,
+                                log.id
                               );
                               
                               // Check for mentions
@@ -893,13 +897,68 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Replies to this activity log (from log notes with parentActivityLogId) */}
+                {logNotes.filter(n => n.parentActivityLogId === log.id).length > 0 && (
+                  <div style={{
+                    marginTop: '8px',
+                    paddingLeft: '12px',
+                    borderLeft: '2px solid #e2e8f0'
+                  }}>
+                    {logNotes.filter(n => n.parentActivityLogId === log.id).map((replyNote) => (
+                      <div key={replyNote.id} style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '6px',
+                        marginBottom: '6px',
+                        padding: '6px',
+                        background: '#f8fafc',
+                        borderRadius: '4px'
+                      }}>
+                        <div style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: '#6b7280',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '9px',
+                          fontWeight: '600',
+                          flexShrink: 0
+                        }}>
+                          {getInitials(replyNote.userName)}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            marginBottom: '2px'
+                          }}>
+                            <span style={{ fontWeight: '600', color: '#1e293b', fontSize: '11px' }}>
+                              {replyNote.userName}
+                            </span>
+                            <span style={{ color: '#64748b', fontSize: '10px' }}>
+                              {formatTimestamp(replyNote.timestamp)}
+                            </span>
+                          </div>
+                          <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                            {renderTextWithMentions(replyNote.description)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ))}
 
         {/* Manual Logs */}
-        {logNotes.length === 0 && activityLogs.length === 0 ? (
+        {logNotes.filter(n => !n.parentActivityLogId).length === 0 && activityLogs.length === 0 ? (
           <div style={{
             textAlign: 'center',
             padding: '24px 16px',
@@ -909,7 +968,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             No activity yet. Changes to this client will appear here automatically.
           </div>
         ) : (
-          logNotes.map((note) => (
+          logNotes.filter(n => !n.parentActivityLogId).map((note) => (
             <div 
               key={note.id} 
               onClick={() => setSelectedNote(note)}

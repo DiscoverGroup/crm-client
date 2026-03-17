@@ -12,6 +12,7 @@ export interface LogNote {
   oldValue?: string;
   newValue?: string;
   replies: LogReply[];
+  parentActivityLogId?: string;
 }
 
 export interface LogReply {

@@ -90,7 +90,8 @@ export class LogNoteService {
     status: 'pending' | 'done' | 'on hold' = 'pending',
     fieldChanged?: string,
     oldValue?: string,
-    newValue?: string
+    newValue?: string,
+    parentActivityLogId?: string
   ): LogNote {
     // Initialize counters on first use
     if (this.logNoteCounter === 1) {
@@ -110,7 +111,8 @@ export class LogNoteService {
       fieldChanged,
       oldValue,
       newValue,
-      replies: []
+      replies: [],
+      ...(parentActivityLogId ? { parentActivityLogId } : {})
     };
 
     const logNotes = this.loadFromStorage();
