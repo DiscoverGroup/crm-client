@@ -906,48 +906,202 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     borderLeft: '2px solid #e2e8f0'
                   }}>
                     {logNotes.filter(n => n.parentActivityLogId === log.id).map((replyNote) => (
-                      <div key={replyNote.id} style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '6px',
-                        marginBottom: '6px',
-                        padding: '6px',
-                        background: '#f8fafc',
-                        borderRadius: '4px'
-                      }}>
+                      <div key={replyNote.id}>
                         <div style={{
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
-                          background: '#6b7280',
-                          color: 'white',
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '9px',
-                          fontWeight: '600',
-                          flexShrink: 0
+                          alignItems: 'flex-start',
+                          gap: '6px',
+                          marginBottom: '4px',
+                          padding: '6px',
+                          background: '#f8fafc',
+                          borderRadius: '4px'
                         }}>
-                          {getInitials(replyNote.userName)}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            background: '#6b7280',
+                            color: 'white',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px',
-                            marginBottom: '2px'
+                            justifyContent: 'center',
+                            fontSize: '9px',
+                            fontWeight: '600',
+                            flexShrink: 0
                           }}>
-                            <span style={{ fontWeight: '600', color: '#1e293b', fontSize: '11px' }}>
-                              {replyNote.userName}
-                            </span>
-                            <span style={{ color: '#64748b', fontSize: '10px' }}>
-                              {formatTimestamp(replyNote.timestamp)}
-                            </span>
+                            {getInitials(replyNote.userName)}
                           </div>
-                          <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
-                            {renderTextWithMentions(replyNote.description)}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginBottom: '2px'
+                            }}>
+                              <span style={{ fontWeight: '600', color: '#1e293b', fontSize: '11px' }}>
+                                {replyNote.userName}
+                              </span>
+                              <span style={{ color: '#64748b', fontSize: '10px' }}>
+                                {formatTimestamp(replyNote.timestamp)}
+                              </span>
+                            </div>
+                            <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                              {renderTextWithMentions(replyNote.description)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setReplyingTo(replyingTo === replyNote.id ? null : replyNote.id);
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#94a3b8',
+                                fontSize: '10px',
+                                cursor: 'pointer',
+                                padding: '2px 0',
+                                marginTop: '2px'
+                              }}
+                            >
+                              💬 Reply
+                            </button>
+
+                            {/* Reply form for this activity log reply */}
+                            {replyingTo === replyNote.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  marginTop: '6px',
+                                  padding: '6px',
+                                  background: 'white',
+                                  borderRadius: '4px',
+                                  border: '1px solid #e2e8f0'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                  <div style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '8px',
+                                    fontWeight: '600'
+                                  }}>
+                                    {getInitials(currentUserName)}
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <MentionInput
+                                      value={replyText}
+                                      onChange={setReplyText}
+                                      placeholder={`Reply to ${replyNote.userName}...`}
+                                      style={{ width: '100%' }}
+                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); }}
+                                        style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}
+                                      >Cancel</button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); handleAddReply(replyNote.id); }}
+                                        disabled={!replyText.trim()}
+                                        style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: replyText.trim() ? 'pointer' : 'not-allowed', opacity: replyText.trim() ? 1 : 0.5 }}
+                                      >Reply</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
+
+                        {/* Nested LogReply threads under this activity log reply */}
+                        {replyNote.replies && replyNote.replies.length > 0 && (
+                          <div style={{
+                            paddingLeft: '16px',
+                            borderLeft: '2px solid #e2e8f0',
+                            marginLeft: '10px',
+                            marginBottom: '4px'
+                          }}>
+                            {(() => {
+                              const renderActivityReplies = (replies: import('../types/logNote').LogReply[], depth: number): React.ReactNode => {
+                                return replies.map((reply) => (
+                                  <div key={reply.id}>
+                                    <div style={{
+                                      display: 'flex',
+                                      alignItems: 'flex-start',
+                                      gap: '6px',
+                                      marginBottom: '4px',
+                                      padding: '6px',
+                                      background: depth % 2 === 0 ? '#f8fafc' : '#f1f5f9',
+                                      borderRadius: '4px'
+                                    }}>
+                                      <div style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        background: '#6b7280',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '9px',
+                                        fontWeight: '600',
+                                        flexShrink: 0
+                                      }}>
+                                        {getInitials(reply.userName)}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                          <span style={{ fontWeight: '600', color: '#1e293b', fontSize: '11px' }}>{reply.userName}</span>
+                                          <span style={{ color: '#64748b', fontSize: '10px' }}>{formatTimestamp(reply.timestamp)}</span>
+                                        </div>
+                                        <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
+                                          {renderTextWithMentions(reply.message)}
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReplyingTo(replyingTo === reply.id ? null : reply.id); }}
+                                          style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '10px', cursor: 'pointer', padding: '2px 0', marginTop: '2px' }}
+                                        >💬 Reply</button>
+
+                                        {replyingTo === reply.id && (
+                                          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '6px', padding: '6px', background: 'white', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: '600' }}>
+                                                {getInitials(currentUserName)}
+                                              </div>
+                                              <div style={{ flex: 1 }}>
+                                                <MentionInput value={replyText} onChange={setReplyText} placeholder={`Reply to ${reply.userName}...`} style={{ width: '100%' }} />
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); }} style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}>Cancel</button>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleAddNestedReply(replyNote.id, reply.id); }} disabled={!replyText.trim()} style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: replyText.trim() ? 'pointer' : 'not-allowed', opacity: replyText.trim() ? 1 : 0.5 }}>Reply</button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {reply.replies && reply.replies.length > 0 && (
+                                      <div style={{ paddingLeft: '16px', borderLeft: '2px solid #e2e8f0', marginLeft: '10px', marginBottom: '4px' }}>
+                                        {renderActivityReplies(reply.replies, depth + 1)}
+                                      </div>
+                                    )}
+                                  </div>
+                                ));
+                              };
+                              return renderActivityReplies(replyNote.replies, 0);
+                            })()}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
