@@ -138,11 +138,16 @@ export const handler: Handler = async (event) => {
       const result = await users.insertOne(newUser);
       user = { ...newUser, _id: result.insertedId };
     } else if (!user.auth0Sub) {
-      // Existing local user — link their Auth0 sub
+      // Existing local user — link their Auth0 sub and sync profile picture
       await users.updateOne(
         { _id: user._id },
-        { $set: { auth0Sub: auth0User.sub, updatedAt: new Date().toISOString() } }
+        { $set: { auth0Sub: auth0User.sub, profileImage: auth0User.picture || user.profileImage || '', updatedAt: new Date().toISOString() } }
       );
+    } else {
+      // Returning Auth0 user — always refresh profile picture in case it changed
+      const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
+      if (auth0User.picture) updates.profileImage = auth0User.picture;
+      await users.updateOne({ _id: user._id }, { $set: updates });
     }
 
     // ── 3. Issue CRM JWT ─────────────────────────────────────────────────────
@@ -166,7 +171,7 @@ export const handler: Handler = async (event) => {
           fullName: user.fullName,
           department: user.department || '',
           position: user.position || '',
-          profileImage: user.profileImage || '',
+          profileImage: auth0User.picture || user.profileImage || '',
           isVerified: true,
           role: user.role ?? 'user',
         },

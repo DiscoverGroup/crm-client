@@ -69,7 +69,28 @@ export const handler: Handler = async (event) => {
       .sort({ createdAt: 1 })
       .toArray();
 
-    const users = rawUsers.map((u: any) => ({
+    // Deduplicate by email — keep the entry with highest role, then newest date
+    const roleRank: Record<string, number> = { admin: 3, user: 2, intern: 1 };
+    const emailMap = new Map<string, any>();
+    for (const u of rawUsers) {
+      const key = (u.email || '').toLowerCase();
+      if (!key) continue;
+      const existing = emailMap.get(key);
+      if (!existing) {
+        emailMap.set(key, u);
+      } else {
+        const newRank = roleRank[u.role ?? 'user'] ?? 2;
+        const oldRank = roleRank[existing.role ?? 'user'] ?? 2;
+        const newDate = new Date(u.updatedAt || u.createdAt || u.registeredAt || 0).getTime();
+        const oldDate = new Date(existing.updatedAt || existing.createdAt || existing.registeredAt || 0).getTime();
+        // Prefer higher role; break ties by newest date
+        if (newRank > oldRank || (newRank === oldRank && newDate > oldDate)) {
+          emailMap.set(key, u);
+        }
+      }
+    }
+
+    const users = Array.from(emailMap.values()).map((u: any) => ({
       id: String(u._id),
       email: u.email || '',
       username: u.username || '',
