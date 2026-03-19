@@ -20,11 +20,13 @@ interface User {
   position: string;
   profileImage?: string;
   registeredAt: string;
+  createdAt?: string;
   isVerified: boolean;
   verificationToken?: string | null;
   verificationTokenExpiry?: number | null;
   verifiedAt?: string;
   role?: string;
+  registrationMethod?: 'auth0' | 'manual';
 }
 
 interface AdminPanelProps {
@@ -65,19 +67,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     loadClientRecoveryRequests();
   }, []);
 
-  const loadUsers = () => {
+  const loadUsers = async () => {
+    // First load from localStorage immediately (offline fallback)
     const usersData = localStorage.getItem('crm_users');
     if (usersData) {
       try {
         const parsedUsers = JSON.parse(usersData);
-        // console.log('📋 AdminPanel loaded users:', parsedUsers.length);
-        // console.log('Users:', parsedUsers.map((u: User) => ({ email: u.email, verified: u.isVerified, role: u.role })));
         setUsers(parsedUsers);
-      } catch (error) {
-        // console.error('Error loading users:', error);
+      } catch {
+        // ignore parse errors
       }
-    } else {
-      // console.warn('⚠️ No users found in localStorage');
+    }
+    // Then fetch all users from MongoDB (includes Auth0 users not in localStorage)
+    try {
+      const res = await fetch('/.netlify/functions/get-users', {
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.users)) {
+          setUsers(data.users);
+          // Keep localStorage in sync so mention autocomplete works
+          localStorage.setItem('crm_users', JSON.stringify(data.users));
+        }
+      }
+    } catch {
+      // Network error — already showing localStorage data
     }
   };
 
@@ -776,6 +791,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Department</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Role</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Registration</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Registered</th>
                 <th style={{ padding: '16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Actions</th>
               </tr>
@@ -841,8 +857,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       {user.isVerified ? '✓ Verified' : '⏳ Unverified'}
                     </span>
                   </td>
+                  <td style={{ padding: '16px' }}>
+                    {user.registrationMethod === 'auth0' ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        background: '#dbeafe',
+                        color: '#1e40af'
+                      }}>
+                        🔐 Auth0
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        background: '#f0fdf4',
+                        color: '#166534'
+                      }}>
+                        📝 Manual
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: '16px', color: '#64748b', fontSize: '13px' }}>
-                    {new Date(user.registeredAt).toLocaleDateString()}
+                    {(() => {
+                      const d = user.createdAt || user.registeredAt;
+                      if (!d) return '—';
+                      const parsed = new Date(d);
+                      return isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
+                    })()}
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
