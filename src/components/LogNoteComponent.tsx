@@ -18,6 +18,35 @@ interface LogNoteComponentProps {
   currentUserName: string;
 }
 
+// Fetches a signed URL from R2 and renders an inline image
+const R2InlineImage: React.FC<{ r2Path: string; name: string; onOpen: (src: string) => void }> = ({ r2Path, name, onOpen }) => {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/.netlify/functions/download-file?path=${encodeURIComponent(r2Path)}`, {
+      headers: authHeaders(),
+    })
+      .then(r => r.json())
+      .then(data => { if (!cancelled && data.success && data.url) setSignedUrl(data.url); else if (!cancelled) setFailed(true); })
+      .catch(() => { if (!cancelled) setFailed(true); });
+    return () => { cancelled = true; };
+  }, [r2Path]);
+
+  if (failed) return null;
+  if (!signedUrl) return <div style={{ width: 120, height: 80, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>Loading…</div>;
+  return (
+    <img
+      src={signedUrl}
+      alt={name}
+      style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block' }}
+      onClick={() => onOpen(signedUrl)}
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
 const LogNoteComponent: React.FC<LogNoteComponentProps> = ({ 
   clientId, 
   currentUserId, 
@@ -203,23 +232,17 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const renderAttachments = (attachments: LogNoteAttachment[] | undefined) => {
     if (!attachments || attachments.length === 0) return null;
     return (
-      <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {attachments.map(att => {
           const isImg = att.type.startsWith('image/');
           return (
-            <div key={att.id} style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 180 }}>
-              {isImg && (
-                <img
-                  src={att.url}
-                  alt={att.name}
-                  style={{ maxWidth: 160, maxHeight: 120, borderRadius: 6, cursor: 'pointer', objectFit: 'cover', border: '1px solid #e2e8f0' }}
-                  onClick={() => setLightboxSrc(att.url)}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
+            <div key={att.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {isImg && att.r2Path && (
+                <R2InlineImage r2Path={att.r2Path} name={att.name} onOpen={setLightboxSrc} />
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {!isImg && <span style={{ fontSize: 14 }}>📄</span>}
-                <span style={{ fontSize: 10, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{att.name}</span>
+                <span style={{ fontSize: 10, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{att.name}</span>
                 {att.r2Path && <R2DownloadButton r2Path={att.r2Path} className="" style={{ fontSize: 10, padding: '2px 6px' }} />}
               </div>
             </div>
