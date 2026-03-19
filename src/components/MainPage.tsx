@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeText, containsAttackPatterns } from '../utils/formSanitizer';
 import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
@@ -8,6 +8,7 @@ import { useFieldTracking } from '../hooks/useFieldTracking';
 import { useSectionTracking } from '../hooks/useSectionTracking';
 import FileAttachmentList from './FileAttachmentList';
 import LogNoteComponent from './LogNoteComponent';
+import NotesThreadComponent from './NotesThreadComponent';
 import Sidebar from "./Sidebar";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
@@ -164,6 +165,9 @@ const ClientRecords: React.FC<{
   // Mobile Activity Log toggle state
   const [showMobileActivityLog, setShowMobileActivityLog] = useState(false);
   
+  // Right panel tab state ('activity' | 'notes')
+  const [rightPanelTab, setRightPanelTab] = useState<'activity' | 'notes'>('activity');
+  
   // Loading state for clients
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   
@@ -182,6 +186,27 @@ const ClientRecords: React.FC<{
     }
     return undefined;
   };
+
+  // Get current user's department and position from the users list
+  const getCurrentUserDeptPos = (): { department: string; position: string } => {
+    const users = localStorage.getItem('crm_users');
+    if (users) {
+      try {
+        const userList = JSON.parse(users);
+        const user = userList.find((u: any) => u.fullName === propsCurrentUser?.fullName);
+        if (user) return { department: user.department || '', position: user.position || '' };
+      } catch { /* ignore */ }
+    }
+    return { department: '', position: '' };
+  };
+
+  const { department: currentDept, position: currentPos } = getCurrentUserDeptPos();
+  // Only "Executive Secretary" in "Executives Department" can check the approval checkbox
+  const isExecSecretary =
+    currentDept.toLowerCase().includes('executive') &&
+    currentPos.toLowerCase() === 'executive secretary';
+  // Only "Finance Department" employees can upload the approval invoice file
+  const isFinanceDept = currentDept.toLowerCase().includes('finance');
   
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
@@ -258,11 +283,15 @@ const ClientRecords: React.FC<{
           setVisaResult(existingClient.visaResult || '');
           setAdvisoryDate(existingClient.advisoryDate || '');
 
-          // Load request notes
-          if ((existingClient as any).requestNotes && Array.isArray((existingClient as any).requestNotes)) {
-            setRequestNotes((existingClient as any).requestNotes);
-            savedRequestNotesRef.current = JSON.parse(JSON.stringify((existingClient as any).requestNotes));
-          }
+          // Load booking voucher links
+          const vl = existingClient.bookingVoucherLinks || {};
+          setVoucherLinkIntlFlight(vl.intlFlight || '');
+          setVoucherLinkLocalFlight1(vl.localFlight1 || '');
+          setVoucherLinkLocalFlight2(vl.localFlight2 || '');
+          setVoucherLinkLocalFlight3(vl.localFlight3 || '');
+          setVoucherLinkLocalFlight4(vl.localFlight4 || '');
+          setVoucherLinkHotelVoucher(vl.hotelVoucher || '');
+          setVoucherLinkOtherFiles(vl.otherFiles || '');
 
           // Load saved payment data for existing client
           const savedPayment = PaymentService.getPaymentData(clientId);
@@ -276,6 +305,9 @@ const ClientRecords: React.FC<{
                 depositSlip: null,
                 receipt: null,
               })));
+            }
+            if (Array.isArray((savedPayment as any).approvalChecked)) {
+              setApprovalChecked((savedPayment as any).approvalChecked as boolean[]);
             }
           }
         }
@@ -393,6 +425,9 @@ const ClientRecords: React.FC<{
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
 
+  // Per-row approval checkbox state (checked by Executive Secretary)
+  const [approvalChecked, setApprovalChecked] = useState<boolean[]>([]);
+
   // Visa section states
   const [visaFOC, setVisaFOC] = useState(false);
   const [insuranceFOC, setInsuranceFOC] = useState(false);
@@ -455,17 +490,14 @@ const ClientRecords: React.FC<{
   const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
   const [_otherFiles, setOtherFiles] = useState<File | null>(null);
 
-  // Notes/Request/Endorsements section states
-  type RequestNote = {
-    department: string;
-    request: string;
-    date: string;
-    agent: string;
-  };
-  const [requestNotes, setRequestNotes] = useState<RequestNote[]>([
-    { department: "", request: "", date: "", agent: "" }
-  ]);
-  const savedRequestNotesRef = useRef<RequestNote[]>([]);
+  // Booking/Voucher attachment link states
+  const [voucherLinkIntlFlight, setVoucherLinkIntlFlight] = useState('');
+  const [voucherLinkLocalFlight1, setVoucherLinkLocalFlight1] = useState('');
+  const [voucherLinkLocalFlight2, setVoucherLinkLocalFlight2] = useState('');
+  const [voucherLinkLocalFlight3, setVoucherLinkLocalFlight3] = useState('');
+  const [voucherLinkLocalFlight4, setVoucherLinkLocalFlight4] = useState('');
+  const [voucherLinkHotelVoucher, setVoucherLinkHotelVoucher] = useState('');
+  const [voucherLinkOtherFiles, setVoucherLinkOtherFiles] = useState('');
 
   // File attachment state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
@@ -484,6 +516,16 @@ const ClientRecords: React.FC<{
       } else if (next.length > termCount) {
         next.length = termCount;
       }
+      return next;
+    });
+  }, [termCount]);
+
+  // Sync approvalChecked array size with termCount
+  useEffect(() => {
+    setApprovalChecked(prev => {
+      const next = [...prev];
+      while (next.length < termCount) next.push(false);
+      if (next.length > termCount) next.length = termCount;
       return next;
     });
   }, [termCount]);
@@ -746,6 +788,7 @@ const ClientRecords: React.FC<{
         termCount,
         selectedPaymentBox,
         paymentDetails,
+        approvalChecked,
         additionalPayments: {
           firstPayment: {
             enabled: firstPaymentEnabled,
@@ -1178,6 +1221,27 @@ const ClientRecords: React.FC<{
     }
   };
 
+  // Auto-save voucher links to cloud when a link field loses focus
+  const saveVoucherLinks = async (overrides?: Partial<{
+    intlFlight: string; localFlight1: string; localFlight2: string;
+    localFlight3: string; localFlight4: string; hotelVoucher: string; otherFiles: string;
+  }>) => {
+    if (!currentClientId || currentClientId.startsWith('temp_')) return;
+    try {
+      await ClientService.updateClient(currentClientId, {
+        bookingVoucherLinks: {
+          intlFlight: overrides?.intlFlight ?? voucherLinkIntlFlight,
+          localFlight1: overrides?.localFlight1 ?? voucherLinkLocalFlight1,
+          localFlight2: overrides?.localFlight2 ?? voucherLinkLocalFlight2,
+          localFlight3: overrides?.localFlight3 ?? voucherLinkLocalFlight3,
+          localFlight4: overrides?.localFlight4 ?? voucherLinkLocalFlight4,
+          hotelVoucher: overrides?.hotelVoucher ?? voucherLinkHotelVoucher,
+          otherFiles: overrides?.otherFiles ?? voucherLinkOtherFiles,
+        },
+      });
+    } catch { /* non-fatal */ }
+  };
+
   // Visa payment handlers
   const handleVisaPaymentChange = async (
     idx: number,
@@ -1385,87 +1449,57 @@ const ClientRecords: React.FC<{
     }
   };
 
-  // Request Notes handlers
-  const handleRequestNoteChange = (idx: number, field: keyof RequestNote, value: string) => {
-    setRequestNotes(prev => 
-      prev.map((note, i) => 
-        i === idx ? { ...note, [field]: value } : note
-      )
-    );
+  // Approval checkbox handler (only Executive Secretary can toggle)
+  const handleApprovalCheckboxChange = (idx: number, checked: boolean) => {
+    setApprovalChecked(prev => {
+      const next = [...prev];
+      next[idx] = checked;
+      return next;
+    });
   };
 
-  const handleAddRequestNote = () => {
-    setRequestNotes(prev => [...prev, { department: "", request: "", date: "", agent: "" }]);
-  };
+  // Approval invoice file upload handler (only Finance Department can upload)
+  const handleApprovalFileUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleRemoveRequestNote = (idx: number) => {
-    if (requestNotes.length > 1) {
-      setRequestNotes(prev => prev.filter((_, i) => i !== idx));
-    }
-  };
-
-  const handleSaveRequestNotes = async () => {
-    if (!currentClientId) {
-      showWarningToast('Please save client information first before saving request notes.');
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+      e.target.value = '';
       return;
     }
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      showErrorToast(`Invalid file type. Only images and PDF files are allowed.`);
+      e.target.value = '';
+      return;
+    }
+
     try {
-      await ClientService.updateClient(currentClientId, { requestNotes } as any);
-      
-      // Build detailed change log comparing old vs new notes
-      const oldNotes = savedRequestNotesRef.current;
-      const changes: string[] = [];
+      await FileService.saveFileAttachment(file, 'other', currentClientId, idx, 'regular', 'approval-invoice', currentUserName, 'approval-invoice');
+      logAttachment('payment-terms-schedule', 'uploaded', file.name, 'approval invoice');
+      const clientAttachments = FileService.getFilesByClient(currentClientId);
+      setAttachments([...clientAttachments]);
+      window.dispatchEvent(new Event('fileAttachmentUpdated'));
+    } catch {
+      showErrorToast('Failed to upload approval file. Please try again.');
+    }
+  };
 
-      // Check for modified and new notes
-      requestNotes.forEach((note, i) => {
-        const old = oldNotes[i];
-        const isFilled = note.department || note.request || note.date || note.agent;
-        if (!old) {
-          // New note added
-          if (isFilled) {
-            changes.push(`Added Note ${i + 1}: Dept="${note.department || '(empty)'}" Request="${note.request || '(empty)'}" Date="${note.date || '(empty)'}" Agent/Officer="${note.agent || '(empty)'}"`);
-          }
-        } else {
-          // Existing note — check each field
-          const fields: { key: keyof RequestNote; label: string }[] = [
-            { key: 'department', label: 'Department' },
-            { key: 'request', label: 'Request' },
-            { key: 'date', label: 'Date' },
-            { key: 'agent', label: 'Agent/Officer' }
-          ];
-          fields.forEach(({ key, label }) => {
-            if ((note[key] || '') !== (old[key] || '')) {
-              changes.push(`Note ${i + 1} ${label}: "${old[key] || '(empty)'}" → "${note[key] || '(empty)'}"`);
-            }
-          });
-        }
-      });
+  // Approval invoice file remove handler
+  const handleApprovalFileRemove = async (fileId: string) => {
+    const confirmed = await showConfirmDialog('Remove File', 'Are you sure you want to remove this approval file?', 'warning');
+    if (!confirmed) return;
 
-      // Check for removed notes
-      if (oldNotes.length > requestNotes.length) {
-        for (let i = requestNotes.length; i < oldNotes.length; i++) {
-          const old = oldNotes[i];
-          if (old.department || old.request || old.date || old.agent) {
-            changes.push(`Removed Note ${i + 1}: Dept="${old.department || '(empty)'}" Request="${old.request || '(empty)'}"`);
-          }
-        }
-      }
-
-      if (changes.length > 0) {
-        logSectionAction('Notes/Request/Endorsements', 'Updated', changes.join('\n'));
-      } else {
-        const filledNotes = requestNotes.filter(n => n.department || n.request || n.date || n.agent);
-        if (filledNotes.length > 0) {
-          logSectionAction('Notes/Request/Endorsements', 'Saved', `${filledNotes.length} request note(s) (no changes)`);
-        }
-      }
-
-      // Update the saved reference for future comparisons
-      savedRequestNotesRef.current = JSON.parse(JSON.stringify(requestNotes));
-      
-      showSuccessToast('Request notes saved successfully!');
-    } catch (error) {
-      showErrorToast('An error occurred while saving request notes.');
+    const success = await FileService.deleteFile(fileId, currentUserName);
+    if (success) {
+      const clientAttachments = FileService.getFilesByClient(currentClientId);
+      setAttachments([...clientAttachments]);
+      logAttachment('payment-terms-schedule', 'deleted', 'Approval file removed', 'approval invoice');
+      window.dispatchEvent(new Event('fileAttachmentUpdated'));
+    } else {
+      showErrorToast('Failed to remove approval file. Please try again.');
     }
   };
 
@@ -2201,11 +2235,11 @@ const ClientRecords: React.FC<{
                     <span style={subLabel}>{travelFundApprovalDate ? '(Up to 2 years from approval date)' : '(Set approval date first)'}</span>
                   </div>
                   <div>
-                    <label style={label}>Released Amount</label>
+                    <label style={label}>Approved Amount</label>
                     <input
                       style={modernInput}
                       type="text"
-                      placeholder="Enter released amount"
+                      placeholder="Enter approved amount"
                       value={travelFundReleasedAmount}
                       onChange={e => {
                         // Allow only numbers, decimals, and commas
@@ -2229,6 +2263,12 @@ const ClientRecords: React.FC<{
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Date</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Deposit Slip</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Receipt</th>
+                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>
+                        Approval / Invoice
+                        <div style={{ fontSize: "11px", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
+                          Exec. Sec. approval + Finance upload
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2342,6 +2382,89 @@ const ClientRecords: React.FC<{
                             }
                             return null;
                           })()}
+                        </td>
+                        {/* Approval / Invoice column */}
+                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", minWidth: 180 }}>
+                          {/* Approval checkbox — only Executive Secretary can check */}
+                          <label
+                            title={isExecSecretary ? 'Check to approve this payment' : 'Only Executive Secretary can approve'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              cursor: isExecSecretary ? 'pointer' : 'not-allowed',
+                              opacity: isExecSecretary ? 1 : 0.5,
+                              marginBottom: 6,
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: approvalChecked[idx] ? '#059669' : '#64748b',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={approvalChecked[idx] || false}
+                              disabled={!isExecSecretary}
+                              onChange={e => handleApprovalCheckboxChange(idx, e.target.checked)}
+                              style={{ ...modernCheckbox, accentColor: '#059669' }}
+                            />
+                            {approvalChecked[idx] ? '✓ Approved' : 'Approve'}
+                          </label>
+
+                          {/* Invoice/receipt upload — shown only when approved, only Finance Dept can upload */}
+                          {approvalChecked[idx] && (
+                            <div style={{ marginTop: 4 }}>
+                              {!isFinanceDept && (
+                                <div style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', borderRadius: 4, padding: '2px 6px', marginBottom: 4 }}>
+                                  📋 Finance Dept upload
+                                </div>
+                              )}
+                              {(() => {
+                                const uploadedFile = attachments.find(att =>
+                                  att.source === 'approval-invoice' &&
+                                  att.paymentIndex === idx
+                                );
+                                if (uploadedFile) {
+                                  return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                      <span style={{ fontSize: 12, color: '#059669' }}>✓ {uploadedFile.file.name}</span>
+                                      <R2DownloadButton
+                                        url={uploadedFile.file.data}
+                                        fileName={uploadedFile.file.name}
+                                        r2Path={uploadedFile.file.r2Path}
+                                        bucket="crm-uploads"
+                                      />
+                                      {isFinanceDept && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleApprovalFileRemove(uploadedFile.file.id)}
+                                          style={{
+                                            fontSize: 12,
+                                            color: '#ef4444',
+                                            background: 'transparent',
+                                            border: '1px solid #ef4444',
+                                            borderRadius: 4,
+                                            padding: '2px 6px',
+                                            cursor: 'pointer',
+                                          }}
+                                          title="Remove file"
+                                        >✕</button>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    disabled={!isFinanceDept}
+                                    title={isFinanceDept ? 'Upload invoice or receipt' : 'Only Finance Department can upload'}
+                                    onChange={e => handleApprovalFileUpload(idx, e)}
+                                    style={{ fontSize: 13, cursor: isFinanceDept ? 'pointer' : 'not-allowed', opacity: isFinanceDept ? 1 : 0.45 }}
+                                  />
+                                );
+                              })()}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -3529,6 +3652,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkIntlFlight}
+                    onChange={e => setVoucherLinkIntlFlight(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ intlFlight: voucherLinkIntlFlight })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkIntlFlight && (
+                    <a href={voucherLinkIntlFlight} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Local Flight 1 */}
@@ -3586,6 +3722,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkLocalFlight1}
+                    onChange={e => setVoucherLinkLocalFlight1(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ localFlight1: voucherLinkLocalFlight1 })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkLocalFlight1 && (
+                    <a href={voucherLinkLocalFlight1} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Local Flight 2 */}
@@ -3643,6 +3792,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkLocalFlight2}
+                    onChange={e => setVoucherLinkLocalFlight2(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ localFlight2: voucherLinkLocalFlight2 })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkLocalFlight2 && (
+                    <a href={voucherLinkLocalFlight2} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Local Flight 3 */}
@@ -3700,6 +3862,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkLocalFlight3}
+                    onChange={e => setVoucherLinkLocalFlight3(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ localFlight3: voucherLinkLocalFlight3 })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkLocalFlight3 && (
+                    <a href={voucherLinkLocalFlight3} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Local Flight 4 */}
@@ -3757,6 +3932,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkLocalFlight4}
+                    onChange={e => setVoucherLinkLocalFlight4(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ localFlight4: voucherLinkLocalFlight4 })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkLocalFlight4 && (
+                    <a href={voucherLinkLocalFlight4} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Hotel Voucher */}
@@ -3814,6 +4002,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkHotelVoucher}
+                    onChange={e => setVoucherLinkHotelVoucher(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ hotelVoucher: voucherLinkHotelVoucher })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkHotelVoucher && (
+                    <a href={voucherLinkHotelVoucher} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
 
                 {/* Other Files */}
@@ -3871,6 +4072,19 @@ const ClientRecords: React.FC<{
                     }
                     return null;
                   })()}
+                  <input
+                    type="url"
+                    value={voucherLinkOtherFiles}
+                    onChange={e => setVoucherLinkOtherFiles(e.target.value)}
+                    onBlur={() => saveVoucherLinks({ otherFiles: voucherLinkOtherFiles })}
+                    placeholder="Or paste link here…"
+                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
+                  />
+                  {voucherLinkOtherFiles && (
+                    <a href={voucherLinkOtherFiles} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
+                      🔗 Open link
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -3904,155 +4118,8 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
-            {/* Notes/Request/Endorsements Section */}
-            <div style={{
-              ...sectionStyle(windowWidth),
-              marginTop: "24px",
-              background: "linear-gradient(145deg, rgba(255, 248, 220, 0.95) 0%, rgba(254, 249, 195, 0.9) 100%)",
-              border: "2px solid rgba(251, 191, 36, 0.3)",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 8px 32px rgba(251, 191, 36, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
-            }}>
-              {/* Section Header */}
-              <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>📝</span>
-                <h2 style={{ 
-                  margin: 0, 
-                  color: "#92400e", 
-                  fontSize: "20px", 
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em"
-                }}>
-                  Notes/Request/Endorsements
-                </h2>
-              </div>
-
-              <div style={{ marginTop: "16px" }}>
-                {requestNotes.map((note, idx) => (
-                  <div key={idx} style={{ 
-                    marginBottom: 16, 
-                    padding: 16, 
-                    backgroundColor: "rgba(255, 255, 255, 0.8)", 
-                    borderRadius: 12,
-                    border: "1px solid rgba(251, 191, 36, 0.2)",
-                    boxShadow: "0 2px 8px rgba(251, 191, 36, 0.1)"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h5 style={{ margin: 0, color: "#92400e", fontSize: "14px", fontWeight: "600" }}>
-                        Request Note {idx + 1}
-                      </h5>
-                      {requestNotes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveRequestNote(idx)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                      <div>
-                        <label style={label}>Department</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter department"
-                          value={note.department}
-                          onChange={e => handleRequestNoteChange(idx, "department", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Request</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter request details"
-                          value={note.request}
-                          onChange={e => handleRequestNoteChange(idx, "request", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Date</label>
-                        <input
-                          style={modernInput}
-                          type="date"
-                          value={note.date}
-                          onChange={e => handleRequestNoteChange(idx, "date", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label style={label}>Agent/Officer</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Enter agent/officer name"
-                          value={note.agent}
-                          onChange={e => handleRequestNoteChange(idx, "agent", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={handleAddRequestNote}
-                  style={{
-                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "12px 20px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "transform 0.2s",
-                    boxShadow: "0 4px 12px rgba(251, 191, 36, 0.3)"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  ➕ Add a Line!
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveRequestNotes}
-                  style={{
-                    background: "linear-gradient(135deg, #b45309 0%, #92400e 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "12px 20px",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "transform 0.2s",
-                    boxShadow: "0 4px 12px rgba(180, 83, 9, 0.3)",
-                    marginLeft: "12px"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  💾 Save Notes
-                </button>
-              </div>
-            </div>
-
           </div>
 
-          {/* Activity Log Section - Moved to Right Sidebar */}
-          
           {/* File Attachments Section */}
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
             {/* Section Header */}
@@ -4089,55 +4156,134 @@ const ClientRecords: React.FC<{
         </form>
       </div>
 
-      {/* Right Sidebar - Activity Log - Hidden on mobile, shown on desktop */}
+      {/* Right Sidebar - Activity Log + Notes - Hidden on mobile, shown on desktop */}
       {windowWidth >= 768 && (
         <div style={{
-          width: '400px',
+          width: '420px',
           flexShrink: 0,
           position: 'sticky',
           top: '20px',
           height: 'fit-content',
           maxHeight: 'calc(100vh - 80px)',
-          overflowY: 'auto'
+          overflowY: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0'
         }}>
-          {currentClientId ? (
-            <LogNoteComponent
-              key={logRefreshKey}
-              clientId={currentClientId}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-            />
-          ) : (
-            <div style={{
-              background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)',
-              borderRadius: '16px',
-              padding: '20px',
-              boxShadow: '0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)',
-              border: '1px solid rgba(147, 197, 253, 0.3)',
-              height: 'fit-content'
-            }}>
-              <h3 style={{
-                margin: '0 0 16px 0',
-                color: '#1e293b',
-                fontSize: '1.25rem',
-                fontWeight: '600'
-              }}>
-                Activity Log
-              </h3>
-              <p style={{
-                color: '#64748b',
-                fontSize: '13px',
-                textAlign: 'center',
-                padding: '24px 16px'
-              }}>
-                Activity log will appear when a client is selected.
-              </p>
-            </div>
-          )}
+          {/* Tab bar */}
+          <div style={{
+            display: 'flex',
+            borderRadius: '12px 12px 0 0',
+            overflow: 'hidden',
+            border: '1px solid rgba(147,197,253,0.3)',
+            borderBottom: 'none',
+            background: 'rgba(255,255,255,0.95)',
+            boxShadow: '0 -2px 8px rgba(59,130,246,0.06)'
+          }}>
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('activity')}
+              style={{
+                flex: 1,
+                padding: '11px 8px',
+                border: 'none',
+                borderBottom: rightPanelTab === 'activity' ? '3px solid #3b82f6' : '3px solid transparent',
+                background: rightPanelTab === 'activity' ? '#eff6ff' : 'transparent',
+                color: rightPanelTab === 'activity' ? '#1d4ed8' : '#6b7280',
+                fontWeight: rightPanelTab === 'activity' ? 700 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5
+              }}
+            >
+              📋 Activity Log
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('notes')}
+              style={{
+                flex: 1,
+                padding: '11px 8px',
+                border: 'none',
+                borderBottom: rightPanelTab === 'notes' ? '3px solid #f59e0b' : '3px solid transparent',
+                background: rightPanelTab === 'notes' ? '#fffbeb' : 'transparent',
+                color: rightPanelTab === 'notes' ? '#b45309' : '#6b7280',
+                fontWeight: rightPanelTab === 'notes' ? 700 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5
+              }}
+            >
+              📝 Notes & Requests
+            </button>
+          </div>
+
+          {/* Tab content */}
+          <div style={{
+            borderRadius: '0 0 16px 16px',
+            border: '1px solid rgba(147,197,253,0.3)',
+            borderTop: 'none',
+            overflow: 'hidden'
+          }}>
+            {rightPanelTab === 'activity' ? (
+              currentClientId ? (
+                <LogNoteComponent
+                  key={logRefreshKey}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              ) : (
+                <div style={{
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
+                  borderRadius: '0 0 16px 16px',
+                  padding: '20px',
+                  boxShadow: '0 8px 32px rgba(59,130,246,0.12), 0 2px 8px rgba(0,0,0,0.04)',
+                }}>
+                  <h3 style={{ margin: '0 0 16px 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '600' }}>
+                    Activity Log
+                  </h3>
+                  <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+                    Activity log will appear when a client is selected.
+                  </p>
+                </div>
+              )
+            ) : (
+              currentClientId ? (
+                <NotesThreadComponent
+                  key={currentClientId}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              ) : (
+                <div style={{
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
+                  borderRadius: '0 0 16px 16px',
+                  padding: '20px',
+                }}>
+                  <h3 style={{ margin: '0 0 16px 0', color: '#92400e', fontSize: '1.1rem', fontWeight: '600' }}>
+                    📝 Notes & Requests
+                  </h3>
+                  <p style={{ color: '#b45309', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+                    Notes will appear when a client is selected.
+                  </p>
+                </div>
+              )
+            )}
+          </div>
         </div>
       )}
 
-      {/* Mobile Activity Log Floating Button */}
+      {/* Mobile Activity Log / Notes Floating Button */}
       {windowWidth < 768 && (
         <>
           {/* Floating Button */}
@@ -4171,12 +4317,12 @@ const ClientRecords: React.FC<{
               e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.4)';
               e.currentTarget.style.transform = showMobileActivityLog ? 'scale(0.9)' : 'scale(1)';
             }}
-            title="Toggle Activity Log"
+            title="Toggle Panels"
           >
             📋
           </button>
 
-          {/* Mobile Activity Log Modal */}
+          {/* Mobile Panel Modal */}
           {showMobileActivityLog && (
             <div
               style={{
@@ -4202,58 +4348,90 @@ const ClientRecords: React.FC<{
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Modal Header */}
+                {/* Modal Header with tabs */}
                 <div
                   style={{
-                    padding: '16px',
                     borderBottom: '1px solid #e5e7eb',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
                     position: 'sticky',
                     top: 0,
                     backgroundColor: 'white',
                     zIndex: 51
                   }}
                 >
-                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '16px', fontWeight: '600' }}>
-                    Activity Log
-                  </h3>
-                  <button
-                    onClick={() => setShowMobileActivityLog(false)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      fontSize: '24px',
-                      cursor: 'pointer',
-                      color: '#6b7280'
-                    }}
-                  >
-                    ✕
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px 0' }}>
+                    <button
+                      onClick={() => setShowMobileActivityLog(false)}
+                      style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex' }}>
+                    <button
+                      type="button"
+                      onClick={() => setRightPanelTab('activity')}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        border: 'none',
+                        borderBottom: rightPanelTab === 'activity' ? '3px solid #3b82f6' : '3px solid transparent',
+                        background: 'transparent',
+                        color: rightPanelTab === 'activity' ? '#1d4ed8' : '#6b7280',
+                        fontWeight: rightPanelTab === 'activity' ? 700 : 500,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📋 Activity Log
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRightPanelTab('notes')}
+                      style={{
+                        flex: 1,
+                        padding: '10px 8px',
+                        border: 'none',
+                        borderBottom: rightPanelTab === 'notes' ? '3px solid #f59e0b' : '3px solid transparent',
+                        background: 'transparent',
+                        color: rightPanelTab === 'notes' ? '#b45309' : '#6b7280',
+                        fontWeight: rightPanelTab === 'notes' ? 700 : 500,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📝 Notes & Requests
+                    </button>
+                  </div>
                 </div>
 
                 {/* Modal Content */}
                 <div style={{ padding: '16px', flex: 1, overflowY: 'auto', width: '100%', minWidth: 0 }}>
-                  {currentClientId ? (
-                    <LogNoteComponent
-                      key={logRefreshKey}
-                      clientId={currentClientId}
-                      currentUserId={currentUserId}
-                      currentUserName={currentUserName}
-                    />
+                  {rightPanelTab === 'activity' ? (
+                    currentClientId ? (
+                      <LogNoteComponent
+                        key={logRefreshKey}
+                        clientId={currentClientId}
+                        currentUserId={currentUserId}
+                        currentUserName={currentUserName}
+                      />
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#7f8c8d', padding: '40px 20px' }}>
+                        <p style={{ margin: 0, fontSize: '14px' }}>Select a client to view activity log</p>
+                      </div>
+                    )
                   ) : (
-                    <div
-                      style={{
-                        textAlign: 'center',
-                        color: '#7f8c8d',
-                        padding: '40px 20px'
-                      }}
-                    >
-                      <p style={{ margin: 0, fontSize: '14px' }}>
-                        Select a client to view activity log
-                      </p>
-                    </div>
+                    currentClientId ? (
+                      <NotesThreadComponent
+                        key={currentClientId}
+                        clientId={currentClientId}
+                        currentUserId={currentUserId}
+                        currentUserName={currentUserName}
+                      />
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#b45309', padding: '40px 20px' }}>
+                        <p style={{ margin: 0, fontSize: '14px' }}>Select a client to view notes</p>
+                      </div>
+                    )
                   )}
                 </div>
               </div>

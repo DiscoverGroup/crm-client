@@ -36,6 +36,15 @@ export interface ClientData {
   advisoryDate?: string;
   // Booking/Tour Voucher
   bookingVoucher?: string;
+  bookingVoucherLinks?: {
+    intlFlight?: string;
+    localFlight1?: string;
+    localFlight2?: string;
+    localFlight3?: string;
+    localFlight4?: string;
+    hotelVoucher?: string;
+    otherFiles?: string;
+  };
   // Important Notes/Requests
   requestNotes?: Array<{
     department: string;
@@ -43,6 +52,8 @@ export interface ClientData {
     date: string;
     agent: string;
   }>;
+  // Notes/Requests thread (right-panel)
+  noteThreads?: any[];
   // Passport Information
   passportInfo?: Array<{
     id: string;

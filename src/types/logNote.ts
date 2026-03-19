@@ -1,3 +1,13 @@
+export interface LogNoteAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  r2Path: string;
+  url: string;
+  uploadDate: string;
+}
+
 export interface LogNote {
   id: string;
   clientId: string;
@@ -13,6 +23,7 @@ export interface LogNote {
   newValue?: string;
   replies: LogReply[];
   parentActivityLogId?: string;
+  attachments?: LogNoteAttachment[];
 }
 
 export interface LogReply {
@@ -23,6 +34,7 @@ export interface LogReply {
   timestamp: Date;
   message: string;
   replies?: LogReply[];
+  attachments?: LogNoteAttachment[];
 }
 
 export interface LogNoteFormData {

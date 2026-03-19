@@ -41,7 +41,7 @@ export const handler = async (event: any) => {
   }
 
   try {
-    const { logNoteId, userId, userName, message, parentReplyId } = JSON.parse(event.body || '{}');
+    const { logNoteId, userId, userName, message, parentReplyId, attachments: rawAttachments } = JSON.parse(event.body || '{}');
 
     if (!logNoteId || !userId || !userName || !message) {
       return {
@@ -50,6 +50,19 @@ export const handler = async (event: any) => {
         body: JSON.stringify({ error: 'Missing required fields: logNoteId, userId, userName, message' })
       };
     }
+
+    // Sanitise and validate attachments
+    const attachments = Array.isArray(rawAttachments)
+      ? rawAttachments.slice(0, 10).map((a: any) => ({
+          id: sanitizeInput(String(a.id || '')).substring(0, 100),
+          name: sanitizeInput(String(a.name || '')).substring(0, 200),
+          type: sanitizeInput(String(a.type || '')).substring(0, 100),
+          size: typeof a.size === 'number' ? a.size : 0,
+          r2Path: sanitizeInput(String(a.r2Path || '')).substring(0, 500),
+          url: sanitizeInput(String(a.url || '')).substring(0, 2000),
+          uploadDate: sanitizeInput(String(a.uploadDate || '')).substring(0, 50),
+        }))
+      : [];
 
     const cleanMessage = sanitizeInput(String(message)).substring(0, 2000);
     const cleanUserName = sanitizeInput(String(userName)).substring(0, 100);
@@ -75,6 +88,7 @@ export const handler = async (event: any) => {
       userName: cleanUserName,
       timestamp: new Date(),
       message: cleanMessage,
+      attachments: attachments,
       replies: []
     };
 

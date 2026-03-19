@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { sanitizeComment, validateLogNoteForm } from '../utils/formSanitizer';
 import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
-import type { LogNote } from '../types/logNote';
+import type { LogNote, LogNoteAttachment } from '../types/logNote';
 import MentionInput from './MentionInput';
 import { NotificationService } from '../services/notificationService';
 import { ClientService } from '../services/clientService';
+import { FileService } from '../services/fileService';
+import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { authHeaders } from '../utils/authToken';
 import { realtimeSync } from '../services/realtimeSyncService';
@@ -29,6 +31,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const [replyText, setReplyText] = useState('');
   const [selectedLog, setSelectedLog] = useState<ActivityLog | null>(null);
   const [selectedNote, setSelectedNote] = useState<LogNote | null>(null);
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
+  const [replyFiles, setReplyFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   // Helper function to get user initials
   const getInitials = (name: string) => {
@@ -175,6 +181,54 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     };
   }, [clientId]);
 
+  // Upload files to R2 and return attachment metadata
+  const uploadAttachments = async (files: File[]): Promise<LogNoteAttachment[]> => {
+    const results: LogNoteAttachment[] = [];
+    for (const file of files) {
+      const stored = await FileService.fileToStoredFile(file, 'log-notes');
+      results.push({
+        id: stored.id,
+        name: stored.name,
+        type: stored.type,
+        size: stored.size,
+        r2Path: stored.r2Path || '',
+        url: stored.data,
+        uploadDate: stored.uploadDate,
+      });
+    }
+    return results;
+  };
+
+  // Render attachment chips/images in a note or reply
+  const renderAttachments = (attachments: LogNoteAttachment[] | undefined) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+      <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {attachments.map(att => {
+          const isImg = att.type.startsWith('image/');
+          return (
+            <div key={att.id} style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 180 }}>
+              {isImg && (
+                <img
+                  src={att.url}
+                  alt={att.name}
+                  style={{ maxWidth: 160, maxHeight: 120, borderRadius: 6, cursor: 'pointer', objectFit: 'cover', border: '1px solid #e2e8f0' }}
+                  onClick={() => setLightboxSrc(att.url)}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {!isImg && <span style={{ fontSize: 14 }}>📄</span>}
+                <span style={{ fontSize: 10, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>{att.name}</span>
+                {att.r2Path && <R2DownloadButton r2Path={att.r2Path} className="" style={{ fontSize: 10, padding: '2px 6px' }} />}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const handleAddComment = async () => {
     const cleanComment = sanitizeComment(newComment, 5000);
     const validation = validateLogNoteForm({ comment: cleanComment });
@@ -182,6 +236,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       alert(validation.firstError());
       return;
     }
+
+    setIsUploading(true);
+    let attachments: LogNoteAttachment[] = [];
+    try { attachments = await uploadAttachments(commentFiles); } catch {}
 
     try {
       // Save to MongoDB via API
@@ -195,7 +253,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           type: 'manual',
           action: 'Comment Added',
           description: cleanComment,
-          status: newCommentStatus
+          status: newCommentStatus,
+          attachments
         })
       });
 
@@ -275,11 +334,17 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       setNewComment('');
       setNewCommentStatus('pending');
     }
+    setCommentFiles([]);
+    setIsUploading(false);
   };
 
   const handleAddReply = async (logNoteId: string) => {
     const cleanReply = sanitizeComment(replyText, 2000);
     if (!cleanReply) return;
+
+    setIsUploading(true);
+    let attachments: LogNoteAttachment[] = [];
+    try { attachments = await uploadAttachments(replyFiles); } catch {}
 
     try {
       // Save reply to MongoDB via API
@@ -290,7 +355,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           logNoteId,
           userId: currentUserId,
           userName: currentUserName,
-          message: cleanReply
+          message: cleanReply,
+          attachments
         })
       });
       const data = await response.json();
@@ -351,6 +417,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         setLogNotes(notes);
       }
     }
+    setReplyFiles([]);
+    setIsUploading(false);
     setReplyText('');
     setReplyingTo(null);
   };
@@ -358,6 +426,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const handleAddNestedReply = async (logNoteId: string, parentReplyId: string) => {
     const cleanReply = sanitizeComment(replyText, 2000);
     if (!cleanReply) return;
+
+    setIsUploading(true);
+    let attachments: LogNoteAttachment[] = [];
+    try { attachments = await uploadAttachments(replyFiles); } catch {}
 
     try {
       // Save nested reply to MongoDB via API
@@ -369,7 +441,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           userId: currentUserId,
           userName: currentUserName,
           message: cleanReply,
-          parentReplyId
+          parentReplyId,
+          attachments
         })
       });
       const data = await response.json();
@@ -429,6 +502,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         setLogNotes(notes);
       }
     }
+    setReplyFiles([]);
+    setIsUploading(false);
     setReplyText('');
     setReplyingTo(null);
   };
@@ -564,9 +639,44 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             />
           </div>
         </div>
+
+        {/* File attachment for comment */}
+        <div style={{ marginTop: '6px' }}>
+          <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', border: '1px dashed #cbd5e1', borderRadius: '4px', fontSize: '11px', color: '#64748b' }}>
+            <input
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                setCommentFiles(prev => [...prev, ...files]);
+                e.target.value = '';
+              }}
+            />
+            📎 Attach file or image
+          </label>
+          {commentFiles.length > 0 && (
+            <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {commentFiles.map((file, idx) => {
+                const isImg = file.type.startsWith('image/');
+                const previewUrl = isImg ? URL.createObjectURL(file) : null;
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: '#f1f5f9', borderRadius: '4px', fontSize: '11px' }}>
+                    {isImg && previewUrl
+                      ? <img src={previewUrl} alt={file.name} style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: '3px' }} />
+                      : <span>📄</span>}
+                    <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                    <button type="button" onClick={() => setCommentFiles(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px', padding: 0 }}>✕</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
         
         {/* Submit button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
           <button
             type="button"
             onClick={(e) => {
@@ -574,20 +684,20 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               e.stopPropagation();
               handleAddComment();
             }}
-            disabled={!newComment.trim()}
+            disabled={!newComment.trim() || isUploading}
             style={{
               background: '#f97316',
               color: 'white',
               border: 'none',
               padding: '6px 12px',
               borderRadius: '6px',
-              cursor: newComment.trim() ? 'pointer' : 'not-allowed',
+              cursor: (newComment.trim() && !isUploading) ? 'pointer' : 'not-allowed',
               fontSize: '12px',
               fontWeight: '500',
-              opacity: newComment.trim() ? 1 : 0.5
+              opacity: (newComment.trim() && !isUploading) ? 1 : 0.5
             }}
           >
-            Submit
+            {isUploading ? 'Uploading…' : 'Submit'}
           </button>
         </div>
       </div>
@@ -817,31 +927,30 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           value={replyText}
                           onChange={setReplyText}
                           placeholder="Write a reply... (Type @ to mention someone)"
-                          style={{
-                            width: '100%'
-                          }}
+                          style={{ width: '100%' }}
                         />
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'flex-end',
-                          gap: '6px',
-                          marginTop: '6px'
-                        }}>
+                        {/* File attach for reply */}
+                        <div style={{ marginTop: '4px' }}>
+                          <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', border: '1px dashed #cbd5e1', borderRadius: '4px', fontSize: '10px', color: '#64748b' }}>
+                            <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" style={{ display: 'none' }} onChange={(e) => { setReplyFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
+                            📎 Attach
+                          </label>
+                          {replyFiles.length > 0 && (
+                            <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {replyFiles.map((f, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '3px', fontSize: '10px' }}>
+                                  {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: 24, height: 24, objectFit: 'cover', borderRadius: '2px' }} /> : <span>📄</span>}
+                                  <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                  <button type="button" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', padding: 0 }}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' }}>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setReplyingTo(null);
-                              setReplyText('');
-                            }}
-                            style={{
-                              padding: '4px 10px',
-                              fontSize: '11px',
-                              border: '1px solid #e2e8f0',
-                              background: 'white',
-                              color: '#64748b',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
+                            onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); setReplyFiles([]); }}
+                            style={{ padding: '4px 10px', fontSize: '11px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '4px', cursor: 'pointer' }}
                           >
                             Cancel
                           </button>
@@ -851,6 +960,10 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                               if (!replyText.trim()) return;
                               const cleanReply = sanitizeComment(replyText, 2000);
                               if (!cleanReply) return;
+
+                              setIsUploading(true);
+                              let attachments: LogNoteAttachment[] = [];
+                              try { attachments = await uploadAttachments(replyFiles); } catch {}
 
                               try {
                                 // Save to MongoDB via API
@@ -865,7 +978,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                                     action: `Reply to ${log.action.replace('_', ' ')}`,
                                     description: cleanReply,
                                     status: 'pending',
-                                    parentActivityLogId: log.id
+                                    parentActivityLogId: log.id,
+                                    attachments
                                   })
                                 });
                                 const data = await response.json();
@@ -909,20 +1023,15 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                                   `Reply to ${log.action.replace('_', ' ')}`, cleanReply, 'pending', undefined, undefined, undefined, log.id);
                                 setLogNotes(prev => [logNote, ...prev]);
                               }
+                              setReplyFiles([]);
+                              setIsUploading(false);
                               setReplyText('');
                               setReplyingTo(null);
                             }}
-                            style={{
-                              padding: '4px 10px',
-                              fontSize: '11px',
-                              border: 'none',
-                              background: '#3b82f6',
-                              color: 'white',
-                              borderRadius: '4px',
-                              cursor: 'pointer'
-                            }}
+                            disabled={isUploading}
+                            style={{ padding: '4px 10px', fontSize: '11px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '4px', cursor: isUploading ? 'wait' : 'pointer', opacity: isUploading ? 0.6 : 1 }}
                           >
-                            Reply
+                            {isUploading ? 'Uploading…' : 'Reply'}
                           </button>
                         </div>
                       </div>
@@ -980,6 +1089,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
                               {renderTextWithMentions(replyNote.description)}
                             </div>
+                            {renderAttachments(replyNote.attachments)}
                             <button
                               type="button"
                               onClick={(e) => {
@@ -1004,48 +1114,34 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             {replyingTo === replyNote.id && (
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                style={{
-                                  marginTop: '6px',
-                                  padding: '6px',
-                                  background: 'white',
-                                  borderRadius: '4px',
-                                  border: '1px solid #e2e8f0'
-                                }}
+                                style={{ marginTop: '6px', padding: '6px', background: 'white', borderRadius: '4px', border: '1px solid #e2e8f0' }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
-                                  <div style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    borderRadius: '50%',
-                                    background: '#3b82f6',
-                                    color: 'white',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '8px',
-                                    fontWeight: '600'
-                                  }}>
+                                  <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: '600' }}>
                                     {getInitials(currentUserName)}
                                   </div>
                                   <div style={{ flex: 1 }}>
-                                    <MentionInput
-                                      value={replyText}
-                                      onChange={setReplyText}
-                                      placeholder={`Reply to ${replyNote.userName}...`}
-                                      style={{ width: '100%' }}
-                                    />
+                                    <MentionInput value={replyText} onChange={setReplyText} placeholder={`Reply to ${replyNote.userName}...`} style={{ width: '100%' }} />
+                                    <div style={{ marginTop: '4px' }}>
+                                      <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', border: '1px dashed #cbd5e1', borderRadius: '3px', fontSize: '10px', color: '#64748b' }}>
+                                        <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" style={{ display: 'none' }} onChange={(e) => { setReplyFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
+                                        📎 Attach
+                                      </label>
+                                      {replyFiles.length > 0 && (
+                                        <div style={{ marginTop: '3px', display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                                          {replyFiles.map((f, i) => (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '1px 5px', background: '#f1f5f9', borderRadius: '3px', fontSize: '9px' }}>
+                                              {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: '2px' }} /> : <span>📄</span>}
+                                              <span style={{ maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                              <button type="button" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '10px', padding: 0 }}>✕</button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); }}
-                                        style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}
-                                      >Cancel</button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); handleAddReply(replyNote.id); }}
-                                        disabled={!replyText.trim()}
-                                        style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: replyText.trim() ? 'pointer' : 'not-allowed', opacity: replyText.trim() ? 1 : 0.5 }}
-                                      >Reply</button>
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); setReplyFiles([]); }} style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}>Cancel</button>
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); handleAddReply(replyNote.id); }} disabled={!replyText.trim() || isUploading} style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: (replyText.trim() && !isUploading) ? 'pointer' : 'not-allowed', opacity: (replyText.trim() && !isUploading) ? 1 : 0.5 }}>{isUploading ? '…' : 'Reply'}</button>
                                     </div>
                                   </div>
                                 </div>
@@ -1098,6 +1194,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                                         <div style={{ color: '#475569', fontSize: '11px', lineHeight: '1.3', wordBreak: 'break-word' }}>
                                           {renderTextWithMentions(reply.message)}
                                         </div>
+                                        {renderAttachments((reply as any).attachments)}
                                         <button
                                           type="button"
                                           onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReplyingTo(replyingTo === reply.id ? null : reply.id); }}
@@ -1112,9 +1209,26 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                                               </div>
                                               <div style={{ flex: 1 }}>
                                                 <MentionInput value={replyText} onChange={setReplyText} placeholder={`Reply to ${reply.userName}...`} style={{ width: '100%' }} />
+                                                <div style={{ marginTop: '3px' }}>
+                                                  <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 5px', border: '1px dashed #cbd5e1', borderRadius: '3px', fontSize: '9px', color: '#64748b' }}>
+                                                    <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" style={{ display: 'none' }} onChange={(e) => { setReplyFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
+                                                    📎 Attach
+                                                  </label>
+                                                  {replyFiles.length > 0 && (
+                                                    <div style={{ marginTop: '2px', display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                                                      {replyFiles.map((f, i) => (
+                                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '1px 4px', background: '#f1f5f9', borderRadius: '2px', fontSize: '9px' }}>
+                                                          {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: 18, height: 18, objectFit: 'cover', borderRadius: '2px' }} /> : <span>📄</span>}
+                                                          <span style={{ maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                                          <button type="button" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '9px', padding: 0 }}>✕</button>
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                </div>
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
-                                                  <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); }} style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}>Cancel</button>
-                                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleAddNestedReply(replyNote.id, reply.id); }} disabled={!replyText.trim()} style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: replyText.trim() ? 'pointer' : 'not-allowed', opacity: replyText.trim() ? 1 : 0.5 }}>Reply</button>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); setReplyFiles([]); }} style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}>Cancel</button>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); handleAddNestedReply(replyNote.id, reply.id); }} disabled={!replyText.trim() || isUploading} style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: (replyText.trim() && !isUploading) ? 'pointer' : 'not-allowed', opacity: (replyText.trim() && !isUploading) ? 1 : 0.5 }}>{isUploading ? '…' : 'Reply'}</button>
                                                 </div>
                                               </div>
                                             </div>
@@ -1260,6 +1374,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             {renderTextWithMentions(note.description)}
                           </div>
                         )}
+                      {renderAttachments(note.attachments)}
                       </div>
                     )}
                   </div>
@@ -1334,88 +1449,33 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               {replyingTo === note.id && (
                 <div 
                   onClick={(e) => e.stopPropagation()}
-                  style={{
-                    marginTop: '8px',
-                    padding: '8px',
-                    background: '#f8fafc',
-                    borderRadius: '6px',
-                    border: '1px solid #e2e8f0'
-                  }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '6px'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      background: '#3b82f6',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '9px',
-                      fontWeight: '600'
-                    }}>
+                  style={{ marginTop: '8px', padding: '8px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: '600' }}>
                       {getInitials(currentUserName)}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <MentionInput
-                        value={replyText}
-                        onChange={setReplyText}
-                        placeholder="Write a reply... (Type @ to mention someone)"
-                        style={{
-                          width: '100%'
-                        }}
-                      />
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '6px',
-                        marginTop: '6px'
-                      }}>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setReplyingTo(null);
-                            setReplyText('');
-                          }}
-                          style={{
-                            background: 'none',
-                            border: '1px solid #e2e8f0',
-                            color: '#64748b',
-                            padding: '4px 8px',
-                            borderRadius: '3px',
-                            fontSize: '11px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleAddReply(note.id);
-                          }}
-                          disabled={!replyText.trim()}
-                          style={{
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            padding: '4px 8px',
-                            borderRadius: '3px',
-                            fontSize: '11px',
-                            cursor: replyText.trim() ? 'pointer' : 'not-allowed',
-                            opacity: replyText.trim() ? 1 : 0.5
-                          }}
-                        >
-                          Reply
-                        </button>
+                      <MentionInput value={replyText} onChange={setReplyText} placeholder="Write a reply... (Type @ to mention someone)" style={{ width: '100%' }} />
+                      <div style={{ marginTop: '4px' }}>
+                        <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', border: '1px dashed #cbd5e1', borderRadius: '4px', fontSize: '10px', color: '#64748b' }}>
+                          <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" style={{ display: 'none' }} onChange={(e) => { setReplyFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
+                          📎 Attach
+                        </label>
+                        {replyFiles.length > 0 && (
+                          <div style={{ marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                            {replyFiles.map((f, i) => (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '3px', padding: '2px 6px', background: '#f1f5f9', borderRadius: '3px', fontSize: '10px' }}>
+                                {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: 24, height: 24, objectFit: 'cover', borderRadius: '2px' }} /> : <span>📄</span>}
+                                <span style={{ maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                <button type="button" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '11px', padding: 0 }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '6px' }}>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReplyingTo(null); setReplyText(''); setReplyFiles([]); }} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddReply(note.id); }} disabled={!replyText.trim() || isUploading} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '3px', fontSize: '11px', cursor: (replyText.trim() && !isUploading) ? 'pointer' : 'not-allowed', opacity: (replyText.trim() && !isUploading) ? 1 : 0.5 }}>{isUploading ? 'Uploading…' : 'Reply'}</button>
                       </div>
                     </div>
                   </div>
@@ -1489,6 +1549,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                               }}>
                                 {renderTextWithMentions(reply.message)}
                               </div>
+                              {renderAttachments(reply.attachments)}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1511,47 +1572,33 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
                               {/* Nested reply form */}
                               {replyingTo === reply.id && (
-                                <div style={{
-                                  marginTop: '6px',
-                                  padding: '6px',
-                                  background: 'white',
-                                  borderRadius: '4px',
-                                  border: '1px solid #e2e8f0'
-                                }}>
+                                <div style={{ marginTop: '6px', padding: '6px', background: 'white', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
                                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
-                                    <div style={{
-                                      width: '18px',
-                                      height: '18px',
-                                      borderRadius: '50%',
-                                      background: '#3b82f6',
-                                      color: 'white',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      fontSize: '8px',
-                                      fontWeight: '600'
-                                    }}>
+                                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: '600' }}>
                                       {getInitials(currentUserName)}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                      <MentionInput
-                                        value={replyText}
-                                        onChange={setReplyText}
-                                        placeholder={`Reply to ${reply.userName}...`}
-                                        style={{ width: '100%' }}
-                                      />
+                                      <MentionInput value={replyText} onChange={setReplyText} placeholder={`Reply to ${reply.userName}...`} style={{ width: '100%' }} />
+                                      <div style={{ marginTop: '3px' }}>
+                                        <label style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '2px', padding: '2px 5px', border: '1px dashed #cbd5e1', borderRadius: '3px', fontSize: '9px', color: '#64748b' }}>
+                                          <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.csv" style={{ display: 'none' }} onChange={(e) => { setReplyFiles(prev => [...prev, ...Array.from(e.target.files || [])]); e.target.value = ''; }} />
+                                          📎 Attach
+                                        </label>
+                                        {replyFiles.length > 0 && (
+                                          <div style={{ marginTop: '2px', display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                                            {replyFiles.map((f, i) => (
+                                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '1px 4px', background: '#f1f5f9', borderRadius: '2px', fontSize: '9px' }}>
+                                                {f.type.startsWith('image/') ? <img src={URL.createObjectURL(f)} alt={f.name} style={{ width: 18, height: 18, objectFit: 'cover', borderRadius: '2px' }} /> : <span>📄</span>}
+                                                <span style={{ maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                                                <button type="button" onClick={() => setReplyFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '9px', padding: 0 }}>✕</button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
                                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px', marginTop: '4px' }}>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); }}
-                                          style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}
-                                        >Cancel</button>
-                                        <button
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); handleAddNestedReply(note.id, reply.id); }}
-                                          disabled={!replyText.trim()}
-                                          style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: replyText.trim() ? 'pointer' : 'not-allowed', opacity: replyText.trim() ? 1 : 0.5 }}
-                                        >Reply</button>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); setReplyingTo(null); setReplyText(''); setReplyFiles([]); }} style={{ padding: '3px 8px', fontSize: '10px', border: '1px solid #e2e8f0', background: 'white', color: '#64748b', borderRadius: '3px', cursor: 'pointer' }}>Cancel</button>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleAddNestedReply(note.id, reply.id); }} disabled={!replyText.trim() || isUploading} style={{ padding: '3px 8px', fontSize: '10px', border: 'none', background: '#3b82f6', color: 'white', borderRadius: '3px', cursor: (replyText.trim() && !isUploading) ? 'pointer' : 'not-allowed', opacity: (replyText.trim() && !isUploading) ? 1 : 0.5 }}>{isUploading ? '…' : 'Reply'}</button>
                                       </div>
                                     </div>
                                   </div>
@@ -1584,6 +1631,25 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         </>
         )}
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxSrc && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, cursor: 'zoom-out' }}
+          onClick={() => setLightboxSrc(null)}
+        >
+          <img
+            src={lightboxSrc}
+            alt="Preview"
+            style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 8, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', objectFit: 'contain' }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxSrc(null)}
+            style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: 40, height: 40, borderRadius: '50%', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >✕</button>
+        </div>
+      )}
 
       {/* Detail Modal for Activity Logs */}
       {selectedLog && (
@@ -1980,6 +2046,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   {selectedNote.description}
                 </div>
               )}
+              {renderAttachments(selectedNote.attachments)}
             </div>
 
             {/* Status */}
@@ -2080,6 +2147,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                             }}>
                               {renderTextWithMentions(reply.message)}
                             </div>
+                            {renderAttachments((reply as any).attachments)}
                           </div>
                           {reply.replies && reply.replies.length > 0 && (
                             <div style={{ marginTop: '4px' }}>
