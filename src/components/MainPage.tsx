@@ -61,8 +61,8 @@ const sectionStyle = (w: number): React.CSSProperties => ({
   background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
   borderRadius: "16px",
   boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)",
-  padding: w < 640 ? "16px" : "32px",
-  marginBottom: w < 640 ? "16px" : "32px",
+  padding: w < 640 ? "16px" : w <= 1366 ? "20px" : "32px",
+  marginBottom: w < 640 ? "16px" : w <= 1366 ? "16px" : "32px",
   border: "1px solid rgba(147, 197, 253, 0.3)",
   position: "relative" as const,
   overflow: "hidden" as const
@@ -97,7 +97,7 @@ const saveButtonStyle = (isSaving: boolean) => ({
     ? "linear-gradient(145deg, #9ca3af 0%, #6b7280 100%)"
     : "linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%)",
   color: "#fff",
-  padding: "14px 32px",
+  padding: "10px 24px",
   border: "none",
   borderRadius: "12px",
   fontSize: "16px",
@@ -1585,10 +1585,10 @@ const ClientRecords: React.FC<{
     }}>
       <div style={{
         maxWidth: 1400,
-        margin: "40px auto",
-        padding: "0 20px",
+        margin: windowWidth <= 1366 ? "16px auto" : "40px auto",
+        padding: windowWidth <= 1366 ? "0 12px" : "0 20px",
         display: 'flex',
-        gap: '24px',
+        gap: windowWidth <= 1366 ? '16px' : '24px',
         alignItems: 'flex-start',
         position: 'relative'
       }}>
@@ -1609,8 +1609,8 @@ const ClientRecords: React.FC<{
           <div style={{ 
             background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
             borderRadius: "16px", 
-            padding: windowWidth < 640 ? "16px" : "32px", 
-            marginBottom: "32px",
+            padding: windowWidth < 640 ? "16px" : windowWidth <= 1366 ? "16px 20px" : "32px", 
+            marginBottom: windowWidth <= 1366 ? "16px" : "32px",
             boxShadow: "0 8px 32px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.05)",
             border: "1px solid rgba(147, 197, 253, 0.3)",
             display: 'flex',
@@ -4157,7 +4157,7 @@ const ClientRecords: React.FC<{
       {/* Right Sidebar - Activity Log + Notes - Hidden on mobile, shown on desktop */}
       {windowWidth >= 768 && (
         <div style={{
-          width: '420px',
+          width: windowWidth <= 1366 ? '360px' : '420px',
           flexShrink: 0,
           position: 'sticky',
           top: '20px',
