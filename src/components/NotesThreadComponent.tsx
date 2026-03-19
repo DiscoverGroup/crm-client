@@ -579,7 +579,7 @@ const ThreadCard: React.FC<ThreadCardProps> = ({
         borderRadius: 12,
         border: '1px solid #fde68a',
         boxShadow: '0 2px 6px rgba(251,191,36,0.12)',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       {/* Thread Header */}
