@@ -75,6 +75,7 @@ export const handler = async (event: any) => {
       oldValue: note.oldValue,
       newValue: note.newValue,
       parentActivityLogId: note.parentActivityLogId || null,
+      attachments: note.attachments || [],
       replies: note.replies || []
     }));
 

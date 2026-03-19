@@ -4163,8 +4163,7 @@ const ClientRecords: React.FC<{
           flexShrink: 0,
           position: 'sticky',
           top: '20px',
-          height: 'fit-content',
-          maxHeight: 'calc(100vh - 80px)',
+          height: 'calc(100vh - 80px)',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
@@ -4230,8 +4229,7 @@ const ClientRecords: React.FC<{
           <div style={{
             borderRadius: '0 0 16px 16px',
             border: '1px solid rgba(147,197,253,0.3)',
-            borderTop: 'none',
-            overflow: 'hidden'
+            borderTop: 'none'
           }}>
             {rightPanelTab === 'activity' ? (
               currentClientId ? (

@@ -179,7 +179,7 @@ const MentionInput: React.FC<MentionInputProps> = ({
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: 1, ...style }}>
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: 1000, ...style }}>
       <textarea
         ref={textareaRef}
         value={value}

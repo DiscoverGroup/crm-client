@@ -4,6 +4,7 @@ import { ClientService } from '../services/clientService';
 import { sanitizeComment, containsAttackPatterns } from '../utils/formSanitizer';
 import { authHeaders } from '../utils/authToken';
 import Loader from './Loader';
+import MentionInput from './MentionInput';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -402,24 +403,15 @@ const ReplyTree: React.FC<ReplyTreeProps> = ({
             background: 'white',
             borderRadius: 8,
             border: '1px solid #fde68a',
+            position: 'relative',
+            zIndex: 10,
           }}
         >
-          <textarea
+          <MentionInput
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Write a reply..."
-            rows={2}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              resize: 'none',
-              border: '1px solid #e5e7eb',
-              borderRadius: 6,
-              fontSize: 12,
-              padding: '6px 8px',
-              outline: 'none',
-              marginBottom: 6,
-            }}
+            onChange={setText}
+            placeholder={`Reply to ${reply.authorName}... (@ to mention someone)`}
+            style={{ marginBottom: 6 }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <ReplyFileInput
@@ -709,22 +701,11 @@ const ThreadCard: React.FC<ThreadCardProps> = ({
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
             <AvatarBubble name={currentUserName} size={24} color="#3b82f6" />
             <div style={{ flex: 1 }}>
-              <textarea
+              <MentionInput
                 value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Write a reply..."
-                rows={2}
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  resize: 'none',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  padding: '8px 10px',
-                  outline: 'none',
-                  marginBottom: 6,
-                }}
+                onChange={setReplyText}
+                placeholder="Write a reply... (@ to mention someone)"
+                style={{ marginBottom: 6 }}
               />
               <div
                 style={{

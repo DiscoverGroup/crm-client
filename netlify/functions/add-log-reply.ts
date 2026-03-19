@@ -52,14 +52,19 @@ export const handler = async (event: any) => {
     }
 
     // Sanitise and validate attachments
+    // Note: r2Path, url and type must NOT go through sanitizeInput which escapes
+    // forward slashes (/ → &#x2F;), breaking file paths, URLs and MIME types.
     const attachments = Array.isArray(rawAttachments)
       ? rawAttachments.slice(0, 10).map((a: any) => ({
           id: sanitizeInput(String(a.id || '')).substring(0, 100),
           name: sanitizeInput(String(a.name || '')).substring(0, 200),
-          type: sanitizeInput(String(a.type || '')).substring(0, 100),
+          // MIME type: only alphanumeric, slash, plus, dot, hyphen
+          type: String(a.type || '').toLowerCase().replace(/[^a-z0-9/+.\-]/g, '').substring(0, 100),
           size: typeof a.size === 'number' ? a.size : 0,
-          r2Path: sanitizeInput(String(a.r2Path || '')).substring(0, 500),
-          url: sanitizeInput(String(a.url || '')).substring(0, 2000),
+          // R2 path: only safe path characters (no HTML encoding)
+          r2Path: String(a.r2Path || '').replace(/[^a-zA-Z0-9/_.()+\- ]/g, '').substring(0, 500),
+          // URL: strip HTML tags only, preserve structure
+          url: String(a.url || '').replace(/<[^>]*>/g, '').replace(/[\x00-\x1F\x7F]/g, '').substring(0, 2000),
           uploadDate: sanitizeInput(String(a.uploadDate || '')).substring(0, 50),
         }))
       : [];
