@@ -1634,7 +1634,7 @@ const ClientRecords: React.FC<{
             }}></div>
             <div style={{ position: 'relative', zIndex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: windowWidth < 640 ? '8px' : '12px' }}>
-                <span style={{ fontSize: windowWidth < 640 ? '24px' : '28px' }}>👤</span>
+                
                 <h1 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
@@ -1677,7 +1677,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>📋</span>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -1775,7 +1775,7 @@ const ClientRecords: React.FC<{
             {/* Save Button */}
             <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
               <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
-                ⚠️ Remember to save changes before leaving!
+                Remember to save changes before leaving!
               </span>
               <button
                 type="button"
@@ -1783,7 +1783,7 @@ const ClientRecords: React.FC<{
                 disabled={isSavingClient}
                 style={{ ...saveButtonStyle(isSavingClient), width: windowWidth < 640 ? '100%' : 'auto' }}
               >
-                {isSavingClient ? "Saving..." : "💾 Save Client Info"}
+                {isSavingClient ? "Saving..." : "Save Client Info"}
               </button>
             </div>
           </div>
@@ -1792,7 +1792,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>🎒</span>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -2063,7 +2063,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>💳</span>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -2144,7 +2144,7 @@ const ClientRecords: React.FC<{
                 border: "1px solid rgba(16, 185, 129, 0.3)"
               }}>
                 <h4 style={{ margin: "0 0 16px 0", color: "#065f46", fontSize: "16px", fontWeight: "600" }}>
-                  💰 Travel Fund Request Workflow
+                  Travel Fund Request Workflow
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
                   <div>
@@ -2181,9 +2181,7 @@ const ClientRecords: React.FC<{
                         : "#92400e",
                       border: `2px solid ${travelFundApprovalStatus === 'approved' ? 'rgba(16, 185, 129, 0.3)' : travelFundApprovalStatus === 'rejected' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
                     }}>
-                      <span style={{ fontSize: "18px" }}>
-                        {travelFundApprovalStatus === 'approved' ? '✅' : travelFundApprovalStatus === 'rejected' ? '❌' : '⏳'}
-                      </span>
+
                       <select
                         value={travelFundApprovalStatus}
                         onChange={e => {
@@ -2415,7 +2413,7 @@ const ClientRecords: React.FC<{
                             <div style={{ marginTop: 4 }}>
                               {!isFinanceDept && (
                                 <div style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', borderRadius: 4, padding: '2px 6px', marginBottom: 4 }}>
-                                  📋 Finance Dept upload
+                                  Finance Dept upload
                                 </div>
                               )}
                               {(() => {
@@ -2643,7 +2641,7 @@ const ClientRecords: React.FC<{
               return (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(16, 185, 129, 0.06)', borderRadius: '8px', border: '1px dashed rgba(16, 185, 129, 0.3)' }}>
                   <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#065f46' }}>
-                    📁 Previously Uploaded Payment Files ({allLegacy.length})
+                    Previously Uploaded Payment Files ({allLegacy.length})
                   </p>
                   <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#059669' }}>
                     Re-upload to the correct field above, then remove these.
@@ -2682,7 +2680,7 @@ const ClientRecords: React.FC<{
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>🛂</span>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -2708,7 +2706,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setVisaFOC(e.target.checked)}
                 />
                 <span style={{ fontSize: "15px", color: visaFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
-                  🎁 Visa FOC (Free of Charge)
+                  Visa FOC (Free of Charge)
                 </span>
                 {visaFOC && (
                   <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
@@ -2732,7 +2730,7 @@ const ClientRecords: React.FC<{
                   onChange={e => setInsuranceFOC(e.target.checked)}
                 />
                 <span style={{ fontSize: "15px", color: insuranceFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
-                  🎁 Insurance FOC (Free of Charge)
+                  Insurance FOC (Free of Charge)
                 </span>
                 {insuranceFOC && (
                   <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
@@ -2752,7 +2750,7 @@ const ClientRecords: React.FC<{
                   checked={visaService}
                   onChange={e => setVisaService(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>🛂 Visa Service</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Visa Service</span>
               </label>
               <label style={checkboxLabel}>
                 <input
@@ -2761,7 +2759,7 @@ const ClientRecords: React.FC<{
                   checked={insuranceService}
                   onChange={e => setInsuranceService(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>🛡️ Insurance Service</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Insurance Service</span>
               </label>
               <label style={checkboxLabel}>
                 <input
@@ -2770,7 +2768,7 @@ const ClientRecords: React.FC<{
                   checked={eta}
                   onChange={e => setEta(e.target.checked)}
                 />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>✈️ ETA</span>
+                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>ETA</span>
               </label>
             </div>
             )}
@@ -3469,7 +3467,7 @@ const ClientRecords: React.FC<{
               return (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(99, 102, 241, 0.06)', borderRadius: '8px', border: '1px dashed rgba(99, 102, 241, 0.3)' }}>
                   <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#4338ca' }}>
-                    📁 Previously Uploaded Passport Files ({legacyPassportFiles.length})
+                    Previously Uploaded Passport Files ({legacyPassportFiles.length})
                   </p>
                   <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#6366f1' }}>
                     Re-upload to the correct field above, then remove these.
@@ -3584,7 +3582,7 @@ const ClientRecords: React.FC<{
             }}>
               {/* Section Header */}
               <div style={sectionHeader}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎫</span>
+                
                 <h2 style={{ 
                   margin: 0, 
                   color: "#1e293b", 
@@ -3599,7 +3597,7 @@ const ClientRecords: React.FC<{
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
                 <div>
-                  <label style={label}>✈️ International Flight</label>
+                  <label style={label}>International Flight</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -3662,14 +3660,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkIntlFlight && (
                     <a href={voucherLinkIntlFlight} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Local Flight 1 */}
                 <div>
-                  <label style={label}>🛩️ Local Flight 1</label>
+                  <label style={label}>Local Flight 1</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -3732,14 +3730,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkLocalFlight1 && (
                     <a href={voucherLinkLocalFlight1} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Local Flight 2 */}
                 <div>
-                  <label style={label}>🛩️ Local Flight 2</label>
+                  <label style={label}>Local Flight 2</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -3802,14 +3800,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkLocalFlight2 && (
                     <a href={voucherLinkLocalFlight2} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Local Flight 3 */}
                 <div>
-                  <label style={label}>🛩️ Local Flight 3</label>
+                  <label style={label}>Local Flight 3</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -3872,14 +3870,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkLocalFlight3 && (
                     <a href={voucherLinkLocalFlight3} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Local Flight 4 */}
                 <div>
-                  <label style={label}>🛩️ Local Flight 4</label>
+                  <label style={label}>Local Flight 4</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -3942,14 +3940,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkLocalFlight4 && (
                     <a href={voucherLinkLocalFlight4} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Hotel Voucher */}
                 <div>
-                  <label style={label}>🏨 Hotel Voucher</label>
+                  <label style={label}>Hotel Voucher</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -4012,14 +4010,14 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkHotelVoucher && (
                     <a href={voucherLinkHotelVoucher} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
 
                 {/* Other Files */}
                 <div>
-                  <label style={label}>📄 Other Files</label>
+                  <label style={label}>Other Files</label>
                   <input
                     type="file"
                     accept="image/*,.pdf"
@@ -4082,7 +4080,7 @@ const ClientRecords: React.FC<{
                   />
                   {voucherLinkOtherFiles && (
                     <a href={voucherLinkOtherFiles} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      🔗 Open link
+                      Open link
                     </a>
                   )}
                 </div>
@@ -4096,7 +4094,7 @@ const ClientRecords: React.FC<{
                 return (
                   <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
                     <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
-                      📁 Previously Uploaded Files ({legacyFiles.length})
+                      Previously Uploaded Files ({legacyFiles.length})
                     </p>
                     <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
                       These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
@@ -4124,7 +4122,7 @@ const ClientRecords: React.FC<{
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
             {/* Section Header */}
             <div style={sectionHeader}>
-              <span style={{ fontSize: '24px', marginRight: '12px' }}>📎</span>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -4199,7 +4197,7 @@ const ClientRecords: React.FC<{
                 gap: 5
               }}
             >
-              📋 Activity Log
+              Activity Log
             </button>
             <button
               type="button"
@@ -4221,7 +4219,7 @@ const ClientRecords: React.FC<{
                 gap: 5
               }}
             >
-              📝 Notes & Requests
+              Notes & Requests
             </button>
           </div>
 
@@ -4269,7 +4267,7 @@ const ClientRecords: React.FC<{
                   padding: '20px',
                 }}>
                   <h3 style={{ margin: '0 0 16px 0', color: '#92400e', fontSize: '1.1rem', fontWeight: '600' }}>
-                    📝 Notes & Requests
+                    Notes & Requests
                   </h3>
                   <p style={{ color: '#b45309', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
                     Notes will appear when a client is selected.
@@ -4317,7 +4315,7 @@ const ClientRecords: React.FC<{
             }}
             title="Toggle Panels"
           >
-            📋
+            ☰
           </button>
 
           {/* Mobile Panel Modal */}
@@ -4380,7 +4378,7 @@ const ClientRecords: React.FC<{
                         cursor: 'pointer',
                       }}
                     >
-                      📋 Activity Log
+                      Activity Log
                     </button>
                     <button
                       type="button"
@@ -4397,7 +4395,7 @@ const ClientRecords: React.FC<{
                         cursor: 'pointer',
                       }}
                     >
-                      📝 Notes & Requests
+                      Notes & Requests
                     </button>
                   </div>
                 </div>
@@ -5102,7 +5100,6 @@ const MainPage: React.FC<MainPageProps> = ({
             borderRadius: '10px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ fontSize: '24px', marginBottom: '16px' }}>⏳</div>
             <p>Loading clients...</p>
           </div>
         ) : clients.length === 0 ? (
