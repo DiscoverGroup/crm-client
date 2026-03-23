@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "concurrently --names \"vite,fns\" --prefix-colors \"cyan,yellow\" \"vite\" \"tsx local-functions-server.ts\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "storage:status": "powershell -Command \"Get-Service MinIOCRM | Select-Object Name,Status,StartType | Format-Table -AutoSize\"",
+    "storage:start": "powershell -Command \"Start-Service MinIOCRM; Write-Host 'MinIO started. Console: http://localhost:9001'\"",
+    "storage:stop": "powershell -Command \"Stop-Service MinIOCRM; Write-Host 'MinIO stopped.'\""
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.15.0",
@@ -44,6 +48,8 @@
     "globals": "^16.4.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "tsx": "^4.19.2",
+    "concurrently": "^9.1.2"
   }
 }

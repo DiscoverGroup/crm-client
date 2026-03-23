@@ -1,6 +1,18 @@
-import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { r2Client } from '../config/r2';
+/**
+ * r2UploadService — browser-side file upload/delete client
+ *
+ * Security: credentials are NEVER exposed to the browser.
+ * All operations go through authenticated Netlify functions:
+ *   POST /.netlify/functions/get-upload-url  → returns a short-lived presigned PUT URL
+ *   POST /.netlify/functions/delete-file     → deletes a file server-side
+ *
+ * The browser then PUTs the file directly to MinIO using the presigned URL,
+ * so large files never pass through a function's 6 MB payload limit.
+ */
+
+import { authHeaders } from '../utils/authToken';
+
+const API_BASE = '/.netlify/functions';
 
 interface UploadResponse {
   success: boolean;
@@ -9,30 +21,15 @@ interface UploadResponse {
   error?: string;
 }
 
-// Get R2 public URL from environment or construct it
-function getR2PublicUrl(): string {
-  let customUrl = import.meta.env.VITE_R2_PUBLIC_URL;
-  
-  if (customUrl) {
-    // Ensure it has https:// protocol
-    if (!customUrl.startsWith('http://') && !customUrl.startsWith('https://')) {
-      customUrl = `https://${customUrl}`;
-    }
-    // Ensure it doesn't end with a slash
-    return customUrl.endsWith('/') ? customUrl.slice(0, -1) : customUrl;
-  }
-
-  // Fallback - but you should always set VITE_R2_PUBLIC_URL in .env
-  // console.warn('VITE_R2_PUBLIC_URL not set, using fallback. This may not work correctly.');
-  return 'https://pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev';
+function getPublicBaseUrl(): string {
+  let base = import.meta.env.VITE_R2_PUBLIC_URL || '';
+  if (base.endsWith('/')) base = base.slice(0, -1);
+  return base;
 }
 
 /**
- * Upload a file to Cloudflare R2
- * @param file - The file to upload
- * @param bucket - The R2 bucket name
- * @param folder - Optional folder path within the bucket
- * @returns Upload response with path and URL or error
+ * Upload a file via the server-side presigned URL flow.
+ * Credentials never leave the server.
  */
 export async function uploadFileToR2(
   file: File,
@@ -40,96 +37,74 @@ export async function uploadFileToR2(
   folder: string = ''
 ): Promise<UploadResponse> {
   try {
-    if (!file) {
-      return { success: false, error: 'No file selected' };
-    }
+    if (!file) return { success: false, error: 'No file selected' };
 
-    // Create a unique filename
-    const timestamp = Date.now();
-    const fileName = `${timestamp}-${file.name}`;
-    const filePath = folder ? `${folder}/${fileName}` : fileName;
-
-    // Convert File to ArrayBuffer for browser compatibility
-    const arrayBuffer = await file.arrayBuffer();
-
-    // Upload the file
-    const command = new PutObjectCommand({
-      Bucket: bucket,
-      Key: filePath,
-      Body: new Uint8Array(arrayBuffer),
-      ContentType: file.type,
+    // Step 1: Ask the server for a short-lived presigned PUT URL
+    const urlRes = await fetch(`${API_BASE}/get-upload-url`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type, folder, bucket }),
     });
 
-    await r2Client.send(command);
+    if (!urlRes.ok) {
+      const err = await urlRes.json().catch(() => ({})) as { error?: string };
+      return { success: false, error: err.error || `Failed to get upload URL (${urlRes.status})` };
+    }
 
-    // Construct the public URL
-    const publicBaseUrl = getR2PublicUrl();
-    const publicUrl = `${publicBaseUrl}/${filePath}`;
-
-    return {
-      success: true,
-      path: filePath,
-      url: publicUrl,
+    const { presignedUrl, path, url } = await urlRes.json() as {
+      presignedUrl: string;
+      path: string;
+      url: string;
     };
+
+    // Step 2: PUT the file directly to MinIO — no credentials in this request,
+    //         the presigned URL signature acts as a time-limited capability token.
+    const uploadRes = await fetch(presignedUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      return { success: false, error: `Upload failed: ${uploadRes.status} ${uploadRes.statusText}` };
+    }
+
+    return { success: true, path, url };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: errorMessage };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
 /**
- * Delete a file from Cloudflare R2
- * @param bucket - The R2 bucket name
- * @param filePath - The file path to delete
- * @returns Success or error response
+ * Delete a file via the authenticated server-side function.
  */
 export async function deleteFileFromR2(
   bucket: string,
   filePath: string
 ): Promise<UploadResponse> {
   try {
-    const command = new DeleteObjectCommand({
-      Bucket: bucket,
-      Key: filePath,
+    const res = await fetch(`${API_BASE}/delete-file`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bucket, filePath }),
     });
 
-    await r2Client.send(command);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as { error?: string };
+      return { success: false, error: err.error || `Delete failed (${res.status})` };
+    }
 
-    return { success: true };
+    const result = await res.json() as { success: boolean };
+    return { success: result.success };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: errorMessage };
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
 /**
- * Get the public URL for a file
- * @param filePath - The file path
- * @returns The public URL
+ * Build the public download URL for an existing stored file path.
+ * Only the base URL is needed (VITE_R2_PUBLIC_URL) — no credentials required.
  */
 export function getR2FileUrl(filePath: string): string {
-  const publicBaseUrl = getR2PublicUrl();
-  return `${publicBaseUrl}/${filePath}`;
-}
-
-/**
- * Generate a signed URL for downloading a file (valid for 1 hour)
- * Use this if public access is not enabled on your R2 bucket
- * @param bucket - The R2 bucket name
- * @param filePath - The file path
- * @param expiresIn - URL expiration time in seconds (default: 3600 = 1 hour)
- * @returns Signed URL for downloading the file
- */
-export async function getSignedDownloadUrl(
-  bucket: string,
-  filePath: string,
-  expiresIn: number = 3600
-): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: bucket,
-    Key: filePath,
-  });
-
-  const signedUrl = await getSignedUrl(r2Client, command, { expiresIn });
-  return signedUrl;
+  return `${getPublicBaseUrl()}/${filePath}`;
 }
