@@ -2309,6 +2309,7 @@ const ClientRecords: React.FC<{
                                     bucket="crm-uploads"
                                   />
                                   <button
+                                    type="button"
                                     onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "depositSlip")}
                                     style={{
                                       fontSize: "14px",
@@ -2358,6 +2359,7 @@ const ClientRecords: React.FC<{
                                     bucket="crm-uploads"
                                   />
                                   <button
+                                    type="button"
                                     onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "receipt")}
                                     style={{
                                       fontSize: "14px",
