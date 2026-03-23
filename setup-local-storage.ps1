@@ -267,7 +267,7 @@ Write-Host "  npm run storage:status   — check if MinIO is running"
 Write-Host "  npm run storage:start    — start MinIO manually"
 Write-Host "  npm run storage:stop     — stop MinIO"
 Write-Host ""
-Write-Host "  Now run:  netlify dev" -ForegroundColor Yellow
-Write-Host "  (Use 'netlify dev' instead of 'npm run dev' to run the Netlify functions locally)"
+Write-Host "  Now run:  npm run dev:local" -ForegroundColor Yellow
+  Write-Host "  Then (for Netlify URL support): .\setup-tunnel.ps1" -ForegroundColor Yellow
 Write-Host ""
 
