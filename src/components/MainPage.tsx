@@ -190,20 +190,6 @@ const ClientRecords: React.FC<{
     return undefined;
   };
 
-  // Get current user's department and position from the users list
-  const getCurrentUserDeptPos = (): { department: string; position: string } => {
-    const users = localStorage.getItem('crm_users');
-    if (users) {
-      try {
-        const userList = JSON.parse(users);
-        const user = userList.find((u: any) => u.fullName === propsCurrentUser?.fullName);
-        if (user) return { department: user.department || '', position: user.position || '' };
-      } catch { /* ignore */ }
-    }
-    return { department: '', position: '' };
-  };
-
-  
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
     clientId: currentClientId,
