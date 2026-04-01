@@ -40,6 +40,20 @@ export interface ClientData {
   embassyAddress?: string;
   // Visa Officer
   visaOfficerAppointed?: string;
+  // Account Relations
+  arm?: string;
+  afterSalesSCDate?: string;
+  afterSalesSCReport?: string;
+  afterSalesSCReportBy?: string;
+  // Visa SC Reports
+  afterVisaSCDate?: string;
+  afterVisaSCReport?: string;
+  afterVisaSCReportBy?: string;
+  preDepartureSCDate?: string;
+  preDepartureSCReport?: string;
+  preDepartureSCReportBy?: string;
+  postDepartureSCReport?: string;
+  postDepartureSCReportBy?: string;
   // Booking/Tour Voucher
   bookingVoucher?: string;
   bookingVoucherLinks?: {

@@ -23,7 +23,7 @@ export interface FileAttachment {
   paymentIndex?: number;
   paymentType?: 'regular' | 'first' | 'second' | 'third' | 'other';
   clientId?: string; // Associate files with specific clients
-  source?: 'payment-terms' | 'visa-service' | 'insurance-service' | 'eta-service' | 'booking-voucher' | 'passport-info' | 'first-payment' | 'other-payment' | 'approval-invoice' | 'booking-confirmation'; // Track upload source
+  source?: 'payment-terms' | 'visa-service' | 'insurance-service' | 'eta-service' | 'booking-voucher' | 'passport-info' | 'first-payment' | 'other-payment' | 'approval-invoice' | 'booking-confirmation' | 'account-relations' | 'sc-report'; // Track upload source
   fileType?: string; // Sub-field identifier (e.g., 'international-flight', 'local-flight-1', 'passport-1-attachment')
 }
 

@@ -7,7 +7,6 @@ import type { PaymentDetail } from "../types/payment";
 import { FileService, type FileAttachment } from '../services/fileService';
 import { useFieldTracking } from '../hooks/useFieldTracking';
 import { useSectionTracking } from '../hooks/useSectionTracking';
-import FileAttachmentList from './FileAttachmentList';
 import LogNoteComponent from './LogNoteComponent';
 import NotesThreadComponent from './NotesThreadComponent';
 import Sidebar from "./Sidebar";
@@ -276,6 +275,20 @@ const ClientRecords: React.FC<{
           setEmbassyName(existingClient.embassyName || '');
           setEmbassyAddress(existingClient.embassyAddress || '');
           setVisaOfficerAppointed(existingClient.visaOfficerAppointed || '');
+          // Account Relations
+          setArm(existingClient.arm || '');
+          setAfterSalesSCDate(existingClient.afterSalesSCDate || '');
+          setAfterSalesSCReport(existingClient.afterSalesSCReport || '');
+          setAfterSalesSCReportBy(existingClient.afterSalesSCReportBy || '');
+          // Visa SC Reports
+          setAfterVisaSCDate(existingClient.afterVisaSCDate || '');
+          setAfterVisaSCReport(existingClient.afterVisaSCReport || '');
+          setAfterVisaSCReportBy(existingClient.afterVisaSCReportBy || '');
+          setPreDepartureSCDate(existingClient.preDepartureSCDate || '');
+          setPreDepartureSCReport(existingClient.preDepartureSCReport || '');
+          setPreDepartureSCReportBy(existingClient.preDepartureSCReportBy || '');
+          setPostDepartureSCReport(existingClient.postDepartureSCReport || '');
+          setPostDepartureSCReportBy(existingClient.postDepartureSCReportBy || '');
 
           // Load booking voucher links
           const vl = existingClient.bookingVoucherLinks || {};
@@ -475,6 +488,21 @@ const ClientRecords: React.FC<{
   const [visaOfficerAppointed, setVisaOfficerAppointed] = useState("");
   const [isSavingVisa, setIsSavingVisa] = useState(false);
   const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
+  // Account Relations
+  const [arm, setArm] = useState("");
+  const [afterSalesSCDate, setAfterSalesSCDate] = useState("");
+  const [afterSalesSCReport, setAfterSalesSCReport] = useState("");
+  const [afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
+  const [isSavingAccountRelations, setIsSavingAccountRelations] = useState(false);
+  // Visa SC Reports
+  const [afterVisaSCDate, setAfterVisaSCDate] = useState("");
+  const [afterVisaSCReport, setAfterVisaSCReport] = useState("");
+  const [afterVisaSCReportBy, setAfterVisaSCReportBy] = useState("");
+  const [preDepartureSCDate, setPreDepartureSCDate] = useState("");
+  const [preDepartureSCReport, setPreDepartureSCReport] = useState("");
+  const [preDepartureSCReportBy, setPreDepartureSCReportBy] = useState("");
+  const [postDepartureSCReport, setPostDepartureSCReport] = useState("");
+  const [postDepartureSCReportBy, setPostDepartureSCReportBy] = useState("");
 
   // Travel Funds workflow states
   const [travelFundRequestDate, setTravelFundRequestDate] = useState("");
@@ -1205,6 +1233,28 @@ const ClientRecords: React.FC<{
     }
   };
 
+  const handleSaveAccountRelations = async () => {
+    setIsSavingAccountRelations(true);
+    try {
+      if (!currentClientId) {
+        showWarningToast('Please save client information first before saving account relations.');
+        return;
+      }
+      await ClientService.updateClient(currentClientId, {
+        arm,
+        afterSalesSCDate,
+        afterSalesSCReport,
+        afterSalesSCReportBy,
+      });
+      saveSection('account-relations', 'Account Relations');
+      showSuccessToast('Account relations saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving account relations.');
+    } finally {
+      setIsSavingAccountRelations(false);
+    }
+  };
+
   const handleSaveVisaInfo = async () => {
     setIsSavingVisa(true);
     try {
@@ -1217,6 +1267,14 @@ const ClientRecords: React.FC<{
         insuranceService,
         etaService: eta,
         visaOfficerAppointed,
+        afterVisaSCDate,
+        afterVisaSCReport,
+        afterVisaSCReportBy,
+        preDepartureSCDate,
+        preDepartureSCReport,
+        preDepartureSCReportBy,
+        postDepartureSCReport,
+        postDepartureSCReportBy,
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
@@ -1673,7 +1731,7 @@ const ClientRecords: React.FC<{
                 </select>
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
-                <label style={label}>Agent/Officer</label>
+                <label style={label}>Sales Agent</label>
                 <input 
                   style={modernInput} 
                   type="text" 
@@ -2701,6 +2759,78 @@ const ClientRecords: React.FC<{
             </div>
           </div>
 
+          {/* Account Relations Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+                Account Relations
+              </h2>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>ARM (Account Relations Manager)</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Full name"
+                value={arm}
+                onChange={e => setArm(e.target.value)}
+              />
+            </div>
+
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Sales SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={afterSalesSCDate} onChange={e => setAfterSalesSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea
+                style={{ ...modernInput, minHeight: 80, resize: "vertical" }}
+                placeholder="SC report details..."
+                value={afterSalesSCReport}
+                onChange={e => setAfterSalesSCReport(e.target.value)}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={afterSalesSCReportBy} onChange={e => setAfterSalesSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations');
+                }}
+                style={{ fontSize: "14px", width: "100%" }}
+              />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'account-relations' && att.fileType === 'after-sales-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-sales-sc-attachment', 'account-relations')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={handleSaveAccountRelations} disabled={isSavingAccountRelations} style={saveButtonStyle(isSavingAccountRelations)}>
+                {isSavingAccountRelations ? "Saving..." : "Save Account Relations"}
+              </button>
+            </div>
+          </div>
+
           {/* Visa Section */}
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
@@ -3382,6 +3512,102 @@ const ClientRecords: React.FC<{
               </button>
             </div>
 
+            {/* After Visa SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Visa SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={afterVisaSCDate} onChange={e => setAfterVisaSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterVisaSCReport} onChange={e => setAfterVisaSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={afterVisaSCReportBy} onChange={e => setAfterVisaSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-visa-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'after-visa-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-visa-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            {/* Pre-Departure SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Pre-Departure SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={preDepartureSCDate} onChange={e => setPreDepartureSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={preDepartureSCReport} onChange={e => setPreDepartureSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={preDepartureSCReportBy} onChange={e => setPreDepartureSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'pre-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'pre-departure-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'pre-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            {/* Post-Departure SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Post-Departure</h4>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'post-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
             {/* Save Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
               <button
@@ -3394,31 +3620,24 @@ const ClientRecords: React.FC<{
               </button>
             </div>
 
-            {/* Booking/Tour Voucher Section */}
-            <div style={{
-              ...sectionStyle(windowWidth),
-              marginTop: "24px",
-              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
-              border: "2px solid rgba(147, 197, 253, 0.3)",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
-            }}>
-              {/* Section Header */}
-              <div style={sectionHeader}>
-                
-                <h2 style={{ 
-                  margin: 0, 
-                  color: "#1e293b", 
-                  fontSize: "20px", 
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em"
-                }}>
-                  Booking/Tour Voucher
-                </h2>
-              </div>
+          </div>{/* End Visa Section */}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
+          {/* Booking/Tour Voucher Section */}
+          <div style={sectionStyle(windowWidth)}>
+            {/* Section Header */}
+            <div style={sectionHeader}>
+              <h2 style={{ 
+                margin: 0, 
+                color: "#1e293b", 
+                fontSize: "20px", 
+                fontWeight: 700,
+                letterSpacing: "-0.025em"
+              }}>
+                Booking/Tour Voucher
+              </h2>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
                 <div>
                   <label style={label}>International Flight</label>
@@ -3940,13 +4159,9 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
-          </div>
-
-          {/* File Attachments Section */}
+          {/* Activity Log & Notes Section */}
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
-            {/* Section Header */}
             <div style={sectionHeader}>
-              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -3954,24 +4169,29 @@ const ClientRecords: React.FC<{
                 fontWeight: 700,
                 letterSpacing: "-0.025em"
               }}>
-                File Attachment History
+                Activity Log & Notes
               </h2>
             </div>
-            <FileAttachmentList
-              attachments={attachments}
-              allowDelete={true}
-              onFileDeleted={() => {
-                // console.log('File deleted:', fileId);
-                // Reload client-specific attachments after deletion
-                const currentClientId = clientId || tempClientId;
-                if (currentClientId) {
-                  const clientAttachments = FileService.getFilesByClient(currentClientId);
-                  setAttachments(clientAttachments);
-                } else {
-                  setAttachments([]);
-                }
-              }}
-            />
+            {currentClientId ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <LogNoteComponent
+                  key={`inline-log-${logRefreshKey}`}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+                <NotesThreadComponent
+                  key={`inline-notes-${currentClientId}`}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              </div>
+            ) : (
+              <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
+                Activity log and notes will appear when a client is selected.
+              </p>
+            )}
           </div>
           </>
           )}
