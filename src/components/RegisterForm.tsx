@@ -27,29 +27,6 @@ interface RegisterFormProps {
 
 // Department and Position mapping
 const departmentPositions: Record<string, string[]> = {
-  "Executives Department": [
-    "Operations Manager",
-    "Division Manager",
-    "Executive Secretary",
-    "Executive Assistant"
-  ],
-  "Visa Department": [
-    "Visa Department Head",
-    "Team Lead - Visa Officer",
-    "Visa Officer",
-    "General Admin — Visa",
-    "VFS and Airport Assistance Officer",
-    "Visa Assistant Facilitator"
-  ],
-  "Booking Department": [
-    "Booking Supervisor",
-    "Booking Officer",
-    "General Admin for Booking"
-  ],
-  "Marketing Department": [
-    "Marketing Officer",
-    "Graphic Artist"
-  ],
   "Sales Department": [
     "Travel Sales Agent",
     "General Admin — Sales"
@@ -60,33 +37,21 @@ const departmentPositions: Record<string, string[]> = {
     "Team Lead - ARM",
     "General Admin - ARM"
   ],
-  "Human Resource Department": [
-    "HR Assistant — Recruitment",
-    "HR Officer",
-    "General Admin - HR"
+  "Booking Department": [
+    "Booking Supervisor",
+    "Booking Officer",
+    "General Admin for Booking"
   ],
-  "Information & Technology Department": [
-    "IT Manager",
-    "IT Systems Administrator",
-    "IT Support",
-    "Web Developer"
+  "Visa Department": [
+    "Visa Department Head",
+    "Team Lead - Visa Officer",
+    "Visa Officer",
+    "General Admin — Visa",
+    "VFS and Airport Assistance Officer",
+    "Visa Assistant Facilitator"
   ],
   "Finance Department": [
     "Finance Officer"
-  ],
-  "Research and Development Department": [
-    "Research Development Officer"
-  ],
-  "Intern": [
-    "Intern — Visa",
-    "Intern — Booking",
-    "Intern — Marketing",
-    "Intern — Sales",
-    "Intern — Customer Service",
-    "Intern — HR",
-    "Intern — IT",
-    "Intern — Finance",
-    "Intern — General"
   ]
 };
 

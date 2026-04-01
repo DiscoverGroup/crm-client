@@ -115,17 +115,18 @@ const saveButtonStyle = (isSaving: boolean) => ({
 
 const paymentOptions = [
   { value: "full_cash", label: "Full Cash (1 time payment)", terms: 1 },
-  { value: "installment", label: "Installment (up to 10 terms)", terms: 10 },
+  { value: "installment", label: "Installment (up to 15 terms)", terms: 15 },
   { value: "travel_funds", label: "Travel Funds", terms: 0 },
   { value: "down_payment", label: "Down Payment (2 time payment)", terms: 2 }
 ];
 
 // Companion type with extra fields
 type Companion = {
-  name: string;
+  firstName: string;
+  lastName: string;
   dob: string;
-  address: string;
-  occupation: string;
+  email: string;
+  contactNo: string;
 };
 
 // Full featured ClientRecords form component
@@ -272,8 +273,20 @@ const ClientRecords: React.FC<{
           );
           setPackageLink(existingClient.packageLink || '');
           if (existingClient.companions) {
-            setCompanions(existingClient.companions);
+            // Backward-compat: old records may have { name, address, occupation }
+            setCompanions(existingClient.companions.map((c: any) => ({
+              firstName: c.firstName || c.name || '',
+              lastName: c.lastName || '',
+              dob: c.dob || '',
+              email: c.email || '',
+              contactNo: c.contactNo || '',
+            })));
           }
+          // Sync passportNames with loaded pax count
+          const paxCount = existingClient.numberOfPax || 1;
+          setPassportNames(Array.from({ length: paxCount }, (_, i) =>
+            (existingClient.passportNames || [])[i] || ''
+          ));
           // Visa & embassy fields
           setVisaService(existingClient.visaService || false);
           setInsuranceService(existingClient.insuranceService || false);
@@ -366,6 +379,27 @@ const ClientRecords: React.FC<{
   const setNumberOfPaxTracked = (value: number) => {
     trackSectionField('package-information', 'numberOfPax', value, 'Number of Passengers');
     setNumberOfPax(value);
+    // Auto-resize companions to (pax - 1)
+    const targetCount = Math.max(0, value - 1);
+    setCompanions(prev => {
+      if (prev.length === targetCount) return prev;
+      if (prev.length < targetCount) {
+        const extra = Array.from({ length: targetCount - prev.length }, () => ({
+          firstName: "", lastName: "", dob: "", email: "", contactNo: ""
+        }));
+        return [...prev, ...extra];
+      }
+      return prev.slice(0, targetCount);
+    });
+    // Auto-resize passport name slots to match pax count
+    setPassportNames(prev => {
+      if (prev.length === value) return prev;
+      if (prev.length < value) {
+        const extra = Array.from({ length: value - prev.length }, () => "");
+        return [...prev, ...extra];
+      }
+      return prev.slice(0, value);
+    });
   };
   
   const handleBookingConfirmationChange = (index: number, value: string) => {
@@ -388,15 +422,12 @@ const ClientRecords: React.FC<{
   const [paymentTerm, setPaymentTerm] = useState(paymentOptions[0].value);
   const [termCount, setTermCount] = useState(1);
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
+  const [customMaxTerms, setCustomMaxTerms] = useState<number | null>(null);
+  const [isEditingMaxTerms, setIsEditingMaxTerms] = useState(false);
+  const [customMaxTermsInput, setCustomMaxTermsInput] = useState("");
 
   // Companions
   const [companions, setCompanions] = useState<Companion[]>([]);
-  const [newCompanion, setNewCompanion] = useState<Companion>({
-    name: "",
-    dob: "",
-    address: "",
-    occupation: ""
-  });
 
   // Payment Details Table for terms
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
@@ -435,18 +466,8 @@ const ClientRecords: React.FC<{
   const [insuranceService, setInsuranceService] = useState(false);
   const [eta, setEta] = useState(false);
   
-  // Passport attachments (for up to 3 passports)
-  const [passport1Name, setPassport1Name] = useState("");
-  const [_passport1Attachment, setPassport1Attachment] = useState<File | null>(null);
-  const [_passport1Visa, setPassport1Visa] = useState<File | null>(null);
-  
-  const [passport2Name, setPassport2Name] = useState("");
-  const [_passport2Attachment, setPassport2Attachment] = useState<File | null>(null);
-  const [_passport2Visa, setPassport2Visa] = useState<File | null>(null);
-  
-  const [passport3Name, setPassport3Name] = useState("");
-  const [_passport3Attachment, setPassport3Attachment] = useState<File | null>(null);
-  const [_passport3Visa, setPassport3Visa] = useState<File | null>(null);
+  // Passport names — one per pax (dynamic)
+  const [passportNames, setPassportNames] = useState<string[]>([""]);
   
   // Embassy information
   const [embassyAppointmentDate, setEmbassyAppointmentDate] = useState("");
@@ -1093,7 +1114,10 @@ const ClientRecords: React.FC<{
       const cleanPackageLink = sanitizeText(packageLink || '', 1000);
       const cleanCompanions = companions.map(c => ({
         ...c,
-        name: sanitizeName(c.name, 200),
+        firstName: sanitizeName(c.firstName, 200),
+        lastName: sanitizeName(c.lastName, 200),
+        email: sanitizeEmail(c.email || ''),
+        contactNo: sanitizePhone(c.contactNo || ''),
       }));
       if ([cleanPackageName, ...cleanBookingConfirmations, cleanPackageLink].some(v => v && containsAttackPatterns(v))) {
         showWarningToast('Invalid characters detected in package info. Please review and try again.');
@@ -1109,7 +1133,8 @@ const ClientRecords: React.FC<{
         numberOfPax,
         bookingConfirmations: cleanBookingConfirmations,
         packageLink: cleanPackageLink,
-        companions: cleanCompanions
+        companions: cleanCompanions,
+        passportNames,
       };
 
       // Save to ClientService
@@ -1504,44 +1529,16 @@ const ClientRecords: React.FC<{
   };
 
   // Handlers
-  function handleCompanionFieldChange(field: keyof Companion, value: string) {
-    setNewCompanion({ ...newCompanion, [field]: value });
-  }
-
-  function handleAddCompanion() {
-    const name = newCompanion.name.trim();
-    
-    // Validation: Minimum 2 characters
-    if (name.length < 2) {
-      showWarningToast('Companion name must be at least 2 characters');
-      return;
-    }
-    
-    // Validation: Cannot be numbers only
-    if (/^[0-9]+$/.test(name)) {
-      showWarningToast('Companion name cannot be numbers only');
-      return;
-    }
-    
-    // Validation: Check for duplicate names
-    const isDuplicate = companions.some(c => c.name.trim().toLowerCase() === name.toLowerCase());
-    if (isDuplicate) {
-      showWarningToast(`Companion "${name}" already exists in the list.`);
-      return;
-    }
-    
-    setCompanions([...companions, { ...newCompanion, name }]);
-    logAction(
-      'Companion Added',
-      `Added companion: ${name}`,
-      'done'
-    );
-    setNewCompanion({ name: "", dob: "", address: "", occupation: "" });
+  function handleCompanionChange(idx: number, field: keyof Companion, value: string) {
+    setCompanions(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
   }
 
   function handleRemoveCompanion(idx: number) {
     const removedCompanion = companions[idx];
+    const fullName = `${removedCompanion.firstName} ${removedCompanion.lastName}`.trim() || `Companion ${idx + 1}`;
     setCompanions(companions.filter((_, i) => i !== idx));
+    // Decrement pax count to stay in sync
+    setNumberOfPaxTracked(Math.max(1, numberOfPax - 1));
     
     // Log activity
     ActivityLogService.addLog({
@@ -1551,12 +1548,12 @@ const ClientRecords: React.FC<{
       performedBy: currentUserName,
       performedByUser: currentUserName,
       profileImageR2Path: getCurrentUserProfileImagePath(),
-      details: `Removed companion: ${removedCompanion.name}`
+      details: `Removed companion: ${fullName}`
     });
     
     logAction(
       'Companion Removed',
-      `Removed companion: ${removedCompanion.name}`,
+      `Removed companion: ${fullName}`,
       'done'
     );
   }
@@ -1566,6 +1563,8 @@ const ClientRecords: React.FC<{
     trackSectionField('payment-terms-schedule', 'paymentTerm', selected, 'Payment Terms');
     setPaymentTerm(selected);
     const opt = paymentOptions.find(o => o.value === selected)!;
+    setCustomMaxTerms(null);
+    setIsEditingMaxTerms(false);
     if (selected === "installment") {
       setTermCount(1); // start at 1, let user choose
       trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
@@ -1913,8 +1912,20 @@ const ClientRecords: React.FC<{
             
             {/* Companions Section */}
             <div style={{ marginTop: 18 }}>
-              <label style={label}>Companions</label>
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16 }}>
+              <label style={label}>
+                Companions
+                {companions.length > 0 && (
+                  <span style={{ marginLeft: 8, fontSize: 13, color: '#6366f1', fontWeight: 500 }}>
+                    ({companions.length} companion{companions.length > 1 ? 's' : ''} — auto-generated from No. of Pax)
+                  </span>
+                )}
+              </label>
+              {companions.length === 0 && (
+                <p style={{ color: '#94a3b8', fontSize: 14, margin: '8px 0 0' }}>
+                  Increase "No. of Pax" above to auto-generate companion fields.
+                </p>
+              )}
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 12 }}>
                 {companions.map((comp, idx) => (
                   <div key={idx} style={{
                     background: "#eef2ff",
@@ -1938,113 +1949,65 @@ const ClientRecords: React.FC<{
                         fontWeight: "bold",
                         fontSize: 17,
                       }}>×</button>
-                    <div>
-                      <label style={label}>Name</label>
-                      <input
-                        style={modernInput}
-                        type="text"
-                        value={comp.name}
-                        readOnly
-                      />
+                    <p style={{ margin: '0 0 12px', fontWeight: 700, color: '#4338ca', fontSize: 14 }}>
+                      Companion {idx + 1}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={label}>First Name</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="First name"
+                          value={comp.firstName}
+                          onChange={e => handleCompanionChange(idx, "firstName", e.target.value)}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={label}>Last Name</label>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Last name"
+                          value={comp.lastName}
+                          onChange={e => handleCompanionChange(idx, "lastName", e.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div>
+                    <div style={{ marginBottom: 8 }}>
                       <label style={label}>Date of Birth</label>
                       <input
                         style={modernInput}
                         type="date"
                         value={comp.dob}
-                        readOnly
+                        onChange={e => handleCompanionChange(idx, "dob", e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={label}>Email Address</label>
+                      <input
+                        style={modernInput}
+                        type="email"
+                        placeholder="companion@example.com"
+                        value={comp.email}
+                        onChange={e => handleCompanionChange(idx, "email", e.target.value)}
                       />
                     </div>
                     <div>
-                      <label style={label}>Address</label>
+                      <label style={label}>Contact Number</label>
                       <input
                         style={modernInput}
                         type="text"
-                        value={comp.address}
-                        readOnly
-                      />
-                    </div>
-                    <div>
-                      <label style={label}>Occupation</label>
-                      <input
-                        style={modernInput}
-                        type="text"
-                        value={comp.occupation}
-                        readOnly
+                        placeholder="e.g. +63 912 345 6789"
+                        value={comp.contactNo}
+                        onChange={e => handleCompanionChange(idx, "contactNo", e.target.value)}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-              
-              {/* Add new companion form */}
-              <div style={{
-                background: "#fff",
-                borderRadius: 10,
-                padding: 16,
-                minWidth: 300,
-                boxShadow: "0 1px 3px #e0e7ff"
-              }}>
-                <div>
-                  <label style={label}>Name</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Companion name"
-                    value={newCompanion.name}
-                    onChange={e => handleCompanionFieldChange("name", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label style={label}>Date of Birth</label>
-                  <input
-                    style={modernInput}
-                    type="date"
-                    value={newCompanion.dob}
-                    onChange={e => handleCompanionFieldChange("dob", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label style={label}>Address</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Address"
-                    value={newCompanion.address}
-                    onChange={e => handleCompanionFieldChange("address", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label style={label}>Occupation</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Occupation"
-                    value={newCompanion.occupation}
-                    onChange={e => handleCompanionFieldChange("occupation", e.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  style={{
-                    marginTop: 10,
-                    background: "#2563eb",
-                    color: "#fff",
-                    padding: "7px 18px",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontSize: 16,
-                    cursor: "pointer",
-                    fontWeight: 500,
-                  }}
-                  onClick={handleAddCompanion}
-                  disabled={!newCompanion.name.trim()}
-                >
-                  Add Companion
-                </button>
-              </div>
             </div>
+
             
             {/* Save Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
@@ -2091,18 +2054,102 @@ const ClientRecords: React.FC<{
                     style={modernInput}
                     type="number"
                     min={1}
-                    max={currentOption.terms}
+                    max={customMaxTerms ?? currentOption.terms}
                     value={termCount}
                     onChange={e => {
                       let v = parseInt(e.target.value);
+                      const maxAllowed = customMaxTerms ?? currentOption.terms;
                       if (isNaN(v)) v = 1;
                       if (v < 1) v = 1;
-                      if (v > currentOption.terms) v = currentOption.terms;
+                      if (v > maxAllowed) v = maxAllowed;
                       setTermCount(v);
                       setSelectedPaymentBox(null);
                     }}
                   />
-                  <span style={subLabel}>(1 to {currentOption.terms} terms allowed)</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <span style={subLabel}>(1 to {customMaxTerms ?? currentOption.terms} terms allowed)</span>
+                    {!isEditingMaxTerms ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomMaxTermsInput(String(customMaxTerms ?? currentOption.terms));
+                          setIsEditingMaxTerms(true);
+                        }}
+                        style={{
+                          fontSize: "11px",
+                          padding: "2px 8px",
+                          background: "#e0e7ff",
+                          color: "#4338ca",
+                          border: "1px solid #a5b4fc",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <input
+                          type="number"
+                          min={1}
+                          value={customMaxTermsInput}
+                          onChange={e => setCustomMaxTermsInput(e.target.value)}
+                          style={{
+                            width: 56,
+                            padding: "2px 6px",
+                            fontSize: "12px",
+                            border: "1px solid #a5b4fc",
+                            borderRadius: 4,
+                            outline: "none"
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const v = parseInt(customMaxTermsInput);
+                            if (!isNaN(v) && v >= 1) {
+                              setCustomMaxTerms(v);
+                              if (termCount > v) {
+                                setTermCount(v);
+                                setSelectedPaymentBox(null);
+                              }
+                            }
+                            setIsEditingMaxTerms(false);
+                          }}
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 7px",
+                            background: "#4338ca",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            fontWeight: 600
+                          }}
+                        >
+                          OK
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingMaxTerms(false)}
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 7px",
+                            background: "#f1f5f9",
+                            color: "#475569",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 4,
+                            cursor: "pointer"
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               {paymentTerm !== "travel_funds" && (
@@ -3165,301 +3212,113 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
-            {/* Passport Information */}
+            {/* Passport Information — dynamic count based on No. of Pax */}
             <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
               Passport Information
+              <span style={{ marginLeft: 8, fontSize: 13, color: '#6366f1', fontWeight: 500 }}>
+                ({numberOfPax} passport slot{numberOfPax !== 1 ? 's' : ''} — matches No. of Pax)
+              </span>
             </h4>
-            
-            {/* Passport 1 */}
-            <div style={{ marginBottom: 16, padding: 16, backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-              <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                Passport 1
-              </h5>
-              <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Name</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Passport holder name"
-                    value={passport1Name}
-                    onChange={e => setPassport1Name(e.target.value)}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Passport Attachment</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-1-attachment', 'passport-info');
-                        setPassport1Attachment(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-1-attachment'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-attachment', 'passport-info'); setPassport1Attachment(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Visa</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-1-visa', 'passport-info');
-                        setPassport1Visa(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-1-visa'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-1-visa', 'passport-info'); setPassport1Visa(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-            </div>
 
-            {/* Passport 2 */}
-            <div style={{ marginBottom: 16, padding: 16, backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-              <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                Passport 2
-              </h5>
-              <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Name</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Passport holder name"
-                    value={passport2Name}
-                    onChange={e => setPassport2Name(e.target.value)}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Passport Attachment</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-2-attachment', 'passport-info');
-                        setPassport2Attachment(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-2-attachment'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-attachment', 'passport-info'); setPassport2Attachment(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
+            {Array.from({ length: numberOfPax }, (_, idx) => (
+              <div key={idx} style={{ marginBottom: 16, padding: 16, backgroundColor: "#f8f9fa", borderRadius: 8 }}>
+                <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
+                  Passport {idx + 1}{idx === 0 ? ' (Main Client)' : ` (Companion ${idx})`}
+                </h5>
+                <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={label}>Name</label>
+                    <input
+                      style={modernInput}
+                      type="text"
+                      placeholder="Passport holder name"
+                      value={passportNames[idx] || ''}
+                      onChange={e => {
+                        const updated = [...passportNames];
+                        updated[idx] = e.target.value;
+                        setPassportNames(updated);
+                      }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={label}>Passport Attachment</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          await handleGenericFileUpload(file, 'other', `passport-${idx + 1}-attachment`, 'passport-info');
+                        }
+                      }}
+                      style={{ fontSize: "14px" }}
+                    />
+                    {(() => {
+                      const uploadedFile = attachments.find(att =>
+                        att.category === 'other' &&
+                        att.source === 'passport-info' &&
+                        att.fileType === `passport-${idx + 1}-attachment`
                       );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Visa</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-2-visa', 'passport-info');
-                        setPassport2Visa(file);
+                      if (uploadedFile) {
+                        return (
+                          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: "12px", color: "#059669" }}>
+                              ✓ {uploadedFile.file.name}
+                            </span>
+                            <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                            <button
+                              type="button"
+                              onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-attachment`, 'passport-info')}
+                              style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                              title="Remove file"
+                            >✕</button>
+                          </div>
+                        );
                       }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-2-visa'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-2-visa', 'passport-info'); setPassport2Visa(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
+                      return null;
+                    })()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={label}>Visa</label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          await handleGenericFileUpload(file, 'other', `passport-${idx + 1}-visa`, 'passport-info');
+                        }
+                      }}
+                      style={{ fontSize: "14px" }}
+                    />
+                    {(() => {
+                      const uploadedFile = attachments.find(att =>
+                        att.category === 'other' &&
+                        att.source === 'passport-info' &&
+                        att.fileType === `passport-${idx + 1}-visa`
                       );
-                    }
-                    return null;
-                  })()}
+                      if (uploadedFile) {
+                        return (
+                          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: "12px", color: "#059669" }}>
+                              ✓ {uploadedFile.file.name}
+                            </span>
+                            <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                            <button
+                              type="button"
+                              onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-visa`, 'passport-info')}
+                              style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
+                              title="Remove file"
+                            >✕</button>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Passport 3 */}
-            <div style={{ marginBottom: 16, padding: 16, backgroundColor: "#f8f9fa", borderRadius: 8 }}>
-              <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                Passport 3
-              </h5>
-              <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Name</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Passport holder name"
-                    value={passport3Name}
-                    onChange={e => setPassport3Name(e.target.value)}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Passport Attachment</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-3-attachment', 'passport-info');
-                        setPassport3Attachment(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-3-attachment'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-attachment', 'passport-info'); setPassport3Attachment(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={label}>Visa</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'passport-3-visa', 'passport-info');
-                        setPassport3Visa(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att =>
-                      att.category === 'other' &&
-                      att.source === 'passport-info' &&
-                      att.fileType === 'passport-3-visa'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button
-                            type="button"
-                            onClick={() => { handleGenericFileRemove(uploadedFile.file.id, 'passport-3-visa', 'passport-info'); setPassport3Visa(null); }}
-                            style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                            title="Remove file"
-                          >✕</button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-              </div>
-            </div>
+            ))}
 
             {/* Legacy Passport Files (uploaded before field tracking) */}
             {(() => {

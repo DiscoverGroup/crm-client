@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "concurrently --names \"vite,fns,tunnel\" --prefix-colors \"cyan,yellow,magenta\" \"vite\" \"tsx local-functions-server.ts\" \"tsx start-tunnel.ts\"",
+    "netlify": "netlify dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
