@@ -1852,8 +1852,10 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
-            <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, marginTop: 18, flexWrap: "wrap" }}>
-              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
+
+            {/* Booking Confirmation — full-width */}
+            <div className="form-row" style={{ marginTop: 18 }}>
+              <div className="form-field" style={{ width: "100%", maxWidth: "100%", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <label style={label}>Booking Confirmation</label>
                   {/* Tooltip icon */}
@@ -2015,7 +2017,11 @@ const ClientRecords: React.FC<{
                   );
                 })}
               </div>
-              <div style={{ flex: windowWidth < 640 ? '1' : '2', minWidth: windowWidth < 640 ? "100%" : "auto" }}>
+            </div>
+
+            {/* Package Link */}
+            <div className="form-row" style={{ marginTop: 18 }}>
+              <div style={{ width: "100%" }}>
                 <label style={label}>Package Link</label>
                 <input 
                   style={modernInput} 
