@@ -579,6 +579,23 @@ const ClientRecords: React.FC<{
           // Load attachments for specific client (real or temp)
           const clientAttachments = FileService.getFilesByClient(currentClientId);
           setAttachments(clientAttachments);
+
+          // Ensure bookingConfirmations has enough slots for every uploaded booking-confirmation file
+          const bcFiles = clientAttachments.filter(att => att.source === 'booking-confirmation');
+          if (bcFiles.length > 0) {
+            const maxIdx = bcFiles.reduce((max, att) => {
+              const m = att.fileType?.match(/booking-confirmation-(\d+)/);
+              return m ? Math.max(max, parseInt(m[1])) : max;
+            }, 0);
+            if (maxIdx > 0) {
+              setBookingConfirmations(prev => {
+                if (prev.length >= maxIdx) return prev;
+                const extended = [...prev];
+                while (extended.length < maxIdx) extended.push('');
+                return extended;
+              });
+            }
+          }
         } else {
           // Fallback to empty
           setAttachments([]);
