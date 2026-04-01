@@ -1928,7 +1928,7 @@ const ClientRecords: React.FC<{
                     title="Add another booking confirmation"
                   >+</button>
                 </div>
-                {bookingConfirmations.map((bc, idx) => {
+                {bookingConfirmations.map((_bc, idx) => {
                   const uploadedFile = attachments.find(att =>
                     att.category === 'other' &&
                     att.source === 'booking-confirmation' &&
