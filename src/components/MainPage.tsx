@@ -3343,21 +3343,21 @@ const ClientRecords: React.FC<{
                 <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
                   Passport {idx + 1}{idx === 0 ? ' (Main Client)' : ` (Companion ${idx})`}
                 </h5>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={label}>Name</label>
+                  <input
+                    style={modernInput}
+                    type="text"
+                    placeholder="Passport holder name"
+                    value={passportNames[idx] || ''}
+                    onChange={e => {
+                      const updated = [...passportNames];
+                      updated[idx] = e.target.value;
+                      setPassportNames(updated);
+                    }}
+                  />
+                </div>
                 <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={label}>Name</label>
-                    <input
-                      style={modernInput}
-                      type="text"
-                      placeholder="Passport holder name"
-                      value={passportNames[idx] || ''}
-                      onChange={e => {
-                        const updated = [...passportNames];
-                        updated[idx] = e.target.value;
-                        setPassportNames(updated);
-                      }}
-                    />
-                  </div>
                   <div style={{ flex: 1 }}>
                     <label style={label}>Passport Attachment</label>
                     <input
