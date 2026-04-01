@@ -478,9 +478,7 @@ const ClientRecords: React.FC<{
 
   // Travel Funds workflow states
   const [travelFundRequestDate, setTravelFundRequestDate] = useState("");
-  const [travelFundApprovalStatus, setTravelFundApprovalStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [travelFundApprovalDate, setTravelFundApprovalDate] = useState("");
-  const [travelFundReleaseDate, setTravelFundReleaseDate] = useState("");
   const [travelFundReleasedAmount, setTravelFundReleasedAmount] = useState("");
 
   // Visa payment state
