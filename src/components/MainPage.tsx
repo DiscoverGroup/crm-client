@@ -154,6 +154,7 @@ const ClientRecords: React.FC<{
   // Generate temporary client ID for new clients
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
   const [packageLink, setPackageLink] = useState("");
+  const [clientRequest, setClientRequest] = useState("");
   
   // Resolved client ID — updated to the real CLT-xxx after first save of a new client
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId);
@@ -273,6 +274,7 @@ const ClientRecords: React.FC<{
                 : [""]
           );
           setPackageLink(existingClient.packageLink || '');
+          setClientRequest(existingClient.clientRequest || '');
           if (existingClient.companions) {
             // Backward-compat: old records may have { name, address, occupation }
             setCompanions(existingClient.companions.map((c: any) => ({
@@ -1010,6 +1012,7 @@ const ClientRecords: React.FC<{
         numberOfPax,
         bookingConfirmations: bookingConfirmations.filter(b => b.trim()),
         packageLink: cleanPackageLink,
+        clientRequest: sanitizeText(clientRequest || '', 2000),
         companions: companions
       };
 
@@ -1169,6 +1172,7 @@ const ClientRecords: React.FC<{
         numberOfPax,
         bookingConfirmations: cleanBookingConfirmations,
         packageLink: cleanPackageLink,
+        clientRequest: sanitizeText(clientRequest || '', 2000),
         companions: cleanCompanions,
         passportNames,
       };
@@ -2054,6 +2058,20 @@ const ClientRecords: React.FC<{
                   maxLength={500}
                   value={packageLink}
                   onChange={e => setPackageLink(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Client Request */}
+            <div className="form-row" style={{ marginTop: 18 }}>
+              <div style={{ width: "100%" }}>
+                <label style={label}>Client Request</label>
+                <textarea
+                  style={{ ...modernInput, height: 100, resize: "vertical", fontFamily: "inherit" }}
+                  placeholder="Enter any special requests or notes from the client..."
+                  maxLength={2000}
+                  value={clientRequest}
+                  onChange={e => setClientRequest(e.target.value)}
                 />
               </div>
             </div>

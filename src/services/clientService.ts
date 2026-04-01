@@ -18,6 +18,7 @@ export interface ClientData {
   bookingConfirmation?: string;
   bookingConfirmations?: string[];
   packageLink?: string;
+  clientRequest?: string;
   companions?: Array<{
     firstName?: string;
     lastName?: string;
