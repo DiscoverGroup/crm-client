@@ -112,7 +112,7 @@ const MainPage: React.FC = () => {
 
   // Payment Details Table for terms
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
-    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", depositSlip: null, receipt: null }))
+    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null }))
   );
 
   // Additional payment states
@@ -145,7 +145,7 @@ const MainPage: React.FC = () => {
     setPaymentDetails(prev => {
       const next = [...prev];
       if (next.length < termCount) {
-        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", depositSlip: null, receipt: null });
+        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null });
       } else if (next.length > termCount) {
         next.length = termCount;
       }

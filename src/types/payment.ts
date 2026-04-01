@@ -1,6 +1,7 @@
 export type PaymentDetail = {
   dueDate: string;
   date: string;
+  completed?: boolean;
   depositSlip?: File | null;
   receipt?: File | null;
 };
@@ -38,6 +39,7 @@ export interface SerializedPaymentData {
   paymentDetails: Array<{
     dueDate: string;
     date: string;
+    completed?: boolean;
     depositSlip: string | null;
     receipt: string | null;
   }>;

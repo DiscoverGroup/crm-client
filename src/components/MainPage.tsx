@@ -298,6 +298,7 @@ const ClientRecords: React.FC<{
               setPaymentDetails(savedPayment.paymentDetails.map((d: any) => ({
                 dueDate: (d.dueDate as string) || '',
                 date: (d.date as string) || '',
+                completed: !!(d.completed),
                 depositSlip: null,
                 receipt: null,
               })));
@@ -431,7 +432,7 @@ const ClientRecords: React.FC<{
 
   // Payment Details Table for terms
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
-    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", depositSlip: null, receipt: null }))
+    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null }))
   );
 
   // Additional payment states
@@ -530,7 +531,7 @@ const ClientRecords: React.FC<{
     setPaymentDetails(prev => {
       const next = [...prev];
       if (next.length < termCount) {
-        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", depositSlip: null, receipt: null });
+        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null });
       } else if (next.length > termCount) {
         next.length = termCount;
       }
@@ -594,8 +595,8 @@ const ClientRecords: React.FC<{
 
   const handlePaymentDetailChange = async (
     idx: number,
-    field: "dueDate" | "date" | "depositSlip" | "receipt",
-    value: string | React.ChangeEvent<HTMLInputElement>
+    field: "dueDate" | "date" | "completed" | "depositSlip" | "receipt",
+    value: string | boolean | React.ChangeEvent<HTMLInputElement>
   ) => {
     if (field === "dueDate" || field === "date") {
       setPaymentDetails(pd =>
@@ -603,6 +604,12 @@ const ClientRecords: React.FC<{
           if (i !== idx) return row;
           return { ...row, [field]: value as string };
         })
+      );
+      return;
+    }
+    if (field === "completed") {
+      setPaymentDetails(pd =>
+        pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
       );
       return;
     }
@@ -2325,6 +2332,7 @@ const ClientRecords: React.FC<{
                     const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
                     const hasDate = !!detail.date || !!detail.dueDate;
                     const filled = hasDeposit || hasReceipt || hasDate;
+                    const completed = !!detail.completed;
                     return (
                       <button
                         key={idx}
@@ -2333,19 +2341,26 @@ const ClientRecords: React.FC<{
                         style={{
                           padding: "10px 20px",
                           borderRadius: 999,
-                          border: filled ? "2px solid #6366f1" : "2px solid #cbd5e1",
-                          background: filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#f8fafc",
-                          color: filled ? "#fff" : "#475569",
+                          border: completed ? "2px solid #059669" : filled ? "2px solid #6366f1" : "2px solid #cbd5e1",
+                          background: completed ? "linear-gradient(135deg,#059669,#10b981)" : filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#f8fafc",
+                          color: completed || filled ? "#fff" : "#475569",
                           fontWeight: 600,
                           fontSize: 14,
                           cursor: "pointer",
-                          boxShadow: filled ? "0 2px 8px rgba(99,102,241,0.25)" : "none",
+                          boxShadow: completed ? "0 2px 8px rgba(5,150,105,0.3)" : filled ? "0 2px 8px rgba(99,102,241,0.25)" : "none",
                           transition: "all 0.15s",
                           position: "relative",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
                         }}
                       >
+                        {completed && <span style={{ fontSize: 13 }}>✓</span>}
                         Payment {idx + 1}
-                        {filled && (
+                        {completed && (
+                          <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}>Completed</span>
+                        )}
+                        {!completed && filled && (
                           <span style={{
                             position: "absolute", top: -4, right: -4,
                             width: 10, height: 10, borderRadius: "50%",
@@ -2390,7 +2405,18 @@ const ClientRecords: React.FC<{
                     Payment {paymentModalIdx + 1}
                   </h3>
 
-                  {/* Payment Due Date */}
+                  {/* Completed checkbox */}
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer", userSelect: "none" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!paymentDetails[paymentModalIdx]?.completed}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "completed", e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: 15, fontWeight: 600, color: paymentDetails[paymentModalIdx]?.completed ? "#059669" : "#475569" }}>
+                      {paymentDetails[paymentModalIdx]?.completed ? "✓ Completed" : "Mark as Completed"}
+                    </span>
+                  </label>
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Due Date</label>
                     <input
