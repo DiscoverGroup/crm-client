@@ -116,7 +116,7 @@ const saveButtonStyle = (isSaving: boolean) => ({
 
 const paymentOptions = [
   { value: "full_cash", label: "Full Cash (1 time payment)", terms: 1 },
-  { value: "installment", label: "Installment (up to 15 terms)", terms: 15 },
+  { value: "installment", label: "Installment (up to 20 terms)", terms: 20 },
   { value: "travel_funds", label: "Travel Funds", terms: 0 },
   { value: "down_payment", label: "Down Payment (2 time payment)", terms: 2 }
 ];
