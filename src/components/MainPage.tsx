@@ -421,6 +421,7 @@ const ClientRecords: React.FC<{
   const [paymentTerm, setPaymentTerm] = useState(paymentOptions[0].value);
   const [termCount, setTermCount] = useState(1);
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
+  const [paymentModalIdx, setPaymentModalIdx] = useState<number | null>(null);
   const [customMaxTerms, setCustomMaxTerms] = useState<number | null>(null);
   const [isEditingMaxTerms, setIsEditingMaxTerms] = useState(false);
   const [customMaxTermsInput, setCustomMaxTermsInput] = useState("");
@@ -2378,146 +2379,158 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
-            {/* Payment Details Table */}
+            {/* Payment Details — horizontal pill list */}
             {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment #</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment Due Date</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment Date</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Deposit Slip</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Receipt</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentDetails.slice(0, paymentBoxes.length).map((detail, idx) => (
-                      <tr key={idx}>
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
-                          Payment {idx + 1}
-                        </td>
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
-                          <input
-                            type="date"
-                            value={detail.dueDate}
-                            onChange={e => handlePaymentDetailChange(idx, "dueDate", e.target.value)}
-                            style={{ ...modernInput, margin: 0 }}
-                          />
-                        </td>
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
-                          <input
-                            type="date"
-                            value={detail.date}
-                            onChange={e => handlePaymentDetailChange(idx, "date", e.target.value)}
-                            style={{ ...modernInput, margin: 0 }}
-                          />
-                        </td>
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
-                          <input
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={e => handlePaymentDetailChange(idx, "depositSlip", e)}
-                            style={{ fontSize: "14px" }}
-                          />
-                          {(() => {
-                            const uploadedFile = attachments.find(att => 
-                              att.category === 'deposit-slip' && 
-                              att.paymentIndex === idx && 
-                              att.source === 'payment-terms'
-                            );
-                            if (uploadedFile) {
-                              return (
-                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: "12px", color: "#059669" }}>
-                                    ✓ {uploadedFile.file.name}
-                                  </span>
-                                  <R2DownloadButton
-                                    url={uploadedFile.file.data}
-                                    fileName={uploadedFile.file.name}
-                                    r2Path={uploadedFile.file.r2Path}
-                                    bucket="crm-uploads"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "depositSlip")}
-                                    style={{
-                                      fontSize: "14px",
-                                      color: "#ef4444",
-                                      background: "transparent",
-                                      border: "1px solid #ef4444",
-                                      borderRadius: "4px",
-                                      padding: "2px 6px",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center"
-                                    }}
-                                    title="Remove file"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </td>
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
-                          <input
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={e => handlePaymentDetailChange(idx, "receipt", e)}
-                            style={{ fontSize: "14px" }}
-                          />
-                          {(() => {
-                            const uploadedFile = attachments.find(att => 
-                              att.category === 'receipt' && 
-                              att.paymentIndex === idx && 
-                              att.source === 'payment-terms'
-                            );
-                            if (uploadedFile) {
-                              return (
-                                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: "12px", color: "#059669" }}>
-                                    ✓ {uploadedFile.file.name}
-                                  </span>
-                                  <R2DownloadButton
-                                    url={uploadedFile.file.data}
-                                    fileName={uploadedFile.file.name}
-                                    r2Path={uploadedFile.file.r2Path}
-                                    bucket="crm-uploads"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, idx, "receipt")}
-                                    style={{
-                                      fontSize: "14px",
-                                      color: "#ef4444",
-                                      background: "transparent",
-                                      border: "1px solid #ef4444",
-                                      borderRadius: "4px",
-                                      padding: "2px 6px",
-                                      cursor: "pointer",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center"
-                                    }}
-                                    title="Remove file"
-                                  >
-                                    ✕
-                                  </button>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {paymentDetails.slice(0, paymentBoxes.length).map((detail, idx) => {
+                    const hasDeposit = attachments.some(a => a.category === 'deposit-slip' && a.paymentIndex === idx && a.source === 'payment-terms');
+                    const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
+                    const hasDate = !!detail.date || !!detail.dueDate;
+                    const filled = hasDeposit || hasReceipt || hasDate;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setPaymentModalIdx(idx)}
+                        style={{
+                          padding: "10px 20px",
+                          borderRadius: 999,
+                          border: filled ? "2px solid #6366f1" : "2px solid #cbd5e1",
+                          background: filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#f8fafc",
+                          color: filled ? "#fff" : "#475569",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          boxShadow: filled ? "0 2px 8px rgba(99,102,241,0.25)" : "none",
+                          transition: "all 0.15s",
+                          position: "relative",
+                        }}
+                      >
+                        Payment {idx + 1}
+                        {filled && (
+                          <span style={{
+                            position: "absolute", top: -4, right: -4,
+                            width: 10, height: 10, borderRadius: "50%",
+                            background: "#22c55e", border: "2px solid #fff"
+                          }} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+
+            {/* Payment Detail Modal */}
+            {paymentModalIdx !== null && createPortal(
+              <div
+                style={{
+                  position: "fixed", inset: 0, zIndex: 99998,
+                  background: "rgba(15,23,42,0.45)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                onClick={() => setPaymentModalIdx(null)}
+              >
+                <div
+                  style={{
+                    background: "#fff", borderRadius: 16, padding: 32, width: "100%", maxWidth: 560,
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.25)", position: "relative",
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModalIdx(null)}
+                    style={{
+                      position: "absolute", top: 16, right: 16,
+                      background: "transparent", border: "none", fontSize: 20,
+                      cursor: "pointer", color: "#64748b", lineHeight: 1,
+                    }}
+                  >✕</button>
+
+                  <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+                    Payment {paymentModalIdx + 1}
+                  </h3>
+
+                  {/* Payment Due Date */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Due Date</label>
+                    <input
+                      type="date"
+                      value={paymentDetails[paymentModalIdx]?.dueDate || ""}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "dueDate", e.target.value)}
+                      style={{ ...modernInput, margin: 0 }}
+                    />
+                  </div>
+
+                  {/* Payment Date */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Date</label>
+                    <input
+                      type="date"
+                      value={paymentDetails[paymentModalIdx]?.date || ""}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "date", e.target.value)}
+                      style={{ ...modernInput, margin: 0 }}
+                    />
+                  </div>
+
+                  {/* Deposit Slip */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Deposit Slip</label>
+                    {(() => {
+                      const uploadedFile = attachments.find(att =>
+                        att.category === 'deposit-slip' && att.paymentIndex === paymentModalIdx && att.source === 'payment-terms'
+                      );
+                      if (uploadedFile) {
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "8px 12px", background: "rgba(5,150,105,0.07)", borderRadius: 8, border: "1px solid rgba(5,150,105,0.25)" }}>
+                            <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
+                            <R2DownloadButton url={uploadedFile.file.data} fileName={uploadedFile.file.name} r2Path={uploadedFile.file.r2Path} bucket="crm-uploads" />
+                            <button type="button" onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, paymentModalIdx, "depositSlip")} style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
+                          <span style={{ fontSize: 20 }}>📎</span>
+                          <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, Image (max 50MB)</span>
+                          <input type="file" accept="image/*,.pdf" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} />
+                        </label>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Receipt */}
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Receipt</label>
+                    {(() => {
+                      const uploadedFile = attachments.find(att =>
+                        att.category === 'receipt' && att.paymentIndex === paymentModalIdx && att.source === 'payment-terms'
+                      );
+                      if (uploadedFile) {
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: "8px 12px", background: "rgba(5,150,105,0.07)", borderRadius: 8, border: "1px solid rgba(5,150,105,0.25)" }}>
+                            <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
+                            <R2DownloadButton url={uploadedFile.file.data} fileName={uploadedFile.file.name} r2Path={uploadedFile.file.r2Path} bucket="crm-uploads" />
+                            <button type="button" onClick={() => handleRemovePaymentAttachment(uploadedFile.file.id, paymentModalIdx, "receipt")} style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
+                          </div>
+                        );
+                      }
+                      return (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
+                          <span style={{ fontSize: 20 }}>📎</span>
+                          <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, Image (max 50MB)</span>
+                          <input type="file" accept="image/*,.pdf" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} />
+                        </label>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>,
+              document.body
             )}
 
             {/* Additional Payment Sections */}
