@@ -204,12 +204,6 @@ const ClientRecords: React.FC<{
   };
 
   const { department: currentDept, position: currentPos } = getCurrentUserDeptPos();
-  // Only "Executive Secretary" in "Executives Department" can check the approval checkbox
-  const isExecSecretary =
-    currentDept.toLowerCase().includes('executive') &&
-    currentPos.toLowerCase() === 'executive secretary';
-  // Only "Finance Department" employees can upload the approval invoice file
-  const isFinanceDept = currentDept.toLowerCase().includes('finance');
   
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
@@ -322,9 +316,7 @@ const ClientRecords: React.FC<{
                 receipt: null,
               })));
             }
-            if (Array.isArray((savedPayment as any).approvalChecked)) {
-              setApprovalChecked((savedPayment as any).approvalChecked as boolean[]);
-            }
+
           }
         }
       } finally {
@@ -477,8 +469,7 @@ const ClientRecords: React.FC<{
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
 
-  // Per-row approval checkbox state (checked by Executive Secretary)
-  const [approvalChecked, setApprovalChecked] = useState<boolean[]>([]);
+
 
   // Visa section states
   const [visaFOC, setVisaFOC] = useState(false);
@@ -558,16 +549,6 @@ const ClientRecords: React.FC<{
       } else if (next.length > termCount) {
         next.length = termCount;
       }
-      return next;
-    });
-  }, [termCount]);
-
-  // Sync approvalChecked array size with termCount
-  useEffect(() => {
-    setApprovalChecked(prev => {
-      const next = [...prev];
-      while (next.length < termCount) next.push(false);
-      if (next.length > termCount) next.length = termCount;
       return next;
     });
   }, [termCount]);
@@ -847,7 +828,6 @@ const ClientRecords: React.FC<{
         termCount,
         selectedPaymentBox,
         paymentDetails,
-        approvalChecked,
         additionalPayments: {
           firstPayment: {
             enabled: firstPaymentEnabled,
@@ -1514,59 +1494,7 @@ const ClientRecords: React.FC<{
     }
   };
 
-  // Approval checkbox handler (only Executive Secretary can toggle)
-  const handleApprovalCheckboxChange = (idx: number, checked: boolean) => {
-    setApprovalChecked(prev => {
-      const next = [...prev];
-      next[idx] = checked;
-      return next;
-    });
-  };
 
-  // Approval invoice file upload handler (only Finance Department can upload)
-  const handleApprovalFileUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
-      e.target.value = '';
-      return;
-    }
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      showErrorToast(`Invalid file type. Only images and PDF files are allowed.`);
-      e.target.value = '';
-      return;
-    }
-
-    try {
-      await FileService.saveFileAttachment(file, 'other', currentClientId, idx, 'regular', 'approval-invoice', currentUserName, 'approval-invoice');
-      logAttachment('payment-terms-schedule', 'uploaded', file.name, 'approval invoice');
-      const clientAttachments = FileService.getFilesByClient(currentClientId);
-      setAttachments([...clientAttachments]);
-      window.dispatchEvent(new Event('fileAttachmentUpdated'));
-    } catch {
-      showErrorToast('Failed to upload approval file. Please try again.');
-    }
-  };
-
-  // Approval invoice file remove handler
-  const handleApprovalFileRemove = async (fileId: string) => {
-    const confirmed = await showConfirmDialog('Remove File', 'Are you sure you want to remove this approval file?', 'warning');
-    if (!confirmed) return;
-
-    const success = await FileService.deleteFile(fileId, currentUserName);
-    if (success) {
-      const clientAttachments = FileService.getFilesByClient(currentClientId);
-      setAttachments([...clientAttachments]);
-      logAttachment('payment-terms-schedule', 'deleted', 'Approval file removed', 'approval invoice');
-      window.dispatchEvent(new Event('fileAttachmentUpdated'));
-    } else {
-      showErrorToast('Failed to remove approval file. Please try again.');
-    }
-  };
 
   // Handlers
   function handleCompanionChange(idx: number, field: keyof Companion, value: string) {
@@ -2474,12 +2402,6 @@ const ClientRecords: React.FC<{
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Date</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Deposit Slip</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Receipt</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>
-                        Approval / Invoice
-                        <div style={{ fontSize: "11px", fontWeight: 400, color: "#64748b", marginTop: 2 }}>
-                          Exec. Sec. approval + Finance upload
-                        </div>
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2595,89 +2517,6 @@ const ClientRecords: React.FC<{
                             }
                             return null;
                           })()}
-                        </td>
-                        {/* Approval / Invoice column */}
-                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0", minWidth: 180 }}>
-                          {/* Approval checkbox — only Executive Secretary can check */}
-                          <label
-                            title={isExecSecretary ? 'Check to approve this payment' : 'Only Executive Secretary can approve'}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              cursor: isExecSecretary ? 'pointer' : 'not-allowed',
-                              opacity: isExecSecretary ? 1 : 0.5,
-                              marginBottom: 6,
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: approvalChecked[idx] ? '#059669' : '#64748b',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={approvalChecked[idx] || false}
-                              disabled={!isExecSecretary}
-                              onChange={e => handleApprovalCheckboxChange(idx, e.target.checked)}
-                              style={{ ...modernCheckbox, accentColor: '#059669' }}
-                            />
-                            {approvalChecked[idx] ? '✓ Approved' : 'Approve'}
-                          </label>
-
-                          {/* Invoice/receipt upload — shown only when approved, only Finance Dept can upload */}
-                          {approvalChecked[idx] && (
-                            <div style={{ marginTop: 4 }}>
-                              {!isFinanceDept && (
-                                <div style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', borderRadius: 4, padding: '2px 6px', marginBottom: 4 }}>
-                                  Finance Dept upload
-                                </div>
-                              )}
-                              {(() => {
-                                const uploadedFile = attachments.find(att =>
-                                  att.source === 'approval-invoice' &&
-                                  att.paymentIndex === idx
-                                );
-                                if (uploadedFile) {
-                                  return (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                      <span style={{ fontSize: 12, color: '#059669' }}>✓ {uploadedFile.file.name}</span>
-                                      <R2DownloadButton
-                                        url={uploadedFile.file.data}
-                                        fileName={uploadedFile.file.name}
-                                        r2Path={uploadedFile.file.r2Path}
-                                        bucket="crm-uploads"
-                                      />
-                                      {isFinanceDept && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleApprovalFileRemove(uploadedFile.file.id)}
-                                          style={{
-                                            fontSize: 12,
-                                            color: '#ef4444',
-                                            background: 'transparent',
-                                            border: '1px solid #ef4444',
-                                            borderRadius: 4,
-                                            padding: '2px 6px',
-                                            cursor: 'pointer',
-                                          }}
-                                          title="Remove file"
-                                        >✕</button>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <input
-                                    type="file"
-                                    accept="image/*,.pdf"
-                                    disabled={!isFinanceDept}
-                                    title={isFinanceDept ? 'Upload invoice or receipt' : 'Only Finance Department can upload'}
-                                    onChange={e => handleApprovalFileUpload(idx, e)}
-                                    style={{ fontSize: 13, cursor: isFinanceDept ? 'pointer' : 'not-allowed', opacity: isFinanceDept ? 1 : 0.45 }}
-                                  />
-                                );
-                              })()}
-                            </div>
-                          )}
                         </td>
                       </tr>
                     ))}
