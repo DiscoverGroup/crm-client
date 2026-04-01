@@ -2288,53 +2288,6 @@ const ClientRecords: React.FC<{
                     />
                   </div>
                   <div>
-                    <label style={label}>Waiting for Approval</label>
-                    <div style={{
-                      padding: "14px 16px",
-                      borderRadius: "12px",
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      background: travelFundApprovalStatus === 'approved'
-                        ? "rgba(16, 185, 129, 0.15)"
-                        : travelFundApprovalStatus === 'rejected'
-                        ? "rgba(239, 68, 68, 0.15)"
-                        : "rgba(245, 158, 11, 0.15)",
-                      color: travelFundApprovalStatus === 'approved'
-                        ? "#065f46"
-                        : travelFundApprovalStatus === 'rejected'
-                        ? "#991b1b"
-                        : "#92400e",
-                      border: `2px solid ${travelFundApprovalStatus === 'approved' ? 'rgba(16, 185, 129, 0.3)' : travelFundApprovalStatus === 'rejected' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
-                    }}>
-
-                      <select
-                        value={travelFundApprovalStatus}
-                        onChange={e => {
-                          const val = e.target.value as 'pending' | 'approved' | 'rejected';
-                          trackSectionField('payment-terms-schedule', 'travelFundApprovalStatus', val, 'Travel Fund Approval Status');
-                          setTravelFundApprovalStatus(val);
-                        }}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          fontSize: "15px",
-                          fontWeight: 600,
-                          color: "inherit",
-                          cursor: "pointer",
-                          outline: "none",
-                          flex: 1
-                        }}
-                      >
-                        <option value="pending">Pending Approval</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
                     <label style={label}>Approval Date</label>
                     <input
                       style={modernInput}
@@ -2345,20 +2298,6 @@ const ClientRecords: React.FC<{
                         setTravelFundApprovalDate(e.target.value);
                       }}
                     />
-                  </div>
-                  <div>
-                    <label style={label}>Fund Release Date</label>
-                    <input
-                      style={modernInput}
-                      type="date"
-                      value={travelFundReleaseDate}
-                      max={travelFundApprovalDate ? (() => { const d = new Date(travelFundApprovalDate); d.setFullYear(d.getFullYear() + 2); return d.toISOString().split('T')[0]; })() : undefined}
-                      onChange={e => {
-                        trackSectionField('payment-terms-schedule', 'travelFundReleaseDate', e.target.value, 'Travel Fund Release Date');
-                        setTravelFundReleaseDate(e.target.value);
-                      }}
-                    />
-                    <span style={subLabel}>{travelFundApprovalDate ? '(Up to 2 years from approval date)' : '(Set approval date first)'}</span>
                   </div>
                   <div>
                     <label style={label}>Approved Amount</label>
@@ -2536,6 +2475,7 @@ const ClientRecords: React.FC<{
             {/* Additional Payment Sections */}
             <div style={{ marginTop: 20 }}>
               {/* First Payment */}
+              {paymentTerm !== "travel_funds" && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <input
@@ -2631,6 +2571,7 @@ const ClientRecords: React.FC<{
                   </div>
                 )}
               </div>
+              )}
 
               {/* Other Payments */}
               <div style={{ marginBottom: 16 }}>
