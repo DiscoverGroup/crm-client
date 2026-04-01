@@ -1956,12 +1956,35 @@ const ClientRecords: React.FC<{
                             >✕ Remove</button>
                           </div>
                         ) : (
-                          <input
-                            type="file"
-                            accept="image/*,.pdf"
-                            onChange={e => handleBookingConfirmationFileUpload(idx, e)}
-                            style={{ ...modernInput, padding: '10px 12px', fontSize: 14, cursor: 'pointer' }}
-                          />
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 16px',
+                            border: '2px dashed rgba(147,197,253,0.6)',
+                            borderRadius: 12,
+                            background: 'rgba(239,246,255,0.7)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            userSelect: 'none',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = '#3b82f6')}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(147,197,253,0.6)')}
+                          >
+                            <span style={{ fontSize: 20 }}>📎</span>
+                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>
+                              Choose file to upload
+                            </span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
+                              PDF, Image (max 50MB)
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              onChange={e => handleBookingConfirmationFileUpload(idx, e)}
+                              style={{ display: 'none' }}
+                            />
+                          </label>
                         )}
                       </div>
                       {bookingConfirmations.length > 1 && (
