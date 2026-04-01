@@ -129,6 +129,31 @@ export const handler: Handler = async (event) => {
         };
       }
 
+      // Check if account is approved by admin
+      if (user.approvalStatus === 'pending') {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            success: false, 
+            error: 'Your account is pending admin approval. Please wait for an administrator to approve your registration.',
+            pendingApproval: true
+          })
+        };
+      }
+
+      if (user.approvalStatus === 'rejected') {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            success: false, 
+            error: 'Your registration has been rejected by an administrator. Please contact support for more information.',
+            rejected: true
+          })
+        };
+      }
+
       // ── Build safe response payload ──────────────────────────────────────────────
       const userData = {
         id: user._id,

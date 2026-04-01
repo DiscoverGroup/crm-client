@@ -27,6 +27,7 @@ interface User {
   verifiedAt?: string;
   role?: string;
   registrationMethod?: 'auth0' | 'manual';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
 }
 
 interface AdminPanelProps {
@@ -133,6 +134,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       verifiedAt: new Date().toISOString()
     }).catch(() => { /* non-critical */ });
     showSuccessToast('User verified successfully!');
+  };
+
+  const handleApproveUser = async (email: string, action: 'approve' | 'reject') => {
+    const confirmed = await showConfirmDialog(
+      action === 'approve' ? 'Approve User' : 'Reject User',
+      action === 'approve'
+        ? 'This will allow the user to access the CRM. Continue?'
+        : 'This will prevent the user from accessing the CRM. Continue?',
+      action === 'approve' ? 'info' : 'warning'
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('/.netlify/functions/approve-user', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const updatedUsers = users.map(user => {
+          if (user.email === email) {
+            return { ...user, approvalStatus: action === 'approve' ? 'approved' as const : 'rejected' as const };
+          }
+          return user;
+        });
+        saveUsers(updatedUsers);
+        showSuccessToast(`User ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
+      } else {
+        showErrorToast(data.error || `Failed to ${action} user`);
+      }
+    } catch {
+      showErrorToast(`Could not reach server to ${action} user`);
+    }
   };
 
   const handleChangeRole = (email: string, newRole: string) => {
@@ -791,6 +826,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Department</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Role</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Approval</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Registration</th>
                 <th style={{ padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Registered</th>
                 <th style={{ padding: '16px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Actions</th>
@@ -856,6 +892,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     }}>
                       {user.isVerified ? '✓ Verified' : '⏳ Unverified'}
                     </span>
+                  </td>
+                  <td style={{ padding: '16px' }}>
+                    {(() => {
+                      const status = user.approvalStatus || 'pending';
+                      const styles: Record<string, { bg: string; color: string; label: string }> = {
+                        approved: { bg: '#d1fae5', color: '#065f46', label: '✓ Approved' },
+                        pending: { bg: '#fef3c7', color: '#92400e', label: '⏳ Pending' },
+                        rejected: { bg: '#fee2e2', color: '#991b1b', label: '✕ Rejected' },
+                      };
+                      const s = styles[status] || styles.pending;
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            background: s.bg,
+                            color: s.color,
+                            display: 'inline-block',
+                            width: 'fit-content'
+                          }}>
+                            {s.label}
+                          </span>
+                          {status !== 'approved' && (
+                            <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                              <button
+                                onClick={() => handleApproveUser(user.email, 'approve')}
+                                style={{
+                                  padding: '3px 8px',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Approve
+                              </button>
+                              {status !== 'rejected' && (
+                                <button
+                                  onClick={() => handleApproveUser(user.email, 'reject')}
+                                  style={{
+                                    padding: '3px 8px',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td style={{ padding: '16px' }}>
                     {user.registrationMethod === 'auth0' ? (

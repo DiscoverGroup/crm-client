@@ -26,6 +26,9 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [pendingUserEmail, setPendingUserEmail] = useState('');
+  const [pendingApprovalEmail, setPendingApprovalEmail] = useState('');
+  const [pendingApprovalPassword, setPendingApprovalPassword] = useState('');
+  const [rejectedMessage, setRejectedMessage] = useState('');
   const [navigationRequest, setNavigationRequest] = useState<{
     page: 'client-form' | 'activity-log' | 'log-notes';
     params?: any;
@@ -470,6 +473,11 @@ const App: React.FC = () => {
           message: 'Please verify your email address before logging in. Check your inbox for the verification link.',
           type: 'warning'
         });
+      } else if (result.pendingApproval) {
+        setPendingApprovalEmail(username.trim());
+        setPendingApprovalPassword(password.trim());
+      } else if (result.rejected) {
+        setRejectedMessage(result.error || 'Your registration has been rejected. Please contact support.');
       } else {
         setModalConfig({
           isOpen: true,
@@ -997,6 +1005,49 @@ const App: React.FC = () => {
               onCloseSidebar={() => setIsSidebarOpen(false)}
             />
           </>
+        ) : pendingApprovalEmail ? (
+          <WaitingForApproval
+            email={pendingApprovalEmail}
+            onApproved={async () => {
+              // Auto-login after approval
+              await handleLogin(pendingApprovalEmail, pendingApprovalPassword);
+              setPendingApprovalEmail('');
+              setPendingApprovalPassword('');
+            }}
+            onBack={() => {
+              setPendingApprovalEmail('');
+              setPendingApprovalPassword('');
+            }}
+          />
+        ) : rejectedMessage ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+            padding: '20px'
+          }}>
+            <div style={{
+              background: 'white', borderRadius: '24px', padding: '48px', maxWidth: '500px', width: '100%',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.25)', textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '64px', marginBottom: '16px' }}>❌</div>
+              <h2 style={{ margin: '0 0 12px', fontSize: '24px', fontWeight: 700, color: '#dc2626' }}>
+                Registration Rejected
+              </h2>
+              <p style={{ margin: '0 0 32px', fontSize: '15px', color: '#64748b', lineHeight: 1.6 }}>
+                {rejectedMessage}
+              </p>
+              <button
+                onClick={() => setRejectedMessage('')}
+                style={{
+                  padding: '12px 32px', background: '#0d47a1', color: 'white', border: 'none',
+                  borderRadius: '12px', fontSize: '15px', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Back to Login
+              </button>
+            </div>
+          </div>
         ) : (
           <AuthContainer onLogin={handleLogin} onRegister={handleRegister} onAuth0Register={handleAuth0Register} onAuth0Login={handleAuth0Login} />
         )}
@@ -1203,6 +1254,96 @@ const CompleteProfileModal: React.FC<{
           </button>
         </div>
       </div>
+    </div>
+  );
+};
+
+// ── Waiting for Admin Approval Page ─────────────────────────────────────────
+const WaitingForApproval: React.FC<{
+  email: string;
+  onApproved: () => void;
+  onBack: () => void;
+}> = ({ email, onApproved, onBack }) => {
+  const [dots, setDots] = React.useState('');
+
+  React.useEffect(() => {
+    // Animate dots
+    const dotsInterval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+
+    // Poll for approval status every 5 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/.netlify/functions/check-approval', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.approvalStatus === 'approved') {
+            clearInterval(pollInterval);
+            clearInterval(dotsInterval);
+            onApproved();
+          }
+        }
+      } catch {
+        // Silently retry on next interval
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(dotsInterval);
+      clearInterval(pollInterval);
+    };
+  }, [email, onApproved]);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+      padding: '20px'
+    }}>
+      <div style={{
+        background: 'white', borderRadius: '24px', padding: '48px', maxWidth: '500px', width: '100%',
+        boxShadow: '0 25px 50px rgba(0,0,0,0.25)', textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '64px', marginBottom: '16px' }}>⏳</div>
+        <h2 style={{ margin: '0 0 12px', fontSize: '24px', fontWeight: 700, color: '#0d47a1' }}>
+          Waiting for Approval{dots}
+        </h2>
+        <p style={{ margin: '0 0 8px', fontSize: '15px', color: '#64748b', lineHeight: 1.6 }}>
+          Your account has been registered successfully and is currently pending admin approval.
+        </p>
+        <p style={{ margin: '0 0 32px', fontSize: '13px', color: '#94a3b8' }}>
+          This page will automatically redirect you once an administrator approves your account. Please keep this page open.
+        </p>
+        <div style={{
+          display: 'flex', justifyContent: 'center', marginBottom: '24px'
+        }}>
+          <div style={{
+            width: '48px', height: '48px', border: '4px solid #e2e8f0',
+            borderTopColor: '#0d47a1', borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+        </div>
+        <p style={{ margin: '0 0 24px', fontSize: '13px', color: '#94a3b8' }}>
+          Logged in as: <strong style={{ color: '#475569' }}>{email}</strong>
+        </p>
+        <button
+          onClick={onBack}
+          style={{
+            padding: '10px 24px', background: 'transparent', color: '#64748b',
+            border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '14px',
+            fontWeight: 500, cursor: 'pointer'
+          }}
+        >
+          Back to Login
+        </button>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
