@@ -19,11 +19,16 @@ export interface ClientData {
   bookingConfirmations?: string[];
   packageLink?: string;
   companions?: Array<{
-    name: string;
-    dob: string;
-    address: string;
-    occupation: string;
+    firstName?: string;
+    lastName?: string;
+    name?: string; // legacy field — kept for backward compat
+    dob?: string;
+    email?: string;
+    contactNo?: string;
+    address?: string; // legacy
+    occupation?: string; // legacy
   }>;
+  passportNames?: string[];
   // Visa & Additional Services
   visaService?: boolean;
   insuranceService?: boolean;
