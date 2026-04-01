@@ -1,4 +1,5 @@
 export type PaymentDetail = {
+  dueDate: string;
   date: string;
   depositSlip?: File | null;
   receipt?: File | null;
@@ -35,6 +36,7 @@ export interface SerializedPaymentData {
   termCount: number;
   selectedPaymentBox: number | null;
   paymentDetails: Array<{
+    dueDate: string;
     date: string;
     depositSlip: string | null;
     receipt: string | null;

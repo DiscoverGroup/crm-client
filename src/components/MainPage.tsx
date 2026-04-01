@@ -296,6 +296,7 @@ const ClientRecords: React.FC<{
             if (savedPayment.selectedPaymentBox !== undefined) setSelectedPaymentBox(savedPayment.selectedPaymentBox as number | null);
             if (Array.isArray(savedPayment.paymentDetails)) {
               setPaymentDetails(savedPayment.paymentDetails.map((d: any) => ({
+                dueDate: (d.dueDate as string) || '',
                 date: (d.date as string) || '',
                 depositSlip: null,
                 receipt: null,
@@ -429,7 +430,7 @@ const ClientRecords: React.FC<{
 
   // Payment Details Table for terms
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
-    Array.from({ length: termCount }, () => ({ date: "", depositSlip: null, receipt: null }))
+    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", depositSlip: null, receipt: null }))
   );
 
   // Additional payment states
@@ -530,7 +531,7 @@ const ClientRecords: React.FC<{
     setPaymentDetails(prev => {
       const next = [...prev];
       if (next.length < termCount) {
-        for (let i = next.length; i < termCount; i++) next.push({ date: "", depositSlip: null, receipt: null });
+        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", depositSlip: null, receipt: null });
       } else if (next.length > termCount) {
         next.length = termCount;
       }
@@ -594,14 +595,14 @@ const ClientRecords: React.FC<{
 
   const handlePaymentDetailChange = async (
     idx: number,
-    field: "date" | "depositSlip" | "receipt",
+    field: "dueDate" | "date" | "depositSlip" | "receipt",
     value: string | React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (field === "date") {
+    if (field === "dueDate" || field === "date") {
       setPaymentDetails(pd =>
         pd.map((row, i) => {
           if (i !== idx) return row;
-          return { ...row, date: value as string };
+          return { ...row, [field]: value as string };
         })
       );
       return;
@@ -2384,7 +2385,8 @@ const ClientRecords: React.FC<{
                   <thead>
                     <tr>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment #</th>
-                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Date</th>
+                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment Due Date</th>
+                      <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Payment Date</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Deposit Slip</th>
                       <th style={{ textAlign: "left", padding: "12px", borderBottom: "2px solid #e2e8f0" }}>Receipt</th>
                     </tr>
@@ -2394,6 +2396,14 @@ const ClientRecords: React.FC<{
                       <tr key={idx}>
                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
                           Payment {idx + 1}
+                        </td>
+                        <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
+                          <input
+                            type="date"
+                            value={detail.dueDate}
+                            onChange={e => handlePaymentDetailChange(idx, "dueDate", e.target.value)}
+                            style={{ ...modernInput, margin: 0 }}
+                          />
                         </td>
                         <td style={{ padding: "12px", borderBottom: "1px solid #e2e8f0" }}>
                           <input
