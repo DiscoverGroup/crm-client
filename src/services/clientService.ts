@@ -36,10 +36,10 @@ export interface ClientData {
   etaService?: boolean;
   visaFiles?: string[]; // Array of file IDs
   // Embassy Information
-  embassyAppointmentDate?: string;
-  visaReleaseDate?: string;
-  visaResult?: string;
-  advisoryDate?: string;
+  embassyName?: string;
+  embassyAddress?: string;
+  // Visa Officer
+  visaOfficerAppointed?: string;
   // Booking/Tour Voucher
   bookingVoucher?: string;
   bookingVoucherLinks?: {

@@ -273,10 +273,9 @@ const ClientRecords: React.FC<{
           setVisaService(existingClient.visaService || false);
           setInsuranceService(existingClient.insuranceService || false);
           setEta(existingClient.etaService || false);
-          setEmbassyAppointmentDate(existingClient.embassyAppointmentDate || '');
-          setVisaReleaseDate(existingClient.visaReleaseDate || '');
-          setVisaResult(existingClient.visaResult || '');
-          setAdvisoryDate(existingClient.advisoryDate || '');
+          setEmbassyName(existingClient.embassyName || '');
+          setEmbassyAddress(existingClient.embassyAddress || '');
+          setVisaOfficerAppointed(existingClient.visaOfficerAppointed || '');
 
           // Load booking voucher links
           const vl = existingClient.bookingVoucherLinks || {};
@@ -470,10 +469,10 @@ const ClientRecords: React.FC<{
   const [passportNames, setPassportNames] = useState<string[]>([""]);
   
   // Embassy information
-  const [embassyAppointmentDate, setEmbassyAppointmentDate] = useState("");
-  const [visaReleaseDate, setVisaReleaseDate] = useState("");
-  const [visaResult, setVisaResult] = useState("");
-  const [advisoryDate, setAdvisoryDate] = useState("");
+  const [embassyName, setEmbassyName] = useState("");
+  const [embassyAddress, setEmbassyAddress] = useState("");
+  // Visa Officer
+  const [visaOfficerAppointed, setVisaOfficerAppointed] = useState("");
   const [isSavingVisa, setIsSavingVisa] = useState(false);
   const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
 
@@ -1217,6 +1216,7 @@ const ClientRecords: React.FC<{
         visaService,
         insuranceService,
         etaService: eta,
+        visaOfficerAppointed,
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
@@ -1236,10 +1236,8 @@ const ClientRecords: React.FC<{
         return;
       }
       await ClientService.updateClient(currentClientId, {
-        embassyAppointmentDate,
-        visaReleaseDate,
-        visaResult,
-        advisoryDate,
+        embassyName,
+        embassyAddress,
       });
       // Save section changes to log
       saveSection('embassy-information', 'Embassy Information');
@@ -2124,8 +2122,8 @@ const ClientRecords: React.FC<{
               </h2>
             </div>
             
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 32, marginBottom: 24 }}>
-              <div style={{ flex: 2 }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 240, flex: "1 1 240px" }}>
                 <label style={label}>Payment Terms</label>
                 <select style={modernInput} value={paymentTerm} onChange={handlePaymentTermChange}>
                   {paymentOptions.map(opt =>
@@ -2134,7 +2132,7 @@ const ClientRecords: React.FC<{
                 </select>
               </div>
               {paymentTerm !== "travel_funds" && showTermCount && (
-                <div style={{ flex: 1 }}>
+                <div style={{ minWidth: 160, flex: "0 0 160px" }}>
                   <label style={label}>Terms</label>
                   <input
                     style={modernInput}
@@ -2238,10 +2236,12 @@ const ClientRecords: React.FC<{
                   </div>
                 </div>
               )}
-              {paymentTerm !== "travel_funds" && (
-              <div style={{ flex: 2 }}>
+            </div>
+
+            {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
                 <label style={label}>Payment Counts</label>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
                   {paymentBoxes.map(num => (
                     <button
                       type="button"
@@ -2250,7 +2250,6 @@ const ClientRecords: React.FC<{
                       style={{
                         width: 34, height: 34,
                         fontSize: 15,
-                        marginRight: 3,
                         border: "1.5px solid #6366f1",
                         borderRadius: 8,
                         background: selectedPaymentBox === num ? "#6366f1" : "#fff",
@@ -2264,8 +2263,7 @@ const ClientRecords: React.FC<{
                   ))}
                 </div>
               </div>
-              )}
-            </div>
+            )}
 
             {/* Travel Funds Workflow (shown when Travel Funds is selected) */}
             {paymentTerm === "travel_funds" && (
@@ -2719,6 +2717,18 @@ const ClientRecords: React.FC<{
               </h2>
             </div>
             
+            {/* Visa Officer Appointed */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={label}>Visa Officer Appointed</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Full name"
+                value={visaOfficerAppointed}
+                onChange={e => setVisaOfficerAppointed(e.target.value)}
+              />
+            </div>
+
             {/* Visa FOC (Free of Charge) Checkbox */}
             <div style={{ marginBottom: 20 }}>
               <label style={{
@@ -3333,53 +3343,28 @@ const ClientRecords: React.FC<{
             </h4>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
-                <label style={label}>Appointment Date</label>
-                <input
-                  style={modernInput}
-                  type="date"
-                  value={embassyAppointmentDate}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'embassyAppointmentDate', e.target.value, 'Appointment Date');
-                    setEmbassyAppointmentDate(e.target.value);
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Release of Visa Date</label>
-                <input
-                  style={modernInput}
-                  type="date"
-                  value={visaReleaseDate}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'visaReleaseDate', e.target.value, 'Visa Release Date');
-                    setVisaReleaseDate(e.target.value);
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Visa Result</label>
+                <label style={label}>Embassy Name</label>
                 <input
                   style={modernInput}
                   type="text"
-                  placeholder="Visa result status"
-                  value={visaResult}
+                  placeholder="Embassy name"
+                  value={embassyName}
                   onChange={e => {
-                    trackSectionField('embassy-information', 'visaResult', e.target.value, 'Visa Result');
-                    setVisaResult(e.target.value);
+                    trackSectionField('embassy-information', 'embassyName', e.target.value, 'Embassy Name');
+                    setEmbassyName(e.target.value);
                   }}
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={label}>Advisory Date</label>
+                <label style={label}>Embassy Address</label>
                 <input
                   style={modernInput}
-                  type="date"
-                  value={advisoryDate}
+                  type="text"
+                  placeholder="Embassy address"
+                  value={embassyAddress}
                   onChange={e => {
-                    trackSectionField('embassy-information', 'advisoryDate', e.target.value, 'Advisory Date');
-                    setAdvisoryDate(e.target.value);
+                    trackSectionField('embassy-information', 'embassyAddress', e.target.value, 'Embassy Address');
+                    setEmbassyAddress(e.target.value);
                   }}
                 />
               </div>
