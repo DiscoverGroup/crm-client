@@ -203,7 +203,6 @@ const ClientRecords: React.FC<{
     return { department: '', position: '' };
   };
 
-  const { department: currentDept, position: currentPos } = getCurrentUserDeptPos();
   
   // Field tracking setup (kept for companion management only)
   const { logAction } = useFieldTracking({
