@@ -402,9 +402,26 @@ const ClientRecords: React.FC<{
     });
   };
   
-  const handleBookingConfirmationChange = (index: number, value: string) => {
+  const [bcTooltipVisible, setBcTooltipVisible] = useState(false);
+
+  const handleBookingConfirmationFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
+      showErrorToast(`File size exceeds 50MB limit.`);
+      e.target.value = '';
+      return;
+    }
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      showErrorToast(`Invalid file type. Only images and PDF files are allowed.`);
+      e.target.value = '';
+      return;
+    }
+    await handleGenericFileUpload(file, 'other', `booking-confirmation-${index + 1}`, 'booking-confirmation');
     const updated = [...bookingConfirmations];
-    updated[index] = value;
+    updated[index] = file.name;
     trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
     setBookingConfirmations(updated);
   };
@@ -1839,6 +1856,56 @@ const ClientRecords: React.FC<{
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <label style={label}>Booking Confirmation</label>
+                  {/* Tooltip icon */}
+                  <span
+                    style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
+                    onMouseEnter={() => setBcTooltipVisible(true)}
+                    onMouseLeave={() => setBcTooltipVisible(false)}
+                  >
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 18,
+                      height: 18,
+                      borderRadius: "50%",
+                      background: "#3b82f6",
+                      color: "#fff",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: "default",
+                      userSelect: "none",
+                      lineHeight: 1,
+                    }}>?</span>
+                    {bcTooltipVisible && (
+                      <span style={{
+                        position: "absolute",
+                        bottom: "calc(100% + 6px)",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "#1e293b",
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        whiteSpace: "nowrap",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        zIndex: 100,
+                        pointerEvents: "none",
+                      }}>
+                        Booking confirmation must be filled
+                        <span style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          border: "5px solid transparent",
+                          borderTopColor: "#1e293b",
+                        }} />
+                      </span>
+                    )}
+                  </span>
                   <button
                     type="button"
                     onClick={handleAddBookingConfirmation}
@@ -1861,41 +1928,69 @@ const ClientRecords: React.FC<{
                     title="Add another booking confirmation"
                   >+</button>
                 </div>
-                {bookingConfirmations.map((bc, idx) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: idx > 0 ? 8 : 0 }}>
-                    <input
-                      style={{ ...modernInput, flex: 1 }}
-                      type="text"
-                      placeholder={`Booking confirmation #${idx + 1}`}
-                      maxLength={50}
-                      value={bc}
-                      onChange={e => handleBookingConfirmationChange(idx, e.target.value)}
-                    />
-                    {bookingConfirmations.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveBookingConfirmation(idx)}
-                        style={{
-                          background: "#dc3545",
-                          color: "white",
-                          border: "none",
-                          width: 24,
-                          height: 24,
-                          borderRadius: "50%",
-                          cursor: "pointer",
-                          fontSize: "14px",
-                          fontWeight: "bold",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          lineHeight: 1,
-                          padding: 0
-                        }}
-                        title="Remove this booking confirmation"
-                      >×</button>
-                    )}
-                  </div>
-                ))}
+                {bookingConfirmations.map((bc, idx) => {
+                  const uploadedFile = attachments.find(att =>
+                    att.category === 'other' &&
+                    att.source === 'booking-confirmation' &&
+                    att.fileType === `booking-confirmation-${idx + 1}`
+                  );
+                  return (
+                    <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: idx > 0 ? 8 : 4 }}>
+                      <div style={{ flex: 1 }}>
+                        {uploadedFile ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)' }}>
+                            <span style={{ fontSize: 13, color: '#059669', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              ✓ {uploadedFile.file.name}
+                            </span>
+                            <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGenericFileRemove(uploadedFile.file.id, `booking-confirmation-${idx + 1}`, 'booking-confirmation');
+                                const updated = [...bookingConfirmations];
+                                updated[idx] = '';
+                                setBookingConfirmations(updated);
+                              }}
+                              style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              title="Remove file"
+                            >✕ Remove</button>
+                          </div>
+                        ) : (
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={e => handleBookingConfirmationFileUpload(idx, e)}
+                            style={{ ...modernInput, padding: '10px 12px', fontSize: 14, cursor: 'pointer' }}
+                          />
+                        )}
+                      </div>
+                      {bookingConfirmations.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBookingConfirmation(idx)}
+                          style={{
+                            background: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            cursor: "pointer",
+                            fontSize: "14px",
+                            fontWeight: "bold",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            lineHeight: 1,
+                            padding: 0,
+                            flexShrink: 0,
+                          }}
+                          title="Remove this booking confirmation"
+                        >×</button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <div style={{ flex: windowWidth < 640 ? '1' : '2', minWidth: windowWidth < 640 ? "100%" : "auto" }}>
                 <label style={label}>Package Link</label>
