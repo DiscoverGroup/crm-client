@@ -1882,7 +1882,7 @@ const ClientRecords: React.FC<{
                     {bcTooltipVisible && (
                       <span style={{
                         position: "absolute",
-                        bottom: "calc(100% + 6px)",
+                        top: "calc(100% + 6px)",
                         left: "50%",
                         transform: "translateX(-50%)",
                         background: "#1e293b",
@@ -1893,17 +1893,17 @@ const ClientRecords: React.FC<{
                         borderRadius: 6,
                         whiteSpace: "nowrap",
                         boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        zIndex: 100,
+                        zIndex: 1000,
                         pointerEvents: "none",
                       }}>
                         Booking confirmation must be filled
                         <span style={{
                           position: "absolute",
-                          top: "100%",
+                          bottom: "100%",
                           left: "50%",
                           transform: "translateX(-50%)",
                           border: "5px solid transparent",
-                          borderTopColor: "#1e293b",
+                          borderBottomColor: "#1e293b",
                         }} />
                       </span>
                     )}
