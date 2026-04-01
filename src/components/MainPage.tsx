@@ -403,6 +403,7 @@ const ClientRecords: React.FC<{
   };
   
   const [bcTooltipVisible, setBcTooltipVisible] = useState(false);
+  const [bcTooltipPos, setBcTooltipPos] = useState({ x: 0, y: 0 });
 
   const handleBookingConfirmationFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1861,7 +1862,11 @@ const ClientRecords: React.FC<{
                   {/* Tooltip icon */}
                   <span
                     style={{ position: "relative", display: "inline-flex", alignItems: "center" }}
-                    onMouseEnter={() => setBcTooltipVisible(true)}
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setBcTooltipPos({ x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+                      setBcTooltipVisible(true);
+                    }}
                     onMouseLeave={() => setBcTooltipVisible(false)}
                   >
                     <span style={{
@@ -1881,9 +1886,9 @@ const ClientRecords: React.FC<{
                     }}>?</span>
                     {bcTooltipVisible && (
                       <span style={{
-                        position: "absolute",
-                        top: "calc(100% + 6px)",
-                        left: "50%",
+                        position: "fixed",
+                        top: bcTooltipPos.y,
+                        left: bcTooltipPos.x,
                         transform: "translateX(-50%)",
                         background: "#1e293b",
                         color: "#fff",
@@ -1892,8 +1897,8 @@ const ClientRecords: React.FC<{
                         padding: "6px 10px",
                         borderRadius: 6,
                         whiteSpace: "nowrap",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        zIndex: 1000,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        zIndex: 99999,
                         pointerEvents: "none",
                       }}>
                         Booking confirmation must be filled
