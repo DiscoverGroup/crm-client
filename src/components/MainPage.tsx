@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { sanitizeName, sanitizeEmail, sanitizePhone, sanitizeText, containsAttackPatterns } from '../utils/formSanitizer';
 import { ClientService, type ClientData } from '../services/clientService';
 import { PaymentService, type PaymentData } from "../payments/paymentService";
@@ -1884,7 +1885,7 @@ const ClientRecords: React.FC<{
                       userSelect: "none",
                       lineHeight: 1,
                     }}>?</span>
-                    {bcTooltipVisible && (
+                    {bcTooltipVisible && createPortal(
                       <span style={{
                         position: "fixed",
                         top: bcTooltipPos.y,
@@ -1892,12 +1893,12 @@ const ClientRecords: React.FC<{
                         transform: "translateX(-50%)",
                         background: "#1e293b",
                         color: "#fff",
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: 500,
-                        padding: "6px 10px",
-                        borderRadius: 6,
+                        padding: "8px 14px",
+                        borderRadius: 8,
                         whiteSpace: "nowrap",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
                         zIndex: 99999,
                         pointerEvents: "none",
                       }}>
@@ -1907,10 +1908,11 @@ const ClientRecords: React.FC<{
                           bottom: "100%",
                           left: "50%",
                           transform: "translateX(-50%)",
-                          border: "5px solid transparent",
+                          border: "6px solid transparent",
                           borderBottomColor: "#1e293b",
                         }} />
-                      </span>
+                      </span>,
+                      document.body
                     )}
                   </span>
                   <button
