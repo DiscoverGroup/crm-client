@@ -145,9 +145,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
         </button>
 
-        {/* Toggle Button */}
+        {/* Toggle Button — hidden on mobile (hamburger in Navbar controls opening) */}
         <button
           onClick={toggleCollapse}
+          className="sidebar-toggle-btn"
           style={{
             width: '32px',
             height: '32px',

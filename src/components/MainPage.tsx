@@ -3123,7 +3123,7 @@ const ClientRecords: React.FC<{
                   type="button"
                   onClick={handleAddVisaPayment}
                   style={{
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
                     color: "white",
                     border: "none",
                     padding: "8px 16px",
@@ -3253,7 +3253,7 @@ const ClientRecords: React.FC<{
                   type="button"
                   onClick={handleAddInsurancePayment}
                   style={{
-                    background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
+                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
                     color: "white",
                     border: "none",
                     padding: "8px 16px",
@@ -3383,7 +3383,7 @@ const ClientRecords: React.FC<{
                   type="button"
                   onClick={handleAddEtaPayment}
                   style={{
-                    background: "linear-gradient(135deg, #ffc107 0%, #ff8b94 100%)",
+                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
                     color: "white",
                     border: "none",
                     padding: "8px 16px",
@@ -4568,7 +4568,7 @@ const MainPage: React.FC<MainPageProps> = ({
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
-              backgroundColor: '#f5f5f5'
+              background: 'transparent'
             }}>
             <ClientRecords
               onClientSelect={() => {}}
@@ -4609,7 +4609,7 @@ const MainPage: React.FC<MainPageProps> = ({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            backgroundColor: '#f5f5f5'
+            background: 'transparent'
           }}>
             <UserProfile
               currentUser={currentUser}
@@ -4661,7 +4661,7 @@ const MainPage: React.FC<MainPageProps> = ({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            backgroundColor: '#f5f5f5'
+            background: 'transparent'
           }}>
             <DeletedClients
               currentUser={currentUser.fullName}
@@ -4706,7 +4706,7 @@ const MainPage: React.FC<MainPageProps> = ({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            backgroundColor: '#f5f5f5'
+            background: 'transparent'
           }}>
             <ActivityLogViewer
               onBack={() => setViewActivityLog(false)}
@@ -4785,7 +4785,7 @@ const MainPage: React.FC<MainPageProps> = ({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            backgroundColor: '#f5f5f5'
+            background: 'transparent'
           }}>
             <TeamCalendar
               currentUser={currentUser}
@@ -4818,7 +4818,7 @@ const MainPage: React.FC<MainPageProps> = ({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            backgroundColor: '#f5f5f5',
+            background: 'transparent',
             display: 'flex',
             flexDirection: 'column'
           }}>
@@ -4827,43 +4827,75 @@ const MainPage: React.FC<MainPageProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '30px',
-          backgroundColor: 'white',
-          padding: '20px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          marginBottom: '24px',
+          background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)',
+          padding: '20px 28px',
+          borderRadius: '14px',
+          boxShadow: '0 4px 20px rgba(10, 45, 116, 0.25)'
         }}>
-          <div>
-            <h1 style={{ 
-              margin: '0 0 10px 0',
-              color: '#2c3e50',
-              fontSize: '28px'
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '10px',
+              border: '2px solid rgba(255,255,255,0.4)',
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
             }}>
-              Client Records
-            </h1>
-            <p style={{ 
-              margin: 0,
-              color: '#7f8c8d',
-              fontSize: '14px'
-            }}>
-              Manage and search through all client documents
-            </p>
+              <img
+                src={localStorage.getItem('crm_company_logo') || '/DG.jpg'}
+                alt="Logo"
+                onError={(e) => { e.currentTarget.src = '/DG.jpg'; }}
+                style={{ width: '42px', height: '42px', objectFit: 'contain' }}
+              />
+            </div>
+            <div>
+              <h1 style={{ 
+                margin: '0 0 4px 0',
+                color: '#ffffff',
+                fontSize: '22px',
+                fontWeight: '800',
+                fontFamily: "'LemonMilk', 'Inter', sans-serif",
+                letterSpacing: '0.05em'
+              }}>
+                Client Records
+              </h1>
+              <p style={{ 
+                margin: 0,
+                color: 'rgba(255,255,255,0.75)',
+                fontSize: '13px'
+              }}>
+                Manage and search through all client documents
+              </p>
+            </div>
           </div>
           <button
             onClick={handleAddNewClient}
             style={{
-              padding: '12px 24px',
-              backgroundColor: '#3498db',
+              padding: '11px 22px',
+              background: 'rgba(255,255,255,0.2)',
               color: 'white',
-              border: 'none',
-              borderRadius: '8px',
+              border: '1.5px solid rgba(255,255,255,0.5)',
+              borderRadius: '10px',
               cursor: 'pointer',
               fontSize: '14px',
-              fontWeight: '500',
-              transition: 'background-color 0.3s ease'
+              fontWeight: '600',
+              transition: 'all 0.2s ease',
+              backdropFilter: 'blur(10px)',
+              whiteSpace: 'nowrap'
             }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2980b9'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3498db'}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
           >
             + Add New Client
           </button>
@@ -4871,24 +4903,28 @@ const MainPage: React.FC<MainPageProps> = ({
 
         {/* Search and Filter Section */}
         <div style={{
-          backgroundColor: 'white',
-          padding: '20px',
-          borderRadius: '10px',
+          background: '#ffffff',
+          padding: '20px 24px',
+          borderRadius: '14px',
           marginBottom: '20px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
+          border: '1px solid rgba(10, 45, 116, 0.1)'
         }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: '2fr 1fr',
-            gap: '20px',
+            gap: '16px',
             alignItems: 'end'
           }}>
             <div>
               <label style={{
                 display: 'block',
                 marginBottom: '8px',
-                fontWeight: '500',
-                color: '#2c3e50'
+                fontWeight: '600',
+                fontSize: '12px',
+                color: '#0A2D74',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
               }}>
                 Search Clients
               </label>
@@ -4899,22 +4935,36 @@ const MainPage: React.FC<MainPageProps> = ({
                 onChange={handleSearchChange}
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e9ecef',
-                  borderRadius: '8px',
+                  padding: '11px 14px',
+                  border: '1.5px solid #d1dbe8',
+                  borderRadius: '10px',
                   fontSize: '14px',
-                  transition: 'border-color 0.3s ease'
+                  background: '#f8fafc',
+                  color: '#1e293b',
+                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                  boxSizing: 'border-box'
                 }}
-                onFocus={(e) => e.target.style.borderColor = '#3498db'}
-                onBlur={(e) => e.target.style.borderColor = '#e9ecef'}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#28A2DC';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(40, 162, 220, 0.12)';
+                  e.target.style.background = '#ffffff';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1dbe8';
+                  e.target.style.boxShadow = 'none';
+                  e.target.style.background = '#f8fafc';
+                }}
               />
             </div>
             <div>
               <label style={{
                 display: 'block',
                 marginBottom: '8px',
-                fontWeight: '500',
-                color: '#2c3e50'
+                fontWeight: '600',
+                fontSize: '12px',
+                color: '#0A2D74',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
               }}>
                 Filter by Status
               </label>
@@ -4923,11 +4973,13 @@ const MainPage: React.FC<MainPageProps> = ({
                 onChange={handleStatusFilterChange}
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e9ecef',
-                  borderRadius: '8px',
+                  padding: '11px 14px',
+                  border: '1.5px solid #d1dbe8',
+                  borderRadius: '10px',
                   fontSize: '14px',
-                  backgroundColor: 'white'
+                  background: '#f8fafc',
+                  color: '#1e293b',
+                  cursor: 'pointer'
                 }}
               >
                             <option value="">All Status</option>
@@ -4944,28 +4996,30 @@ const MainPage: React.FC<MainPageProps> = ({
         {loading ? (
           <div style={{
             textAlign: 'center',
-            padding: '40px',
-            backgroundColor: 'white',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            padding: '60px 40px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
+            border: '1px solid rgba(10, 45, 116, 0.1)'
           }}>
-            <p>Loading clients...</p>
+            <p style={{ color: '#64748b', fontSize: '15px' }}>Loading clients...</p>
           </div>
         ) : clients.length === 0 ? (
           <div style={{
             textAlign: 'center',
-            padding: '40px',
-            backgroundColor: 'white',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+            padding: '60px 40px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
+            border: '1px solid rgba(10, 45, 116, 0.1)'
           }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.5 }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.4 }}>
               👥
             </div>
-            <h3 style={{ color: '#6c757d', margin: '0 0 8px 0' }}>
+            <h3 style={{ color: '#0A2D74', margin: '0 0 8px 0', fontWeight: '700' }}>
               {searchQuery || statusFilter ? 'No Clients Found' : 'No Clients Yet'}
             </h3>
-            <p style={{ color: '#adb5bd', margin: 0 }}>
+            <p style={{ color: '#94a3b8', margin: '0 0 20px 0', fontSize: '14px' }}>
               {searchQuery || statusFilter 
                 ? 'Try adjusting your search criteria or filters.'
                 : 'Start by adding your first client to the system.'
@@ -4975,25 +5029,27 @@ const MainPage: React.FC<MainPageProps> = ({
               <button
                 onClick={handleAddNewClient}
                 style={{
-                  marginTop: '16px',
-                  padding: '12px 24px',
-                  backgroundColor: '#3498db',
+                  padding: '12px 28px',
+                  background: 'linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 14px rgba(10, 45, 116, 0.3)'
                 }}
               >
-                Add First Client
+                + Add First Client
               </button>
             )}
           </div>
         ) : (
           <div style={{
-            backgroundColor: 'white',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+            background: '#ffffff',
+            borderRadius: '14px',
+            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
+            border: '1px solid rgba(10, 45, 116, 0.1)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -5001,99 +5057,117 @@ const MainPage: React.FC<MainPageProps> = ({
             minHeight: 0
           }}>
             <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e9ecef',
-              backgroundColor: '#f8f9fa'
+              padding: '16px 24px',
+              borderBottom: '2px solid rgba(40, 162, 220, 0.2)',
+              background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
             }}>
-              <h3 style={{ margin: 0, color: '#2c3e50' }}>
-                Client List ({clients.length} {clients.length === 1 ? 'client' : 'clients'})
+              <span style={{ fontSize: '16px' }}>👥</span>
+              <h3 style={{ margin: 0, color: '#0A2D74', fontWeight: '700', fontSize: '15px' }}>
+                Client List
               </h3>
+              <span style={{
+                marginLeft: '4px',
+                background: '#0A2D74',
+                color: '#fff',
+                borderRadius: '20px',
+                padding: '2px 10px',
+                fontSize: '12px',
+                fontWeight: '600'
+              }}>
+                {clients.length} {clients.length === 1 ? 'client' : 'clients'}
+              </span>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
               <table style={{
                 width: '100%',
-                borderCollapse: 'collapse'
+                borderCollapse: 'collapse',
+                minWidth: '650px'
               }}>
-                <thead style={{
-                  backgroundColor: '#f8f9fa',
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 1
-                }}>
-                  <tr>
+                <thead>
+                  <tr style={{ background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 100%)' }}>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 20px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Client Name
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Status
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Email
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Phone
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Client No.
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'left',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Agent
                     </th>
                     <th style={{
-                      padding: '12px 20px',
+                      padding: '13px 16px',
                       textAlign: 'center',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#6c757d',
-                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
                       Actions
@@ -5105,67 +5179,68 @@ const MainPage: React.FC<MainPageProps> = ({
                     <tr
                       key={client.id}
                       style={{
-                        borderBottom: index < clients.length - 1 ? '1px solid #e9ecef' : 'none',
-                        transition: 'background-color 0.2s ease',
+                        borderBottom: '1px solid rgba(10, 45, 116, 0.07)',
+                        background: index % 2 === 0 ? '#ffffff' : '#f8faff',
+                        transition: 'background 0.15s ease',
                         cursor: 'pointer'
                       }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(40, 162, 220, 0.07)')}
+                      onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#f8faff')}
                       onClick={() => handleClientEdit(client)}
                     >
                       <td style={{
-                        padding: '16px 20px',
-                        color: '#2c3e50',
+                        padding: '15px 20px',
+                        color: '#0A2D74',
                         fontSize: '14px',
-                        fontWeight: '500'
+                        fontWeight: '600'
                       }}>
                         {client.contactName}
                       </td>
-                      <td style={{
-                        padding: '16px 20px'
-                      }}>
+                      <td style={{ padding: '15px 16px' }}>
                         <span style={{
                           padding: '4px 12px',
                           backgroundColor: getStatusColor(client.status || 'unknown'),
                           color: 'white',
-                          borderRadius: '12px',
+                          borderRadius: '20px',
                           fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'inline-block'
+                          fontWeight: '600',
+                          display: 'inline-block',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
                         }}>
                           {client.status}
                         </span>
                       </td>
                       <td style={{
-                        padding: '16px 20px',
-                        color: '#6c757d',
+                        padding: '15px 16px',
+                        color: '#64748b',
                         fontSize: '13px'
                       }}>
-                        📧 {client.email || 'No email'}
+                        {client.email || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>No email</span>}
                       </td>
                       <td style={{
-                        padding: '16px 20px',
-                        color: '#6c757d',
+                        padding: '15px 16px',
+                        color: '#64748b',
                         fontSize: '13px'
                       }}>
-                        📞 {client.contactNo || 'No phone'}
+                        {client.contactNo || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>No phone</span>}
                       </td>
                       <td style={{
-                        padding: '16px 20px',
-                        color: '#6c757d',
+                        padding: '15px 16px',
+                        color: '#64748b',
+                        fontSize: '13px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {client.clientNo || '—'}
+                      </td>
+                      <td style={{
+                        padding: '15px 16px',
+                        color: '#64748b',
                         fontSize: '13px'
                       }}>
-                        {client.clientNo || 'N/A'}
+                        {client.agent || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>Unassigned</span>}
                       </td>
                       <td style={{
-                        padding: '16px 20px',
-                        color: '#6c757d',
-                        fontSize: '13px'
-                      }}>
-                        {client.agent || 'Unassigned'}
-                      </td>
-                      <td style={{
-                        padding: '16px 20px',
+                        padding: '15px 16px',
                         textAlign: 'center'
                       }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
@@ -5176,17 +5251,24 @@ const MainPage: React.FC<MainPageProps> = ({
                             }}
                             style={{
                               padding: '6px 16px',
-                              backgroundColor: '#28a745',
+                              background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '8px',
                               fontSize: '12px',
                               cursor: 'pointer',
-                              transition: 'background-color 0.2s ease',
-                              fontWeight: '500'
+                              fontWeight: '600',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 2px 6px rgba(40, 162, 220, 0.3)'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(40, 162, 220, 0.45)';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(40, 162, 220, 0.3)';
+                            }}
                           >
                             ✏️ Edit
                           </button>
@@ -5217,17 +5299,24 @@ const MainPage: React.FC<MainPageProps> = ({
                             }}
                             style={{
                               padding: '6px 16px',
-                              backgroundColor: '#dc3545',
+                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
                               color: 'white',
                               border: 'none',
-                              borderRadius: '4px',
+                              borderRadius: '8px',
                               fontSize: '12px',
                               cursor: 'pointer',
-                              transition: 'background-color 0.2s ease',
-                              fontWeight: '500'
+                              fontWeight: '600',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
                             }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c82333'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(239, 68, 68, 0.45)';
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.3)';
+                            }}
                           >
                             🗑️ Delete
                           </button>

@@ -89,7 +89,7 @@
   }
 }
 
-/* Hide sidebar on mobile by default */
+/* Tablet/mobile sidebar: show 64px logo strip, hide full sidebar */
 @media (max-width: 1023px) {
   .mobile-menu-btn {
     display: flex !important;
@@ -99,16 +99,20 @@
     display: block !important;
   }
   
-  /* Sidebar mobile styles */
+  /* Sidebar on tablet: always show 64px logo-only strip */
   .sidebar-container {
     position: fixed !important;
-    left: -280px !important;
-    transition: left 0.3s ease;
+    left: 0 !important;
+    width: 64px !important;
+    padding: 16px 8px !important;
+    overflow: hidden !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease !important;
     z-index: 10001 !important;
   }
   
   .sidebar-container.open {
-    left: 0 !important;
+    width: 280px !important;
+    padding: 24px !important;
   }
   
   .sidebar-overlay {
@@ -126,13 +130,18 @@
     display: block;
   }
   
-  /* Main content responsive */
+  /* Main content responsive — offset by logo strip */
   .main-content {
-    margin-left: 0 !important;
-    width: 100% !important;
+    margin-left: 64px !important;
+    width: calc(100% - 64px) !important;
     padding: 10px !important;
   }
   
+  /* Hide collapse toggle on mobile (hamburger in Navbar controls open/close) */
+  .sidebar-toggle-btn {
+    display: none !important;
+  }
+
   /* Hide navbar button text on small screens */
   @media (max-width: 640px) {
     .navbar-btn span {
@@ -150,6 +159,22 @@
   .main-content {
     margin-left: 300px;
     width: calc(100% - 300px);
+  }
+}
+
+/* On very small screens, reduce the logo strip to 56px */
+@media (max-width: 480px) {
+  .sidebar-container {
+    width: 56px !important;
+    padding: 12px 6px !important;
+  }
+  .sidebar-container.open {
+    width: 280px !important;
+    padding: 24px !important;
+  }
+  .main-content {
+    margin-left: 56px !important;
+    width: calc(100% - 56px) !important;
   }
 }
 
