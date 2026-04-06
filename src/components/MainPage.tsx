@@ -492,6 +492,8 @@ const ClientRecords: React.FC<{
   const [afterSalesSCReport, setAfterSalesSCReport] = useState("");
   const [afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
   const [isSavingAccountRelations, setIsSavingAccountRelations] = useState(false);
+  const [isSavingAfterSalesSC, setIsSavingAfterSalesSC] = useState(false);
+  const [isSavingAfterVisaSC, setIsSavingAfterVisaSC] = useState(false);
   const [isSavingPreDepartureSC, setIsSavingPreDepartureSC] = useState(false);
   const [isSavingPostDepartureSC, setIsSavingPostDepartureSC] = useState(false);
   // Visa SC Reports
@@ -1257,9 +1259,6 @@ const ClientRecords: React.FC<{
       }
       await ClientService.updateClient(currentClientId, {
         arm,
-        afterSalesSCDate,
-        afterSalesSCReport,
-        afterSalesSCReportBy,
       });
       saveSection('account-relations', 'Account Relations');
       showSuccessToast('Account relations saved successfully!');
@@ -1267,6 +1266,34 @@ const ClientRecords: React.FC<{
       showErrorToast('An error occurred while saving account relations.');
     } finally {
       setIsSavingAccountRelations(false);
+    }
+  };
+
+  const handleSaveAfterSalesSC = async () => {
+    setIsSavingAfterSalesSC(true);
+    try {
+      if (!currentClientId) { showWarningToast('Please save client information first.'); return; }
+      await ClientService.updateClient(currentClientId, { afterSalesSCDate, afterSalesSCReport, afterSalesSCReportBy });
+      saveSection('after-sales-sc', 'After Sales SC');
+      showSuccessToast('After Sales SC saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving After Sales SC.');
+    } finally {
+      setIsSavingAfterSalesSC(false);
+    }
+  };
+
+  const handleSaveAfterVisaSC = async () => {
+    setIsSavingAfterVisaSC(true);
+    try {
+      if (!currentClientId) { showWarningToast('Please save client information first.'); return; }
+      await ClientService.updateClient(currentClientId, { afterVisaSCDate, afterVisaSCReport, afterVisaSCReportBy });
+      saveSection('after-visa-sc', 'After Visa SC');
+      showSuccessToast('After Visa SC saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving After Visa SC.');
+    } finally {
+      setIsSavingAfterVisaSC(false);
     }
   };
 
@@ -1323,9 +1350,6 @@ const ClientRecords: React.FC<{
         insuranceService,
         etaService: eta,
         visaOfficerAppointed,
-        afterVisaSCDate,
-        afterVisaSCReport,
-        afterVisaSCReportBy,
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
@@ -2829,7 +2853,18 @@ const ClientRecords: React.FC<{
               />
             </div>
 
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Sales SC</h4>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={handleSaveAccountRelations} disabled={isSavingAccountRelations} style={saveButtonStyle(isSavingAccountRelations)}>
+                {isSavingAccountRelations ? "Saving..." : "Save Account Relations"}
+              </button>
+            </div>
+          </div>
+
+          {/* After Sales SC Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>After Sales SC</h2>
+            </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
@@ -2838,12 +2873,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
-              <textarea
-                style={{ ...modernInput, minHeight: 80, resize: "vertical" }}
-                placeholder="SC report details..."
-                value={afterSalesSCReport}
-                onChange={e => setAfterSalesSCReport(e.target.value)}
-              />
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterSalesSCReport} onChange={e => setAfterSalesSCReport(e.target.value)} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report By</label>
@@ -2851,15 +2881,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations');
-                }}
-                style={{ fontSize: "14px", width: "100%" }}
-              />
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations'); }} style={{ fontSize: "14px", width: "100%" }} />
               {(() => {
                 const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'account-relations' && att.fileType === 'after-sales-sc-attachment');
                 if (uploadedFile) {
@@ -2874,10 +2896,9 @@ const ClientRecords: React.FC<{
                 return null;
               })()}
             </div>
-
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button type="button" onClick={handleSaveAccountRelations} disabled={isSavingAccountRelations} style={saveButtonStyle(isSavingAccountRelations)}>
-                {isSavingAccountRelations ? "Saving..." : "Save Account Relations"}
+              <button type="button" onClick={handleSaveAfterSalesSC} disabled={isSavingAfterSalesSC} style={saveButtonStyle(isSavingAfterSalesSC)}>
+                {isSavingAfterSalesSC ? "Saving..." : "Save After Sales SC"}
               </button>
             </div>
           </div>
@@ -3518,8 +3539,71 @@ const ClientRecords: React.FC<{
               );
             })()}
 
-            {/* After Visa SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Visa SC</h4>
+            {/* Save Button */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSaveVisaInfo}
+                disabled={isSavingVisa}
+                style={saveButtonStyle(isSavingVisa)}
+              >
+                {isSavingVisa ? "Saving..." : "Save Visa Information"}
+              </button>
+            </div>
+          </div>
+
+          {/* Embassy Information Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+                Embassy Information
+              </h2>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Embassy Name</label>
+                <input
+                  style={modernInput}
+                  type="text"
+                  placeholder="Embassy name"
+                  value={embassyName}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'embassyName', e.target.value, 'Embassy Name');
+                    setEmbassyName(e.target.value);
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Embassy Address</label>
+                <input
+                  style={modernInput}
+                  type="text"
+                  placeholder="Embassy address"
+                  value={embassyAddress}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'embassyAddress', e.target.value, 'Embassy Address');
+                    setEmbassyAddress(e.target.value);
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSaveEmbassyInfo}
+                disabled={isSavingEmbassy}
+                style={saveButtonStyle(isSavingEmbassy)}
+              >
+                {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
+              </button>
+            </div>
+          </div>
+
+          {/* After Visa SC Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>After Visa SC</h2>
+            </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
@@ -3551,9 +3635,18 @@ const ClientRecords: React.FC<{
                 return null;
               })()}
             </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={handleSaveAfterVisaSC} disabled={isSavingAfterVisaSC} style={saveButtonStyle(isSavingAfterVisaSC)}>
+                {isSavingAfterVisaSC ? "Saving..." : "Save After Visa SC"}
+              </button>
+            </div>
+          </div>
 
-            {/* Pre-Departure SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Pre-Departure SC</h4>
+          {/* Pre-Departure SC Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>Pre-Departure SC</h2>
+            </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
@@ -3585,56 +3678,19 @@ const ClientRecords: React.FC<{
                 return null;
               })()}
             </div>
-
-            {/* Save Pre-Departure SC */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button
-                type="button"
-                onClick={handleSavePreDepartureSC}
-                disabled={isSavingPreDepartureSC}
-                style={saveButtonStyle(isSavingPreDepartureSC)}
-              >
+              <button type="button" onClick={handleSavePreDepartureSC} disabled={isSavingPreDepartureSC} style={saveButtonStyle(isSavingPreDepartureSC)}>
                 {isSavingPreDepartureSC ? "Saving..." : "Save Pre-Departure SC"}
               </button>
             </div>
+          </div>
 
-            {/* Save Button */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button
-                type="button"
-                onClick={handleSaveVisaInfo}
-                disabled={isSavingVisa}
-                style={saveButtonStyle(isSavingVisa)}
-              >
-                {isSavingVisa ? "Saving..." : "Save Visa Information"}
-              </button>
+          {/* Tour Voucher Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>Tour Voucher</h2>
             </div>
-
-            {/* Booking/Tour Voucher Section */}
-            <div style={{
-              ...sectionStyle(windowWidth),
-              marginTop: "24px",
-              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
-              border: "2px solid rgba(147, 197, 253, 0.3)",
-              borderRadius: "16px",
-              padding: "24px",
-              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
-            }}>
-              {/* Section Header */}
-              <div style={sectionHeader}>
-                
-                <h2 style={{ 
-                  margin: 0, 
-                  color: "#1e293b", 
-                  fontSize: "20px", 
-                  fontWeight: 700,
-                  letterSpacing: "-0.025em"
-                }}>
-                  Tour Voucher
-                </h2>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
                 <div>
                   <label style={label}>International Flight</label>
@@ -4085,55 +4141,6 @@ const ClientRecords: React.FC<{
                   </div>
                 );
               })()}
-            </div>
-
-          </div>
-
-          {/* Embassy Information Section */}
-          <div style={sectionStyle(windowWidth)}>
-            <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
-                Embassy Information
-              </h2>
-            </div>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Embassy Name</label>
-                <input
-                  style={modernInput}
-                  type="text"
-                  placeholder="Embassy name"
-                  value={embassyName}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'embassyName', e.target.value, 'Embassy Name');
-                    setEmbassyName(e.target.value);
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Embassy Address</label>
-                <input
-                  style={modernInput}
-                  type="text"
-                  placeholder="Embassy address"
-                  value={embassyAddress}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'embassyAddress', e.target.value, 'Embassy Address');
-                    setEmbassyAddress(e.target.value);
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button
-                type="button"
-                onClick={handleSaveEmbassyInfo}
-                disabled={isSavingEmbassy}
-                style={saveButtonStyle(isSavingEmbassy)}
-              >
-                {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
-              </button>
-            </div>
           </div>
 
           {/* Post-Departure SC Section */}
