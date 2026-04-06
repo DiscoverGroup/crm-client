@@ -52,6 +52,7 @@ export interface ClientData {
   preDepartureSCDate?: string;
   preDepartureSCReport?: string;
   preDepartureSCReportBy?: string;
+  postDepartureSCDate?: string;
   postDepartureSCReport?: string;
   postDepartureSCReportBy?: string;
   // Booking/Tour Voucher

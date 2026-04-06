@@ -288,6 +288,7 @@ const ClientRecords: React.FC<{
           setPreDepartureSCDate(existingClient.preDepartureSCDate || '');
           setPreDepartureSCReport(existingClient.preDepartureSCReport || '');
           setPreDepartureSCReportBy(existingClient.preDepartureSCReportBy || '');
+          setPostDepartureSCDate(existingClient.postDepartureSCDate || '');
           setPostDepartureSCReport(existingClient.postDepartureSCReport || '');
           setPostDepartureSCReportBy(existingClient.postDepartureSCReportBy || '');
 
@@ -507,6 +508,7 @@ const ClientRecords: React.FC<{
   const [preDepartureSCDate, setPreDepartureSCDate] = useState("");
   const [preDepartureSCReport, setPreDepartureSCReport] = useState("");
   const [preDepartureSCReportBy, setPreDepartureSCReportBy] = useState("");
+  const [postDepartureSCDate, setPostDepartureSCDate] = useState("");
   const [postDepartureSCReport, setPostDepartureSCReport] = useState("");
   const [postDepartureSCReportBy, setPostDepartureSCReportBy] = useState("");
 
@@ -1330,6 +1332,7 @@ const ClientRecords: React.FC<{
         return;
       }
       await ClientService.updateClient(currentClientId, {
+        postDepartureSCDate,
         postDepartureSCReport,
         postDepartureSCReportBy,
       });
@@ -4163,6 +4166,10 @@ const ClientRecords: React.FC<{
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Post-Departure
               </h2>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Date</label>
+              <input style={modernInput} type="date" value={postDepartureSCDate} onChange={e => setPostDepartureSCDate(e.target.value)} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
