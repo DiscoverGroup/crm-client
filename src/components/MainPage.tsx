@@ -3518,51 +3518,6 @@ const ClientRecords: React.FC<{
               );
             })()}
 
-            {/* Embassy Information */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
-              Embassy Information
-            </h4>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Embassy Name</label>
-                <input
-                  style={modernInput}
-                  type="text"
-                  placeholder="Embassy name"
-                  value={embassyName}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'embassyName', e.target.value, 'Embassy Name');
-                    setEmbassyName(e.target.value);
-                  }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Embassy Address</label>
-                <input
-                  style={modernInput}
-                  type="text"
-                  placeholder="Embassy address"
-                  value={embassyAddress}
-                  onChange={e => {
-                    trackSectionField('embassy-information', 'embassyAddress', e.target.value, 'Embassy Address');
-                    setEmbassyAddress(e.target.value);
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Embassy Save Button */}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button
-                type="button"
-                onClick={handleSaveEmbassyInfo}
-                disabled={isSavingEmbassy}
-                style={saveButtonStyle(isSavingEmbassy)}
-              >
-                {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
-              </button>
-            </div>
-
             {/* After Visa SC */}
             <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Visa SC</h4>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
@@ -4132,6 +4087,53 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
+          </div>
+
+          {/* Embassy Information Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+                Embassy Information
+              </h2>
+            </div>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Embassy Name</label>
+                <input
+                  style={modernInput}
+                  type="text"
+                  placeholder="Embassy name"
+                  value={embassyName}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'embassyName', e.target.value, 'Embassy Name');
+                    setEmbassyName(e.target.value);
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Embassy Address</label>
+                <input
+                  style={modernInput}
+                  type="text"
+                  placeholder="Embassy address"
+                  value={embassyAddress}
+                  onChange={e => {
+                    trackSectionField('embassy-information', 'embassyAddress', e.target.value, 'Embassy Address');
+                    setEmbassyAddress(e.target.value);
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSaveEmbassyInfo}
+                disabled={isSavingEmbassy}
+                style={saveButtonStyle(isSavingEmbassy)}
+              >
+                {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
+              </button>
+            </div>
           </div>
 
           {/* Post-Departure SC Section */}
