@@ -400,7 +400,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         cleanComment,
         newCommentStatus
       );
-      logNote._pendingSync = true;
+      (logNote as any)._pendingSync = true;
       setLogNotes(prev => [logNote, ...prev]);
       setNewComment('');
       setNewCommentStatus('pending');
