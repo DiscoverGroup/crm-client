@@ -7,8 +7,7 @@ import type { PaymentDetail } from "../types/payment";
 import { FileService, type FileAttachment } from '../services/fileService';
 import { useFieldTracking } from '../hooks/useFieldTracking';
 import { useSectionTracking } from '../hooks/useSectionTracking';
-import LogNoteComponent from './LogNoteComponent';
-import NotesThreadComponent from './NotesThreadComponent';
+import FileAttachmentList from './FileAttachmentList';
 import Sidebar from "./Sidebar";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
@@ -159,16 +158,12 @@ const ClientRecords: React.FC<{
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId);
 
   // Log refresh state
-  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const [, setLogRefreshKey] = useState(0);
   
   // Incremented when sync:clients fires so the form reloads fresh data
   const [clientDataVersion, setClientDataVersion] = useState(0);
   
-  // Mobile Activity Log toggle state
-  const [showMobileActivityLog, setShowMobileActivityLog] = useState(false);
-  
-  // Right panel tab state ('activity' | 'notes')
-  const [rightPanelTab, setRightPanelTab] = useState<'activity' | 'notes'>('activity');
+
   
   // Loading state for clients
   const [isLoadingClients, setIsLoadingClients] = useState(false);
@@ -489,11 +484,10 @@ const ClientRecords: React.FC<{
   const [isSavingVisa, setIsSavingVisa] = useState(false);
   const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
   // Account Relations
-  const [arm, setArm] = useState("");
-  const [afterSalesSCDate, setAfterSalesSCDate] = useState("");
-  const [afterSalesSCReport, setAfterSalesSCReport] = useState("");
-  const [afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
-  const [isSavingAccountRelations, setIsSavingAccountRelations] = useState(false);
+  const [_arm, setArm] = useState("");
+  const [_afterSalesSCDate, setAfterSalesSCDate] = useState("");
+  const [_afterSalesSCReport, setAfterSalesSCReport] = useState("");
+  const [_afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
   // Visa SC Reports
   const [afterVisaSCDate, setAfterVisaSCDate] = useState("");
   const [afterVisaSCReport, setAfterVisaSCReport] = useState("");
@@ -1230,28 +1224,6 @@ const ClientRecords: React.FC<{
       showErrorToast('An error occurred while saving package information.');
     } finally {
       setIsSavingPackage(false);
-    }
-  };
-
-  const handleSaveAccountRelations = async () => {
-    setIsSavingAccountRelations(true);
-    try {
-      if (!currentClientId) {
-        showWarningToast('Please save client information first before saving account relations.');
-        return;
-      }
-      await ClientService.updateClient(currentClientId, {
-        arm,
-        afterSalesSCDate,
-        afterSalesSCReport,
-        afterSalesSCReportBy,
-      });
-      saveSection('account-relations', 'Account Relations');
-      showSuccessToast('Account relations saved successfully!');
-    } catch (error) {
-      showErrorToast('An error occurred while saving account relations.');
-    } finally {
-      setIsSavingAccountRelations(false);
     }
   };
 
@@ -2759,78 +2731,6 @@ const ClientRecords: React.FC<{
             </div>
           </div>
 
-          {/* Account Relations Section */}
-          <div style={sectionStyle(windowWidth)}>
-            <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
-                Account Relations
-              </h2>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>ARM (Account Relations Manager)</label>
-              <input
-                style={modernInput}
-                type="text"
-                placeholder="Full name"
-                value={arm}
-                onChange={e => setArm(e.target.value)}
-              />
-            </div>
-
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Sales SC</h4>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={afterSalesSCDate} onChange={e => setAfterSalesSCDate(e.target.value)} />
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report</label>
-              <textarea
-                style={{ ...modernInput, minHeight: 80, resize: "vertical" }}
-                placeholder="SC report details..."
-                value={afterSalesSCReport}
-                onChange={e => setAfterSalesSCReport(e.target.value)}
-              />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={afterSalesSCReportBy} onChange={e => setAfterSalesSCReportBy(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>Add Attachment</label>
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations');
-                }}
-                style={{ fontSize: "14px", width: "100%" }}
-              />
-              {(() => {
-                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'account-relations' && att.fileType === 'after-sales-sc-attachment');
-                if (uploadedFile) {
-                  return (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-sales-sc-attachment', 'account-relations')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <button type="button" onClick={handleSaveAccountRelations} disabled={isSavingAccountRelations} style={saveButtonStyle(isSavingAccountRelations)}>
-                {isSavingAccountRelations ? "Saving..." : "Save Account Relations"}
-              </button>
-            </div>
-          </div>
-
           {/* Visa Section */}
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
@@ -3343,21 +3243,21 @@ const ClientRecords: React.FC<{
                 <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
                   Passport {idx + 1}{idx === 0 ? ' (Main Client)' : ` (Companion ${idx})`}
                 </h5>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={label}>Name</label>
-                  <input
-                    style={modernInput}
-                    type="text"
-                    placeholder="Passport holder name"
-                    value={passportNames[idx] || ''}
-                    onChange={e => {
-                      const updated = [...passportNames];
-                      updated[idx] = e.target.value;
-                      setPassportNames(updated);
-                    }}
-                  />
-                </div>
                 <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={label}>Name</label>
+                    <input
+                      style={modernInput}
+                      type="text"
+                      placeholder="Passport holder name"
+                      value={passportNames[idx] || ''}
+                      onChange={e => {
+                        const updated = [...passportNames];
+                        updated[idx] = e.target.value;
+                        setPassportNames(updated);
+                      }}
+                    />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <label style={label}>Passport Attachment</label>
                     <input
@@ -3512,102 +3412,6 @@ const ClientRecords: React.FC<{
               </button>
             </div>
 
-            {/* After Visa SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Visa SC</h4>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={afterVisaSCDate} onChange={e => setAfterVisaSCDate(e.target.value)} />
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterVisaSCReport} onChange={e => setAfterVisaSCReport(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={afterVisaSCReportBy} onChange={e => setAfterVisaSCReportBy(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-visa-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
-              {(() => {
-                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'after-visa-sc-attachment');
-                if (uploadedFile) {
-                  return (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-visa-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Pre-Departure SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Pre-Departure SC</h4>
-            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
-                <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={preDepartureSCDate} onChange={e => setPreDepartureSCDate(e.target.value)} />
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={preDepartureSCReport} onChange={e => setPreDepartureSCReport(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={preDepartureSCReportBy} onChange={e => setPreDepartureSCReportBy(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'pre-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
-              {(() => {
-                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'pre-departure-sc-attachment');
-                if (uploadedFile) {
-                  return (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'pre-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Post-Departure SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Post-Departure</h4>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
-              {(() => {
-                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
-                if (uploadedFile) {
-                  return (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'post-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
             {/* Save Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
               <button
@@ -3620,24 +3424,31 @@ const ClientRecords: React.FC<{
               </button>
             </div>
 
-          </div>{/* End Visa Section */}
+            {/* Booking/Tour Voucher Section */}
+            <div style={{
+              ...sectionStyle(windowWidth),
+              marginTop: "24px",
+              background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+              border: "2px solid rgba(147, 197, 253, 0.3)",
+              borderRadius: "16px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)"
+            }}>
+              {/* Section Header */}
+              <div style={sectionHeader}>
+                
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#1e293b", 
+                  fontSize: "20px", 
+                  fontWeight: 700,
+                  letterSpacing: "-0.025em"
+                }}>
+                  Booking/Tour Voucher
+                </h2>
+              </div>
 
-          {/* Booking/Tour Voucher Section */}
-          <div style={sectionStyle(windowWidth)}>
-            {/* Section Header */}
-            <div style={sectionHeader}>
-              <h2 style={{ 
-                margin: 0, 
-                color: "#1e293b", 
-                fontSize: "20px", 
-                fontWeight: 700,
-                letterSpacing: "-0.025em"
-              }}>
-                Booking/Tour Voucher
-              </h2>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
                 <div>
                   <label style={label}>International Flight</label>
@@ -4159,9 +3970,13 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
-          {/* Activity Log & Notes Section */}
+          </div>
+
+          {/* File Attachments Section */}
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
+            {/* Section Header */}
             <div style={sectionHeader}>
+              
               <h2 style={{ 
                 margin: 0, 
                 color: "#1e293b", 
@@ -4169,316 +3984,29 @@ const ClientRecords: React.FC<{
                 fontWeight: 700,
                 letterSpacing: "-0.025em"
               }}>
-                Activity Log & Notes
+                File Attachment History
               </h2>
             </div>
-            {currentClientId ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <LogNoteComponent
-                  key={`inline-log-${logRefreshKey}`}
-                  clientId={currentClientId}
-                  currentUserId={currentUserId}
-                  currentUserName={currentUserName}
-                />
-                <NotesThreadComponent
-                  key={`inline-notes-${currentClientId}`}
-                  clientId={currentClientId}
-                  currentUserId={currentUserId}
-                  currentUserName={currentUserName}
-                />
-              </div>
-            ) : (
-              <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
-                Activity log and notes will appear when a client is selected.
-              </p>
-            )}
+            <FileAttachmentList
+              attachments={attachments}
+              allowDelete={true}
+              onFileDeleted={() => {
+                // console.log('File deleted:', fileId);
+                // Reload client-specific attachments after deletion
+                const currentClientId = clientId || tempClientId;
+                if (currentClientId) {
+                  const clientAttachments = FileService.getFilesByClient(currentClientId);
+                  setAttachments(clientAttachments);
+                } else {
+                  setAttachments([]);
+                }
+              }}
+            />
           </div>
           </>
           )}
         </form>
       </div>
-
-      {/* Right Sidebar - Activity Log + Notes - Hidden on mobile, shown on desktop */}
-      {windowWidth >= 768 && (
-        <div style={{
-          width: windowWidth <= 1366 ? '360px' : '420px',
-          flexShrink: 0,
-          position: 'sticky',
-          top: '20px',
-          height: 'calc(100vh - 80px)',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0'
-        }}>
-          {/* Tab bar */}
-          <div style={{
-            display: 'flex',
-            borderRadius: '12px 12px 0 0',
-            overflow: 'hidden',
-            border: '1px solid rgba(147,197,253,0.3)',
-            borderBottom: 'none',
-            background: 'rgba(255,255,255,0.95)',
-            boxShadow: '0 -2px 8px rgba(59,130,246,0.06)'
-          }}>
-            <button
-              type="button"
-              onClick={() => setRightPanelTab('activity')}
-              style={{
-                flex: 1,
-                padding: '11px 8px',
-                border: 'none',
-                borderBottom: rightPanelTab === 'activity' ? '3px solid #3b82f6' : '3px solid transparent',
-                background: rightPanelTab === 'activity' ? '#eff6ff' : 'transparent',
-                color: rightPanelTab === 'activity' ? '#1d4ed8' : '#6b7280',
-                fontWeight: rightPanelTab === 'activity' ? 700 : 500,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5
-              }}
-            >
-              Activity Log
-            </button>
-            <button
-              type="button"
-              onClick={() => setRightPanelTab('notes')}
-              style={{
-                flex: 1,
-                padding: '11px 8px',
-                border: 'none',
-                borderBottom: rightPanelTab === 'notes' ? '3px solid #f59e0b' : '3px solid transparent',
-                background: rightPanelTab === 'notes' ? '#fffbeb' : 'transparent',
-                color: rightPanelTab === 'notes' ? '#b45309' : '#6b7280',
-                fontWeight: rightPanelTab === 'notes' ? 700 : 500,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 5
-              }}
-            >
-              Notes & Requests
-            </button>
-          </div>
-
-          {/* Tab content */}
-          <div style={{
-            borderRadius: '0 0 16px 16px',
-            border: '1px solid rgba(147,197,253,0.3)',
-            borderTop: 'none'
-          }}>
-            {rightPanelTab === 'activity' ? (
-              currentClientId ? (
-                <LogNoteComponent
-                  key={logRefreshKey}
-                  clientId={currentClientId}
-                  currentUserId={currentUserId}
-                  currentUserName={currentUserName}
-                />
-              ) : (
-                <div style={{
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
-                  borderRadius: '0 0 16px 16px',
-                  padding: '20px',
-                  boxShadow: '0 8px 32px rgba(59,130,246,0.12), 0 2px 8px rgba(0,0,0,0.04)',
-                }}>
-                  <h3 style={{ margin: '0 0 16px 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '600' }}>
-                    Activity Log
-                  </h3>
-                  <p style={{ color: '#64748b', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
-                    Activity log will appear when a client is selected.
-                  </p>
-                </div>
-              )
-            ) : (
-              currentClientId ? (
-                <NotesThreadComponent
-                  key={currentClientId}
-                  clientId={currentClientId}
-                  currentUserId={currentUserId}
-                  currentUserName={currentUserName}
-                />
-              ) : (
-                <div style={{
-                  background: 'linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%)',
-                  borderRadius: '0 0 16px 16px',
-                  padding: '20px',
-                }}>
-                  <h3 style={{ margin: '0 0 16px 0', color: '#92400e', fontSize: '1.1rem', fontWeight: '600' }}>
-                    Notes & Requests
-                  </h3>
-                  <p style={{ color: '#b45309', fontSize: '13px', textAlign: 'center', padding: '24px 16px' }}>
-                    Notes will appear when a client is selected.
-                  </p>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Mobile Activity Log / Notes Floating Button */}
-      {windowWidth < 768 && (
-        <>
-          {/* Floating Button */}
-          <button
-            onClick={() => setShowMobileActivityLog(!showMobileActivityLog)}
-            style={{
-              position: 'fixed',
-              right: '20px',
-              bottom: '20px',
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              fontSize: '28px',
-              cursor: 'pointer',
-              boxShadow: '0 8px 16px rgba(59, 130, 246, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.3s ease',
-              zIndex: 40,
-              transform: showMobileActivityLog ? 'scale(0.9)' : 'scale(1)'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.boxShadow = '0 12px 24px rgba(59, 130, 246, 0.6)';
-              e.currentTarget.style.transform = 'scale(1.1)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.boxShadow = '0 8px 16px rgba(59, 130, 246, 0.4)';
-              e.currentTarget.style.transform = showMobileActivityLog ? 'scale(0.9)' : 'scale(1)';
-            }}
-            title="Toggle Panels"
-          >
-            ☰
-          </button>
-
-          {/* Mobile Panel Modal */}
-          {showMobileActivityLog && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 50,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                display: 'flex',
-                alignItems: 'flex-end'
-              }}
-              onClick={() => setShowMobileActivityLog(false)}
-            >
-              <div
-                style={{
-                  width: '100%',
-                  maxHeight: '80vh',
-                  backgroundColor: 'white',
-                  borderRadius: '20px 20px 0 0',
-                  boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.15)',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header with tabs */}
-                <div
-                  style={{
-                    borderBottom: '1px solid #e5e7eb',
-                    position: 'sticky',
-                    top: 0,
-                    backgroundColor: 'white',
-                    zIndex: 51
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 16px 0' }}>
-                    <button
-                      onClick={() => setShowMobileActivityLog(false)}
-                      style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6b7280' }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex' }}>
-                    <button
-                      type="button"
-                      onClick={() => setRightPanelTab('activity')}
-                      style={{
-                        flex: 1,
-                        padding: '10px 8px',
-                        border: 'none',
-                        borderBottom: rightPanelTab === 'activity' ? '3px solid #3b82f6' : '3px solid transparent',
-                        background: 'transparent',
-                        color: rightPanelTab === 'activity' ? '#1d4ed8' : '#6b7280',
-                        fontWeight: rightPanelTab === 'activity' ? 700 : 500,
-                        fontSize: 13,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Activity Log
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRightPanelTab('notes')}
-                      style={{
-                        flex: 1,
-                        padding: '10px 8px',
-                        border: 'none',
-                        borderBottom: rightPanelTab === 'notes' ? '3px solid #f59e0b' : '3px solid transparent',
-                        background: 'transparent',
-                        color: rightPanelTab === 'notes' ? '#b45309' : '#6b7280',
-                        fontWeight: rightPanelTab === 'notes' ? 700 : 500,
-                        fontSize: 13,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Notes & Requests
-                    </button>
-                  </div>
-                </div>
-
-                {/* Modal Content */}
-                <div style={{ padding: '16px', flex: 1, overflowY: 'auto', width: '100%', minWidth: 0 }}>
-                  {rightPanelTab === 'activity' ? (
-                    currentClientId ? (
-                      <LogNoteComponent
-                        key={logRefreshKey}
-                        clientId={currentClientId}
-                        currentUserId={currentUserId}
-                        currentUserName={currentUserName}
-                      />
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#7f8c8d', padding: '40px 20px' }}>
-                        <p style={{ margin: 0, fontSize: '14px' }}>Select a client to view activity log</p>
-                      </div>
-                    )
-                  ) : (
-                    currentClientId ? (
-                      <NotesThreadComponent
-                        key={currentClientId}
-                        clientId={currentClientId}
-                        currentUserId={currentUserId}
-                        currentUserName={currentUserName}
-                      />
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#b45309', padding: '40px 20px' }}>
-                        <p style={{ margin: 0, fontSize: '14px' }}>Select a client to view notes</p>
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
       </div>
     </div>
   );

@@ -139,7 +139,6 @@ export const handler: Handler = async (event) => {
         profileImage: profileImage || '',
         role: isAdminEmail ? 'admin' : isIntern ? 'intern' : 'user', // Admin / Intern / User
         isVerified: isAdminEmail ? true : false, // Auto-verify admin
-        approvalStatus: isAdminEmail ? 'approved' : 'pending', // Admin auto-approved, others need admin approval
         createdAt: new Date(),
         updatedAt: new Date()
       };
