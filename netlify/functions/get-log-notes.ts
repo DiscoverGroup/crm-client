@@ -42,6 +42,9 @@ export const handler = async (event: any) => {
       };
     }
 
+    // Sanitize clientId the same way as save-log-note to ensure consistent querying
+    const cleanClientId = String(clientId).replace(/[^a-zA-Z0-9_\-]/g, '').substring(0, 100);
+
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000,
@@ -56,7 +59,7 @@ export const handler = async (event: any) => {
 
     // Find all log notes for the client, sorted by timestamp (newest first)
     const logNotes = await logNotesCollection
-      .find({ clientId })
+      .find({ clientId: cleanClientId })
       .sort({ timestamp: -1 })
       .toArray();
 

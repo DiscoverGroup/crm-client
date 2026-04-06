@@ -135,7 +135,8 @@ const ClientRecords: React.FC<{
   onNavigateBack?: () => void;
   clientId?: string;
   currentUser?: { fullName: string; username: string; id?: string; email?: string };
-}> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser }) => {
+  onClientIdResolved?: (realClientId: string) => void;
+}> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser, onClientIdResolved }) => {
   const windowWidth = useWindowWidth();
   // Client form state
   const [clientNo, setClientNo] = useState("");
@@ -1097,9 +1098,25 @@ const ClientRecords: React.FC<{
         FileService.updateClientIdForTempFiles(tempClientId, savedClientId);
         // Migrate payment data from temp key to real client ID
         PaymentService.migratePaymentData(tempClientId, savedClientId);
+        // Migrate log notes from temp ID to real client ID in MongoDB
+        const token = localStorage.getItem('crm_auth_token');
+        if (token) {
+          fetch('/.netlify/functions/database', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              collection: 'log_notes',
+              operation: 'updateMany',
+              filter: { clientId: tempClientId },
+              update: { clientId: savedClientId }
+            })
+          }).catch(() => {});
+        }
         // Refresh attachments with new client ID
         const clientAttachments = FileService.getFilesByClient(savedClientId);
         setAttachments(clientAttachments);
+        // Notify parent so viewingForm gets the real client ID
+        onClientIdResolved?.(savedClientId);
       }
       
       showSuccessToast('Client information saved successfully!');
@@ -4363,6 +4380,7 @@ const MainPage: React.FC<MainPageProps> = ({
               onNavigateBack={() => setViewingForm(null)}
               clientId={viewingForm.clientId}
               currentUser={currentUser}
+              onClientIdResolved={(realId) => setViewingForm({ clientId: realId })}
             />
           </div>
         </div>
