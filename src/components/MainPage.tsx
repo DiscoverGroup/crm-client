@@ -148,7 +148,7 @@ const ClientRecords: React.FC<{
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [packageName, setPackageName] = useState("");
   const [travelDate, setTravelDate] = useState("");
-  const [numberOfPax, setNumberOfPax] = useState<number>(1);
+  const [numberOfPax, setNumberOfPax] = useState<number>(0);
   const [bookingConfirmations, setBookingConfirmations] = useState<string[]>([""]);
   
   // Generate temporary client ID for new clients
@@ -241,7 +241,7 @@ const ClientRecords: React.FC<{
           setDateOfBirth(existingClient.dateOfBirth || '');
           setPackageName(existingClient.packageName || '');
           setTravelDate(existingClient.travelDate || '');
-          setNumberOfPax(existingClient.numberOfPax || 1);
+          setNumberOfPax(existingClient.numberOfPax || 0);
           setBookingConfirmations(
             Array.isArray(existingClient.bookingConfirmations)
               ? existingClient.bookingConfirmations
@@ -430,7 +430,7 @@ const ClientRecords: React.FC<{
 
   // Payment state
   const [paymentTerm, setPaymentTerm] = useState(paymentOptions[0].value);
-  const [termCount, setTermCount] = useState(1);
+  const [termCount, setTermCount] = useState(0);
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
   const [paymentModalIdx, setPaymentModalIdx] = useState<number | null>(null);
   const [customMaxTerms, setCustomMaxTerms] = useState<number | null>(null);
@@ -492,6 +492,8 @@ const ClientRecords: React.FC<{
   const [afterSalesSCReport, setAfterSalesSCReport] = useState("");
   const [afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
   const [isSavingAccountRelations, setIsSavingAccountRelations] = useState(false);
+  const [isSavingPreDepartureSC, setIsSavingPreDepartureSC] = useState(false);
+  const [isSavingPostDepartureSC, setIsSavingPostDepartureSC] = useState(false);
   // Visa SC Reports
   const [afterVisaSCDate, setAfterVisaSCDate] = useState("");
   const [afterVisaSCReport, setAfterVisaSCReport] = useState("");
@@ -530,7 +532,6 @@ const ClientRecords: React.FC<{
   const [_localFlight1, setLocalFlight1] = useState<File | null>(null);
   const [_localFlight2, setLocalFlight2] = useState<File | null>(null);
   const [_localFlight3, setLocalFlight3] = useState<File | null>(null);
-  const [_localFlight4, setLocalFlight4] = useState<File | null>(null);
   const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
   const [_otherFiles, setOtherFiles] = useState<File | null>(null);
 
@@ -1269,6 +1270,47 @@ const ClientRecords: React.FC<{
     }
   };
 
+  const handleSavePreDepartureSC = async () => {
+    setIsSavingPreDepartureSC(true);
+    try {
+      if (!currentClientId) {
+        showWarningToast('Please save client information first.');
+        return;
+      }
+      await ClientService.updateClient(currentClientId, {
+        preDepartureSCDate,
+        preDepartureSCReport,
+        preDepartureSCReportBy,
+      });
+      saveSection('pre-departure-sc', 'Pre-Departure SC');
+      showSuccessToast('Pre-Departure SC saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving Pre-Departure SC.');
+    } finally {
+      setIsSavingPreDepartureSC(false);
+    }
+  };
+
+  const handleSavePostDepartureSC = async () => {
+    setIsSavingPostDepartureSC(true);
+    try {
+      if (!currentClientId) {
+        showWarningToast('Please save client information first.');
+        return;
+      }
+      await ClientService.updateClient(currentClientId, {
+        postDepartureSCReport,
+        postDepartureSCReportBy,
+      });
+      saveSection('post-departure-sc', 'Post-Departure SC');
+      showSuccessToast('Post-Departure SC saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving Post-Departure SC.');
+    } finally {
+      setIsSavingPostDepartureSC(false);
+    }
+  };
+
   const handleSaveVisaInfo = async () => {
     setIsSavingVisa(true);
     try {
@@ -1284,11 +1326,6 @@ const ClientRecords: React.FC<{
         afterVisaSCDate,
         afterVisaSCReport,
         afterVisaSCReportBy,
-        preDepartureSCDate,
-        preDepartureSCReport,
-        preDepartureSCReportBy,
-        postDepartureSCReport,
-        postDepartureSCReportBy,
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
@@ -1596,7 +1633,7 @@ const ClientRecords: React.FC<{
     setCustomMaxTerms(null);
     setIsEditingMaxTerms(false);
     if (selected === "installment") {
-      setTermCount(1); // start at 1, let user choose
+      setTermCount(0); // start at 0, let user choose
       trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
     } else {
       setTermCount(opt.terms);
@@ -1859,9 +1896,9 @@ const ClientRecords: React.FC<{
                 <input 
                   style={modernInput} 
                   type="number" 
-                  min={1}
+                  min={0}
                   value={numberOfPax}
-                  onChange={e => setNumberOfPaxTracked(parseInt(e.target.value, 10) || 1)}
+                  onChange={e => setNumberOfPaxTracked(parseInt(e.target.value, 10) || 0)}
                 />
               </div>
             </div>
@@ -2209,14 +2246,14 @@ const ClientRecords: React.FC<{
                   <input
                     style={modernInput}
                     type="number"
-                    min={1}
+                    min={0}
                     max={customMaxTerms ?? currentOption.terms}
                     value={termCount}
                     onChange={e => {
                       let v = parseInt(e.target.value);
                       const maxAllowed = customMaxTerms ?? currentOption.terms;
-                      if (isNaN(v)) v = 1;
-                      if (v < 1) v = 1;
+                      if (isNaN(v)) v = 0;
+                      if (v < 0) v = 0;
                       if (v > maxAllowed) v = maxAllowed;
                       setTermCount(v);
                       setSelectedPaymentBox(null);
@@ -3594,32 +3631,16 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
-            {/* Post-Departure SC */}
-            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Post-Departure</h4>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
-              {(() => {
-                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
-                if (uploadedFile) {
-                  return (
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'post-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
+            {/* Save Pre-Departure SC */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSavePreDepartureSC}
+                disabled={isSavingPreDepartureSC}
+                style={saveButtonStyle(isSavingPreDepartureSC)}
+              >
+                {isSavingPreDepartureSC ? "Saving..." : "Save Pre-Departure SC"}
+              </button>
             </div>
 
             {/* Save Button */}
@@ -3654,7 +3675,7 @@ const ClientRecords: React.FC<{
                   fontWeight: 700,
                   letterSpacing: "-0.025em"
                 }}>
-                  Booking/Tour Voucher
+                  Tour Voucher
                 </h2>
               </div>
 
@@ -3939,76 +3960,7 @@ const ClientRecords: React.FC<{
                   )}
                 </div>
 
-                {/* Local Flight 4 */}
-                <div>
-                  <label style={label}>Local Flight 4</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-4', 'booking-voucher');
-                        setLocalFlight4(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-4'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-4', 'booking-voucher');
-                              setLocalFlight4(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkLocalFlight4}
-                    onChange={e => setVoucherLinkLocalFlight4(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ localFlight4: voucherLinkLocalFlight4 })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkLocalFlight4 && (
-                    <a href={voucherLinkLocalFlight4} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-
+            
                 {/* Hotel Voucher */}
                 <div>
                   <label style={label}>Hotel Voucher</label>
@@ -4180,6 +4132,50 @@ const ClientRecords: React.FC<{
               })()}
             </div>
 
+          </div>
+
+          {/* Post-Departure SC Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+                Post-Departure
+              </h2>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'post-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleSavePostDepartureSC}
+                disabled={isSavingPostDepartureSC}
+                style={saveButtonStyle(isSavingPostDepartureSC)}
+              >
+                {isSavingPostDepartureSC ? "Saving..." : "Save Post-Departure SC"}
+              </button>
+            </div>
           </div>
 
           {/* Activity Log & Notes Section */}
