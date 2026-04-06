@@ -559,7 +559,7 @@ const ClientRecords: React.FC<{
 
   // Booking/Voucher section states
   const [_intlFlight, setIntlFlight] = useState<File | null>(null);
-  const [localFlightFiles, setLocalFlightFiles] = useState<(File | null)[]>([null]);
+  const [_localFlightFiles, setLocalFlightFiles] = useState<(File | null)[]>([null]);
   const [_tourVoucher, setTourVoucher] = useState<File | null>(null);
   const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
   const [_otherFiles, setOtherFiles] = useState<File | null>(null);
@@ -2459,7 +2459,6 @@ const ClientRecords: React.FC<{
 
             {/* Payment Details — horizontal pill list */}
             {paymentBoxes.length > 0 && (
-            {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {paymentDetails.slice(0, paymentBoxes.length).map((detail, idx) => {
