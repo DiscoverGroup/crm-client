@@ -37,7 +37,7 @@ export const handler = async (event: any) => {
     if (!clientId) {
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ error: 'Missing clientId parameter' })
       };
     }

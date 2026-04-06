@@ -225,6 +225,12 @@ export class LogNoteService {
     return logNotes.get(clientId) || [];
   }
 
+  static clearLogNotes(clientId: string): void {
+    const logNotes = this.loadFromStorage();
+    logNotes.delete(clientId);
+    this.saveToStorage(logNotes);
+  }
+
   static logFieldChange(
     clientId: string,
     userId: string,

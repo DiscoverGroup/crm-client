@@ -148,12 +148,59 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         
         if (data.success) {
           // Convert timestamps to Date objects
-          const notes = data.logNotes.map((note: any) => ({
+          const mongoNotes = data.logNotes.map((note: any) => ({
             ...note,
             timestamp: new Date(note.timestamp),
             replies: restoreReplyTimestamps(note.replies)
           }));
-          setLogNotes(notes);
+
+          // Merge any pending localStorage notes that failed to save to MongoDB
+          const localNotes = LogNoteService.getLogNotes(clientId);
+          const mongoIds = new Set(mongoNotes.map((n: any) => n.id));
+          const pendingLocal = localNotes.filter((n: any) => !mongoIds.has(n.id));
+
+          if (pendingLocal.length > 0) {
+            // Try to sync pending localStorage notes to MongoDB
+            for (const note of pendingLocal) {
+              try {
+                await fetch('/.netlify/functions/save-log-note', {
+                  method: 'POST',
+                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    clientId: note.clientId,
+                    userId: note.userId,
+                    userName: note.userName,
+                    type: note.type,
+                    action: note.action,
+                    description: note.description,
+                    status: note.status,
+                    attachments: note.attachments || []
+                  })
+                });
+              } catch {
+                // Will retry on next load
+              }
+            }
+            // Remove synced notes from localStorage
+            LogNoteService.clearLogNotes(clientId);
+            // Reload from MongoDB to get canonical data
+            const refreshResponse = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, {
+              headers: authHeaders(),
+            });
+            const refreshData = await refreshResponse.json();
+            if (refreshData.success) {
+              const refreshedNotes = refreshData.logNotes.map((note: any) => ({
+                ...note,
+                timestamp: new Date(note.timestamp),
+                replies: restoreReplyTimestamps(note.replies)
+              }));
+              setLogNotes(refreshedNotes);
+            } else {
+              setLogNotes(mongoNotes);
+            }
+          } else {
+            setLogNotes(mongoNotes);
+          }
         } else {
           // Fallback to localStorage if API fails
           const notes = LogNoteService.getLogNotes(clientId);
@@ -343,7 +390,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       setNewCommentStatus('pending');
     } catch (error) {
       // console.error('Error adding comment:', error);
-      // Fallback: Save to localStorage only
+      // Fallback: Save to localStorage and merge on next load
       const logNote = LogNoteService.addLogNote(
         clientId,
         currentUserId,
@@ -353,6 +400,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
         cleanComment,
         newCommentStatus
       );
+      logNote._pendingSync = true;
       setLogNotes(prev => [logNote, ...prev]);
       setNewComment('');
       setNewCommentStatus('pending');

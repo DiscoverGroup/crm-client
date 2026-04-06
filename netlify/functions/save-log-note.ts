@@ -37,7 +37,7 @@ export const handler = async (event: any) => {
     if (!clientId || !userId || !userName || !action || !description) {
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ error: 'Missing required fields' })
       };
     }
@@ -64,7 +64,7 @@ export const handler = async (event: any) => {
     const cleanDescription = sanitizeInput(String(description)).substring(0, 5000);
     const cleanAction = sanitizeInput(String(action)).substring(0, 200);
     const cleanUserName = sanitizeInput(String(userName)).substring(0, 100);
-    const cleanClientId = sanitizeInput(String(clientId)).substring(0, 100);
+    const cleanClientId = String(clientId).replace(/[^a-zA-Z0-9_\-]/g, '').substring(0, 100);
     const cleanUserId = sanitizeInput(String(userId)).substring(0, 100);
     const cleanStatus = ['pending', 'done', 'on hold'].includes(status) ? status : 'pending';
 
@@ -118,7 +118,7 @@ export const handler = async (event: any) => {
     // console.error('Save log note error:', error);
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ error: 'Failed to save log note' })
     };
   }
