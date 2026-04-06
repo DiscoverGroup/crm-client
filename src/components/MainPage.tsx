@@ -1628,31 +1628,6 @@ const ClientRecords: React.FC<{
     setCompanions(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
   }
 
-  function handleRemoveCompanion(idx: number) {
-    const removedCompanion = companions[idx];
-    const fullName = `${removedCompanion.firstName} ${removedCompanion.lastName}`.trim() || `Companion ${idx + 1}`;
-    setCompanions(companions.filter((_, i) => i !== idx));
-    // Decrement pax count to stay in sync
-    setNumberOfPaxTracked(Math.max(1, numberOfPax - 1));
-    
-    // Log activity
-    ActivityLogService.addLog({
-      clientId: clientId || tempClientId,
-      clientName: contactName || 'Unknown',
-      action: 'edited',
-      performedBy: currentUserName,
-      performedByUser: currentUserName,
-      profileImageR2Path: getCurrentUserProfileImagePath(),
-      details: `Removed companion: ${fullName}`
-    });
-    
-    logAction(
-      'Companion Removed',
-      `Removed companion: ${fullName}`,
-      'done'
-    );
-  }
-
   function handlePaymentTermChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const selected = e.target.value;
     trackSectionField('payment-terms-schedule', 'paymentTerm', selected, 'Payment Terms');

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import NotificationDropdown from "./NotificationDropdown";
 import SyncStatusIndicator from "./SyncStatusIndicator";
 
@@ -24,6 +24,19 @@ const Navbar: React.FC<NavbarProps> = ({
   onToggleSidebar
 }) => {
   const companyLogo = localStorage.getItem('crm_company_logo') || '/DG.jpg';
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showActionsMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showActionsMenu]);
 
   return (
   <nav style={{
@@ -127,86 +140,128 @@ const Navbar: React.FC<NavbarProps> = ({
         {/* Sync Status Indicator */}
         <SyncStatusIndicator />
 
-        {/* User Directory Button */}
-        {onOpenUserDirectory && (
-          <button
-            onClick={onOpenUserDirectory}
-            style={{
-              background: "rgba(40, 162, 220, 0.15)",
-              color: "white",
-              border: "1px solid rgba(40, 162, 220, 0.35)",
-              padding: "clamp(6px, 1.5vw, 7px) clamp(10px, 3vw, 14px)",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "clamp(12px, 2.5vw, 13px)",
-              fontWeight: "500",
-              transition: "all 0.2s ease",
-              backdropFilter: "blur(10px)",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              whiteSpace: "nowrap"
-            }}
-            className="navbar-btn"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(40, 162, 220, 0.3)";
-              e.currentTarget.style.borderColor = "rgba(40, 162, 220, 0.6)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(40, 162, 220, 0.15)";
-              e.currentTarget.style.borderColor = "rgba(40, 162, 220, 0.35)";
-            }}
-          >
-            👥 Users
-          </button>
-        )}
-
-        {/* Messaging Button */}
-        {onOpenMessaging && (
-          <button
-            onClick={onOpenMessaging}
-            style={{
-              background: "rgba(40, 162, 220, 0.15)",
-              color: "white",
-              border: "1px solid rgba(40, 162, 220, 0.35)",
-              padding: "7px 14px",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "18px",
-              transition: "all 0.2s ease",
-              backdropFilter: "blur(10px)",
-              position: "relative"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(40, 162, 220, 0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(40, 162, 220, 0.15)";
-            }}
-            title="Messages"
-          >
-            💬
-            {unreadMessageCount > 0 && (
-              <span style={{
-                position: "absolute",
-                top: "-6px",
-                right: "-6px",
-                background: "#ef4444",
+        {/* Actions Dropdown (Users + Messaging) */}
+        {(onOpenUserDirectory || onOpenMessaging) && (
+          <div ref={actionsMenuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowActionsMenu(v => !v)}
+              style={{
+                background: showActionsMenu ? "rgba(40, 162, 220, 0.3)" : "rgba(40, 162, 220, 0.15)",
                 color: "white",
-                borderRadius: "50%",
-                width: "20px",
-                height: "20px",
+                border: "1px solid rgba(40, 162, 220, 0.35)",
+                padding: "7px 12px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "18px",
+                transition: "all 0.2s ease",
+                backdropFilter: "blur(10px)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                fontSize: "11px",
-                fontWeight: "600",
-                border: "2px solid #0A2D74"
+                gap: "4px",
+                position: "relative",
+              }}
+            >
+              ⋮
+              {unreadMessageCount > 0 && (
+                <span style={{
+                  position: "absolute",
+                  top: "-6px",
+                  right: "-6px",
+                  background: "#ef4444",
+                  color: "white",
+                  borderRadius: "50%",
+                  width: "18px",
+                  height: "18px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                  border: "2px solid #0A2D74",
+                }}>
+                  {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                </span>
+              )}
+            </button>
+            {showActionsMenu && (
+              <div style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                background: "#0A2D74",
+                border: "1px solid rgba(40, 162, 220, 0.35)",
+                borderRadius: "10px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
+                minWidth: "160px",
+                overflow: "hidden",
+                zIndex: 1000,
               }}>
-                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-              </span>
+                {onOpenUserDirectory && (
+                  <button
+                    onClick={() => { setShowActionsMenu(false); onOpenUserDirectory(); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "12px 16px",
+                      background: "transparent",
+                      border: "none",
+                      color: "white",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(40,162,220,0.2)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    👥 Users
+                  </button>
+                )}
+                {onOpenMessaging && (
+                  <button
+                    onClick={() => { setShowActionsMenu(false); onOpenMessaging(); }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                      width: "100%",
+                      padding: "12px 16px",
+                      background: "transparent",
+                      border: "none",
+                      borderTop: "1px solid rgba(40,162,220,0.2)",
+                      color: "white",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "background 0.15s",
+                      position: "relative",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(40,162,220,0.2)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    💬 Messaging
+                    {unreadMessageCount > 0 && (
+                      <span style={{
+                        marginLeft: "auto",
+                        background: "#ef4444",
+                        color: "white",
+                        borderRadius: "999px",
+                        padding: "1px 7px",
+                        fontSize: "11px",
+                        fontWeight: "700",
+                      }}>
+                        {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
             )}
-          </button>
+          </div>
         )}
 
         {currentUser && onNavigate && (
