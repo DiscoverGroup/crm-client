@@ -670,6 +670,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             Status:
           </label>
           <select
+            className="log-status-select"
             value={newCommentStatus}
             onChange={(e) => {
               e.preventDefault();
@@ -1479,6 +1480,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 
                 {/* Status dropdown */}
                 <select
+                  className="log-status-select"
                   value={note.status}
                   onChange={(e) => {
                     e.stopPropagation();
@@ -1502,6 +1504,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     cursor: 'pointer',
                     position: 'relative',
                     zIndex: 1,
+                    flexShrink: 0,
                     ...getStatusStyles(note.status)
                   }}
                 >
