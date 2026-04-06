@@ -436,6 +436,7 @@ const ClientRecords: React.FC<{
   const [termCount, setTermCount] = useState(0);
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
   const [paymentModalIdx, setPaymentModalIdx] = useState<number | null>(null);
+  const [companionModalIdx, setCompanionModalIdx] = useState<number | null>(null);
   const [customMaxTerms, setCustomMaxTerms] = useState<number | null>(null);
   const [isEditingMaxTerms, setIsEditingMaxTerms] = useState(false);
   const [customMaxTermsInput, setCustomMaxTermsInput] = useState("");
@@ -2136,93 +2137,132 @@ const ClientRecords: React.FC<{
                   </span>
                 )}
               </label>
-              {companions.length === 0 && (
+              {companions.length === 0 ? (
                 <p style={{ color: '#94a3b8', fontSize: 14, margin: '8px 0 0' }}>
                   Increase "No. of Pax" above to auto-generate companion fields.
                 </p>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
+                  {companions.map((comp, idx) => {
+                    const filled = !!(comp.firstName || comp.lastName || comp.dob || comp.email || comp.contactNo);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setCompanionModalIdx(idx)}
+                        style={{
+                          padding: "10px 20px",
+                          borderRadius: 6,
+                          border: filled ? "2px solid #28A2DC" : "2px solid #cbd5e1",
+                          background: filled ? "linear-gradient(135deg,#0A2D74,#28A2DC)" : "#f8fafc",
+                          color: filled ? "#fff" : "#475569",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          boxShadow: filled ? "0 2px 8px rgba(40,162,220,0.3)" : "none",
+                          transition: "all 0.15s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        Companion {idx + 1}
+                        {!filled && (
+                          <span style={{
+                            position: "absolute" as const, top: -4, right: -4,
+                          }} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 12 }}>
-                {companions.map((comp, idx) => (
-                  <div key={idx} style={{
-                    background: "#eef2ff",
-                    borderRadius: 10,
-                    padding: 16,
-                    marginBottom: 10,
-                    minWidth: 300,
-                    position: "relative"
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCompanion(idx)}
-                      style={{
-                        position: "absolute",
-                        right: 12,
-                        top: 8,
-                        background: "none",
-                        border: "none",
-                        color: "#6366f1",
-                        cursor: "pointer",
-                        fontWeight: "bold",
-                        fontSize: 17,
-                      }}>×</button>
-                    <p style={{ margin: '0 0 12px', fontWeight: 700, color: '#4338ca', fontSize: 14 }}>
-                      Companion {idx + 1}
-                    </p>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>First Name</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="First name"
-                          value={comp.firstName}
-                          onChange={e => handleCompanionChange(idx, "firstName", e.target.value)}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Last Name</label>
-                        <input
-                          style={modernInput}
-                          type="text"
-                          placeholder="Last name"
-                          value={comp.lastName}
-                          onChange={e => handleCompanionChange(idx, "lastName", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <label style={label}>Date of Birth</label>
+            </div>
+
+            {/* Companion Modal */}
+            {companionModalIdx !== null && createPortal(
+              <div
+                style={{
+                  position: "fixed", inset: 0, zIndex: 99998,
+                  background: "rgba(15,23,42,0.45)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+                onClick={() => setCompanionModalIdx(null)}
+              >
+                <div
+                  style={{
+                    background: "#fff", borderRadius: 16, padding: 32, width: "100%", maxWidth: 520,
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.25)", position: "relative",
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCompanionModalIdx(null)}
+                    style={{
+                      position: "absolute", top: 16, right: 16,
+                      background: "transparent", border: "none", fontSize: 20,
+                      cursor: "pointer", color: "#64748b", lineHeight: 1,
+                    }}
+                  >✕</button>
+                  <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
+                    Companion {companionModalIdx + 1}
+                  </h3>
+                  <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ ...label, display: "block", marginBottom: 6 }}>First Name</label>
                       <input
-                        style={modernInput}
-                        type="date"
-                        value={comp.dob}
-                        onChange={e => handleCompanionChange(idx, "dob", e.target.value)}
-                      />
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <label style={label}>Email Address</label>
-                      <input
-                        style={modernInput}
-                        type="email"
-                        placeholder="companion@example.com"
-                        value={comp.email}
-                        onChange={e => handleCompanionChange(idx, "email", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label style={label}>Contact Number</label>
-                      <input
-                        style={modernInput}
+                        style={{ ...modernInput, margin: 0 }}
                         type="text"
-                        placeholder="e.g. +63 912 345 6789"
-                        value={comp.contactNo}
-                        onChange={e => handleCompanionChange(idx, "contactNo", e.target.value)}
+                        placeholder="First name"
+                        value={companions[companionModalIdx]?.firstName || ""}
+                        onChange={e => handleCompanionChange(companionModalIdx, "firstName", e.target.value)}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ ...label, display: "block", marginBottom: 6 }}>Last Name</label>
+                      <input
+                        style={{ ...modernInput, margin: 0 }}
+                        type="text"
+                        placeholder="Last name"
+                        value={companions[companionModalIdx]?.lastName || ""}
+                        onChange={e => handleCompanionChange(companionModalIdx, "lastName", e.target.value)}
                       />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Date of Birth</label>
+                    <input
+                      style={{ ...modernInput, margin: 0 }}
+                      type="date"
+                      value={companions[companionModalIdx]?.dob || ""}
+                      onChange={e => handleCompanionChange(companionModalIdx, "dob", e.target.value)}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Email Address</label>
+                    <input
+                      style={{ ...modernInput, margin: 0 }}
+                      type="email"
+                      placeholder="companion@example.com"
+                      value={companions[companionModalIdx]?.email || ""}
+                      onChange={e => handleCompanionChange(companionModalIdx, "email", e.target.value)}
+                    />
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Contact Number</label>
+                    <input
+                      style={{ ...modernInput, margin: 0 }}
+                      type="text"
+                      placeholder="e.g. +63 912 345 6789"
+                      value={companions[companionModalIdx]?.contactNo || ""}
+                      onChange={e => handleCompanionChange(companionModalIdx, "contactNo", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
 
             
             {/* Save Button */}
@@ -2470,7 +2510,7 @@ const ClientRecords: React.FC<{
                         onClick={() => setPaymentModalIdx(idx)}
                         style={{
                           padding: "10px 20px",
-                          borderRadius: 999,
+                          borderRadius: 6,
                           border: completed ? "2px solid #059669" : filled ? "2px solid #6366f1" : "2px solid #cbd5e1",
                           background: completed ? "linear-gradient(135deg,#059669,#10b981)" : filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#f8fafc",
                           color: completed || filled ? "#fff" : "#475569",
