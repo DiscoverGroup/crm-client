@@ -487,10 +487,11 @@ const ClientRecords: React.FC<{
   const [isSavingVisa, setIsSavingVisa] = useState(false);
   const [isSavingEmbassy, setIsSavingEmbassy] = useState(false);
   // Account Relations
-  const [_arm, setArm] = useState("");
-  const [_afterSalesSCDate, setAfterSalesSCDate] = useState("");
-  const [_afterSalesSCReport, setAfterSalesSCReport] = useState("");
-  const [_afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
+  const [arm, setArm] = useState("");
+  const [afterSalesSCDate, setAfterSalesSCDate] = useState("");
+  const [afterSalesSCReport, setAfterSalesSCReport] = useState("");
+  const [afterSalesSCReportBy, setAfterSalesSCReportBy] = useState("");
+  const [isSavingAccountRelations, setIsSavingAccountRelations] = useState(false);
   // Visa SC Reports
   const [afterVisaSCDate, setAfterVisaSCDate] = useState("");
   const [afterVisaSCReport, setAfterVisaSCReport] = useState("");
@@ -1243,6 +1244,28 @@ const ClientRecords: React.FC<{
       showErrorToast('An error occurred while saving package information.');
     } finally {
       setIsSavingPackage(false);
+    }
+  };
+
+  const handleSaveAccountRelations = async () => {
+    setIsSavingAccountRelations(true);
+    try {
+      if (!currentClientId) {
+        showWarningToast('Please save client information first before saving account relations.');
+        return;
+      }
+      await ClientService.updateClient(currentClientId, {
+        arm,
+        afterSalesSCDate,
+        afterSalesSCReport,
+        afterSalesSCReportBy,
+      });
+      saveSection('account-relations', 'Account Relations');
+      showSuccessToast('Account relations saved successfully!');
+    } catch (error) {
+      showErrorToast('An error occurred while saving account relations.');
+    } finally {
+      setIsSavingAccountRelations(false);
     }
   };
 
@@ -2750,6 +2773,78 @@ const ClientRecords: React.FC<{
             </div>
           </div>
 
+          {/* Account Relations Section */}
+          <div style={sectionStyle(windowWidth)}>
+            <div style={sectionHeader}>
+              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+                Account Relations
+              </h2>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>ARM (Account Relations Manager)</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Full name"
+                value={arm}
+                onChange={e => setArm(e.target.value)}
+              />
+            </div>
+
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Sales SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={afterSalesSCDate} onChange={e => setAfterSalesSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea
+                style={{ ...modernInput, minHeight: 80, resize: "vertical" }}
+                placeholder="SC report details..."
+                value={afterSalesSCReport}
+                onChange={e => setAfterSalesSCReport(e.target.value)}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={afterSalesSCReportBy} onChange={e => setAfterSalesSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations');
+                }}
+                style={{ fontSize: "14px", width: "100%" }}
+              />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'account-relations' && att.fileType === 'after-sales-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-sales-sc-attachment', 'account-relations')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button type="button" onClick={handleSaveAccountRelations} disabled={isSavingAccountRelations} style={saveButtonStyle(isSavingAccountRelations)}>
+                {isSavingAccountRelations ? "Saving..." : "Save Account Relations"}
+              </button>
+            </div>
+          </div>
+
           {/* Visa Section */}
           <div style={sectionStyle(windowWidth)}>
             {/* Section Header */}
@@ -3429,6 +3524,102 @@ const ClientRecords: React.FC<{
               >
                 {isSavingEmbassy ? "Saving..." : "Save Embassy Information"}
               </button>
+            </div>
+
+            {/* After Visa SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>After Visa SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={afterVisaSCDate} onChange={e => setAfterVisaSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterVisaSCReport} onChange={e => setAfterVisaSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={afterVisaSCReportBy} onChange={e => setAfterVisaSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-visa-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'after-visa-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'after-visa-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            {/* Pre-Departure SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Pre-Departure SC</h4>
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={label}>Date</label>
+                <input style={modernInput} type="date" value={preDepartureSCDate} onChange={e => setPreDepartureSCDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={preDepartureSCReport} onChange={e => setPreDepartureSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={preDepartureSCReportBy} onChange={e => setPreDepartureSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'pre-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'pre-departure-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'pre-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            {/* Post-Departure SC */}
+            <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>Post-Departure</h4>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report</label>
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>SC Report By</label>
+              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={label}>Add Attachment</label>
+              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              {(() => {
+                const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
+                if (uploadedFile) {
+                  return (
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
+                      <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, 'post-departure-sc-attachment', 'sc-report')} style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }} title="Remove file">✕</button>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Save Button */}
