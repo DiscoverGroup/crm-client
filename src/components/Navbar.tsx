@@ -472,6 +472,7 @@ export default Navbar;
       </div>
     )}
   </nav>
-);
+  );
+};
 
 export default Navbar;
