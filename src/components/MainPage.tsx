@@ -7,7 +7,8 @@ import type { PaymentDetail } from "../types/payment";
 import { FileService, type FileAttachment } from '../services/fileService';
 import { useFieldTracking } from '../hooks/useFieldTracking';
 import { useSectionTracking } from '../hooks/useSectionTracking';
-import FileAttachmentList from './FileAttachmentList';
+import LogNoteComponent from './LogNoteComponent';
+import NotesThreadComponent from './NotesThreadComponent';
 import Sidebar from "./Sidebar";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
@@ -158,7 +159,8 @@ const ClientRecords: React.FC<{
   const [resolvedClientId, setResolvedClientId] = useState<string | undefined>(clientId);
 
   // Log refresh state
-  const [, setLogRefreshKey] = useState(0);
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const [bottomPanelTab, setBottomPanelTab] = useState<'activity' | 'notes'>('activity');
   
   // Incremented when sync:clients fires so the form reloads fresh data
   const [clientDataVersion, setClientDataVersion] = useState(0);
@@ -3972,36 +3974,98 @@ const ClientRecords: React.FC<{
 
           </div>
 
-          {/* File Attachments Section */}
+          {/* Activity Log & Notes Section */}
           <div style={{ ...sectionStyle(windowWidth), marginTop: "24px" }}>
-            {/* Section Header */}
-            <div style={sectionHeader}>
-              
-              <h2 style={{ 
-                margin: 0, 
-                color: "#1e293b", 
-                fontSize: "20px", 
-                fontWeight: 700,
-                letterSpacing: "-0.025em"
-              }}>
-                File Attachment History
-              </h2>
+            {/* Tab bar */}
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid rgba(147,197,253,0.3)',
+              marginBottom: '16px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setBottomPanelTab('activity')}
+                style={{
+                  flex: 1,
+                  padding: '11px 8px',
+                  border: 'none',
+                  borderBottom: bottomPanelTab === 'activity' ? '3px solid #3b82f6' : '3px solid transparent',
+                  background: bottomPanelTab === 'activity' ? '#eff6ff' : 'transparent',
+                  color: bottomPanelTab === 'activity' ? '#1d4ed8' : '#6b7280',
+                  fontWeight: bottomPanelTab === 'activity' ? 700 : 500,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5
+                }}
+              >
+                Activity Log
+              </button>
+              <button
+                type="button"
+                onClick={() => setBottomPanelTab('notes')}
+                style={{
+                  flex: 1,
+                  padding: '11px 8px',
+                  border: 'none',
+                  borderBottom: bottomPanelTab === 'notes' ? '3px solid #f59e0b' : '3px solid transparent',
+                  background: bottomPanelTab === 'notes' ? '#fffbeb' : 'transparent',
+                  color: bottomPanelTab === 'notes' ? '#b45309' : '#6b7280',
+                  fontWeight: bottomPanelTab === 'notes' ? 700 : 500,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5
+                }}
+              >
+                Notes & Requests
+              </button>
             </div>
-            <FileAttachmentList
-              attachments={attachments}
-              allowDelete={true}
-              onFileDeleted={() => {
-                // console.log('File deleted:', fileId);
-                // Reload client-specific attachments after deletion
-                const currentClientId = clientId || tempClientId;
-                if (currentClientId) {
-                  const clientAttachments = FileService.getFilesByClient(currentClientId);
-                  setAttachments(clientAttachments);
-                } else {
-                  setAttachments([]);
-                }
-              }}
-            />
+
+            {/* Tab content */}
+            {bottomPanelTab === 'activity' ? (
+              currentClientId ? (
+                <LogNoteComponent
+                  key={logRefreshKey}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              ) : (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '600' }}>
+                    Activity Log
+                  </h3>
+                  <p style={{ color: '#64748b', fontSize: '13px' }}>
+                    Activity log will appear when a client is saved.
+                  </p>
+                </div>
+              )
+            ) : (
+              currentClientId ? (
+                <NotesThreadComponent
+                  key={currentClientId}
+                  clientId={currentClientId}
+                  currentUserId={currentUserId}
+                  currentUserName={currentUserName}
+                />
+              ) : (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#92400e', fontSize: '1.1rem', fontWeight: '600' }}>
+                    Notes & Requests
+                  </h3>
+                  <p style={{ color: '#b45309', fontSize: '13px' }}>
+                    Notes will appear when a client is saved.
+                  </p>
+                </div>
+              )
+            )}
           </div>
           </>
           )}
