@@ -162,19 +162,40 @@
   }
 }
 
-/* On very small screens, reduce the logo strip to 56px */
-@media (max-width: 480px) {
+/* On phones, hide sidebar completely and use full width */
+@media (max-width: 768px) {
   .sidebar-container {
-    width: 56px !important;
-    padding: 12px 6px !important;
+    left: -280px !important;
+    width: 280px !important;
+    padding: 24px !important;
   }
   .sidebar-container.open {
+    left: 0 !important;
+    width: 280px !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 10px !important;
+  }
+}
+
+/* On very small screens, same as phone — hidden sidebar */
+@media (max-width: 480px) {
+  .sidebar-container {
+    left: -280px !important;
+    width: 280px !important;
+    padding: 24px !important;
+  }
+  .sidebar-container.open {
+    left: 0 !important;
     width: 280px !important;
     padding: 24px !important;
   }
   .main-content {
-    margin-left: 56px !important;
-    width: calc(100% - 56px) !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding: 8px !important;
   }
 }
 
