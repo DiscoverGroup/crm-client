@@ -67,6 +67,8 @@ export interface ClientData {
     localFlight2?: string;
     localFlight3?: string;
     localFlight4?: string;
+    localFlights?: string[];
+    tourVoucher?: string;
     hotelVoucher?: string;
     otherFiles?: string;
   };

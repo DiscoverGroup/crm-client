@@ -405,46 +405,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Quick Actions - Hide when collapsed */}
-      {!isCollapsed && (
-        <div style={{
-          backgroundColor: 'rgba(255,255,255,0.08)',
-          padding: '20px',
-          borderRadius: '12px',
-          marginBottom: '24px',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }}>
-          <h4 style={{
-            margin: '0 0 16px 0',
-            fontSize: '13px',
-            fontWeight: '600',
-            opacity: 0.9,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            Quick Actions
-          </h4>
-          <div style={{ fontSize: '13px', opacity: 0.85, lineHeight: '1.8' }}>
-            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#10b981' }}>✓</span>
-              <span>Create new clients</span>
-            </div>
-            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#10b981' }}>✓</span>
-              <span>View client records</span>
-            </div>
-            <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#10b981' }}>✓</span>
-              <span>Search & filter</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#10b981' }}>✓</span>
-              <span>Manage documents</span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Admin Panel Button (conditionally rendered) */}
       {onNavigateToAdminPanel && (
         <button
@@ -507,12 +467,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         zIndex: 1,
         pointerEvents: 'none'
       }}>
-        {isCollapsed ? (
-          <div style={{ fontSize: '12px' }}>v1.0</div>
-        ) : (
+        {!isCollapsed && (
           <>
             <div>DG-CRM System v1.0</div>
-            <div style={{ marginTop: '4px', fontSize: '10px' }}>© 2026 Discover Group</div>
+            <div>© 2026 Discover Group</div>
           </>
         )}
       </div>

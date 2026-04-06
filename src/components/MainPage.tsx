@@ -313,10 +313,13 @@ const ClientRecords: React.FC<{
           // Load booking voucher links
           const vl = existingClient.bookingVoucherLinks || {};
           setVoucherLinkIntlFlight(vl.intlFlight || '');
-          setVoucherLinkLocalFlight1(vl.localFlight1 || '');
-          setVoucherLinkLocalFlight2(vl.localFlight2 || '');
-          setVoucherLinkLocalFlight3(vl.localFlight3 || '');
-          setVoucherLinkLocalFlight4(vl.localFlight4 || '');
+          // Migrate legacy localFlight1-4 into localFlights array
+          const migratedFlights: string[] = vl.localFlights && vl.localFlights.length > 0
+            ? vl.localFlights
+            : [vl.localFlight1 || '', vl.localFlight2 || '', vl.localFlight3 || '', vl.localFlight4 || ''].filter(l => l !== '');
+          setLocalFlightLinks(migratedFlights.length > 0 ? migratedFlights : ['']);
+          setLocalFlightFiles(Array(Math.max(migratedFlights.length, 1)).fill(null));
+          setVoucherLinkTourVoucher(vl.tourVoucher || '');
           setVoucherLinkHotelVoucher(vl.hotelVoucher || '');
           setVoucherLinkOtherFiles(vl.otherFiles || '');
 
@@ -556,18 +559,15 @@ const ClientRecords: React.FC<{
 
   // Booking/Voucher section states
   const [_intlFlight, setIntlFlight] = useState<File | null>(null);
-  const [_localFlight1, setLocalFlight1] = useState<File | null>(null);
-  const [_localFlight2, setLocalFlight2] = useState<File | null>(null);
-  const [_localFlight3, setLocalFlight3] = useState<File | null>(null);
+  const [localFlightFiles, setLocalFlightFiles] = useState<(File | null)[]>([null]);
+  const [_tourVoucher, setTourVoucher] = useState<File | null>(null);
   const [_hotelVoucher, setHotelVoucher] = useState<File | null>(null);
   const [_otherFiles, setOtherFiles] = useState<File | null>(null);
 
   // Booking/Voucher attachment link states
   const [voucherLinkIntlFlight, setVoucherLinkIntlFlight] = useState('');
-  const [voucherLinkLocalFlight1, setVoucherLinkLocalFlight1] = useState('');
-  const [voucherLinkLocalFlight2, setVoucherLinkLocalFlight2] = useState('');
-  const [voucherLinkLocalFlight3, setVoucherLinkLocalFlight3] = useState('');
-  const [voucherLinkLocalFlight4, setVoucherLinkLocalFlight4] = useState('');
+  const [localFlightLinks, setLocalFlightLinks] = useState<string[]>(['']);
+  const [voucherLinkTourVoucher, setVoucherLinkTourVoucher] = useState('');
   const [voucherLinkHotelVoucher, setVoucherLinkHotelVoucher] = useState('');
   const [voucherLinkOtherFiles, setVoucherLinkOtherFiles] = useState('');
 
@@ -1405,18 +1405,15 @@ const ClientRecords: React.FC<{
 
   // Auto-save voucher links to cloud when a link field loses focus
   const saveVoucherLinks = async (overrides?: Partial<{
-    intlFlight: string; localFlight1: string; localFlight2: string;
-    localFlight3: string; localFlight4: string; hotelVoucher: string; otherFiles: string;
+    intlFlight: string; localFlights: string[]; tourVoucher: string; hotelVoucher: string; otherFiles: string;
   }>) => {
     if (!currentClientId || currentClientId.startsWith('temp_')) return;
     try {
       await ClientService.updateClient(currentClientId, {
         bookingVoucherLinks: {
           intlFlight: overrides?.intlFlight ?? voucherLinkIntlFlight,
-          localFlight1: overrides?.localFlight1 ?? voucherLinkLocalFlight1,
-          localFlight2: overrides?.localFlight2 ?? voucherLinkLocalFlight2,
-          localFlight3: overrides?.localFlight3 ?? voucherLinkLocalFlight3,
-          localFlight4: overrides?.localFlight4 ?? voucherLinkLocalFlight4,
+          localFlights: overrides?.localFlights ?? localFlightLinks,
+          tourVoucher: overrides?.tourVoucher ?? voucherLinkTourVoucher,
           hotelVoucher: overrides?.hotelVoucher ?? voucherLinkHotelVoucher,
           otherFiles: overrides?.otherFiles ?? voucherLinkOtherFiles,
         },
@@ -3695,457 +3692,180 @@ const ClientRecords: React.FC<{
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>Tour Voucher</h2>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
-                {/* International Flight */}
-                <div>
-                  <label style={label}>International Flight</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'international-flight', 'booking-voucher');
-                        setIntlFlight(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
+
+            {/* --- Voucher field renderer --- */}
+            {(() => {
+              const isValidUrl = (url: string) => {
+                try { return ['http:', 'https:'].includes(new URL(url).protocol); } catch { return false; }
+              };
+              const voucherCard = (
+                fieldLabel: string,
+                fileType: string,
+                linkValue: string,
+                setLink: (v: string) => void,
+                onBlurSave: () => void,
+                onFileSet: (f: File | null) => void,
+              ) => (
+                <div key={fileType} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: 16 }}>
+                  <label style={{ ...label, marginBottom: 10 }}>{fieldLabel}</label>
+                  {/* uploaded file display */}
                   {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'international-flight'
-                    );
+                    const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === fileType);
                     if (uploadedFile) {
                       return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'international-flight', 'booking-voucher');
-                              setIntlFlight(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)', marginBottom: 10 }}>
+                          <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
+                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                          <button type="button" onClick={() => { handleGenericFileRemove(uploadedFile.file.id, fileType, 'booking-voucher'); onFileSet(null); }}
+                            style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
                         </div>
                       );
                     }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkIntlFlight}
-                    onChange={e => setVoucherLinkIntlFlight(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ intlFlight: voucherLinkIntlFlight })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkIntlFlight && (
-                    <a href={voucherLinkIntlFlight} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-
-                {/* Local Flight 1 */}
-                <div>
-                  <label style={label}>Local Flight 1</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-1', 'booking-voucher');
-                        setLocalFlight1(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-1'
+                    return (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginBottom: 10 }}>
+                        <span style={{ fontSize: 20 }}>📎</span>
+                        <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
+                        <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10{'\u00a0'}MB)</span>
+                        <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
+                          onChange={async (e) => { const file = e.target.files?.[0]; if (file) { await handleGenericFileUpload(file, 'other', fileType, 'booking-voucher'); onFileSet(file); } }} />
+                      </label>
                     );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-1', 'booking-voucher');
-                              setLocalFlight1(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
                   })()}
-                  <input
-                    type="url"
-                    value={voucherLinkLocalFlight1}
-                    onChange={e => setVoucherLinkLocalFlight1(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ localFlight1: voucherLinkLocalFlight1 })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkLocalFlight1 && (
-                    <a href={voucherLinkLocalFlight1} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
+                  {/* link */}
+                  <input type="url" value={linkValue} onChange={e => setLink(e.target.value)} onBlur={onBlurSave}
+                    placeholder="Or paste link here…" style={{ ...modernInput, fontSize: 13, padding: '8px 12px' }} />
+                  {linkValue && isValidUrl(linkValue) && (
+                    <a href={linkValue} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 4, wordBreak: 'break-all' }}>Open link ↗</a>
                   )}
                 </div>
+              );
 
-                {/* Local Flight 2 */}
-                <div>
-                  <label style={label}>Local Flight 2</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-2', 'booking-voucher');
-                        setLocalFlight2(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-2'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-2', 'booking-voucher');
-                              setLocalFlight2(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+                  {/* International Flight */}
+                  {voucherCard('International Flight', 'international-flight', voucherLinkIntlFlight,
+                    setVoucherLinkIntlFlight, () => saveVoucherLinks({ intlFlight: voucherLinkIntlFlight }), setIntlFlight)}
+
+                  {/* Local Flights — dynamic add/remove */}
+                  <div style={{ background: '#f0f7ff', borderRadius: 12, border: '1px solid rgba(40,162,220,0.2)', padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <label style={{ ...label, margin: 0 }}>
+                        Local Flights
+                        <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b', textTransform: 'none', marginLeft: 8 }}>
+                          ({localFlightLinks.length})
+                        </span>
+                      </label>
+                      <button type="button" onClick={() => {
+                        setLocalFlightLinks(prev => [...prev, '']);
+                        setLocalFlightFiles(prev => [...prev, null]);
+                      }} style={{
+                        padding: '6px 14px', background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
+                        color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        boxShadow: '0 2px 6px rgba(40,162,220,0.3)', transition: 'all 0.2s ease'
+                      }}>
+                        <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Add Local Flight
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {localFlightLinks.map((link, idx) => (
+                        <div key={idx} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 14, position: 'relative' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2D74' }}>Local Flight {idx + 1}</span>
+                            {localFlightLinks.length > 1 && (
+                              <button type="button" onClick={() => {
+                                const flightFileType = `local-flight-${idx + 1}`;
+                                const uploaded = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === flightFileType);
+                                if (uploaded) handleGenericFileRemove(uploaded.file.id, flightFileType, 'booking-voucher');
+                                setLocalFlightLinks(prev => prev.filter((_, i) => i !== idx));
+                                setLocalFlightFiles(prev => prev.filter((_, i) => i !== idx));
+                                saveVoucherLinks({ localFlights: localFlightLinks.filter((_, i) => i !== idx) });
+                              }} style={{
+                                padding: '3px 10px', fontSize: 12, color: '#ef4444', background: 'transparent',
+                                border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 500
+                              }}>✕ Remove</button>
+                            )}
+                          </div>
+                          {/* uploaded file display */}
+                          {(() => {
+                            const flightFileType = `local-flight-${idx + 1}`;
+                            const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === flightFileType);
+                            if (uploadedFile) {
+                              return (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)', marginBottom: 8 }}>
+                                  <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
+                                  <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                                  <button type="button" onClick={() => {
+                                    handleGenericFileRemove(uploadedFile.file.id, flightFileType, 'booking-voucher');
+                                    setLocalFlightFiles(prev => prev.map((f, i) => i === idx ? null : f));
+                                  }} style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 10, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginBottom: 8 }}>
+                                <span style={{ fontSize: 18 }}>📎</span>
+                                <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 600 }}>Upload file</span>
+                                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10{'\u00a0'}MB)</span>
+                                <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
+                                  onChange={async (e) => { const file = e.target.files?.[0]; if (file) {
+                                    await handleGenericFileUpload(file, 'other', flightFileType, 'booking-voucher');
+                                    setLocalFlightFiles(prev => prev.map((f, i) => i === idx ? file : f));
+                                  }}} />
+                              </label>
+                            );
+                          })()}
+                          <input type="url" value={link}
+                            onChange={e => setLocalFlightLinks(prev => prev.map((l, i) => i === idx ? e.target.value : l))}
+                            onBlur={() => saveVoucherLinks({ localFlights: localFlightLinks })}
+                            placeholder="Or paste link here…" style={{ ...modernInput, fontSize: 13, padding: '8px 12px' }} />
+                          {link && isValidUrl(link) && (
+                            <a href={link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 4, wordBreak: 'break-all' }}>Open link ↗</a>
+                          )}
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkLocalFlight2}
-                    onChange={e => setVoucherLinkLocalFlight2(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ localFlight2: voucherLinkLocalFlight2 })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkLocalFlight2 && (
-                    <a href={voucherLinkLocalFlight2} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-
-                {/* Local Flight 3 */}
-                <div>
-                  <label style={label}>Local Flight 3</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'local-flight-3', 'booking-voucher');
-                        setLocalFlight3(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'local-flight-3'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'local-flight-3', 'booking-voucher');
-                              setLocalFlight3(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkLocalFlight3}
-                    onChange={e => setVoucherLinkLocalFlight3(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ localFlight3: voucherLinkLocalFlight3 })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkLocalFlight3 && (
-                    <a href={voucherLinkLocalFlight3} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-
-            
-                {/* Hotel Voucher */}
-                <div>
-                  <label style={label}>Hotel Voucher</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'hotel-voucher', 'booking-voucher');
-                        setHotelVoucher(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'hotel-voucher'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'hotel-voucher', 'booking-voucher');
-                              setHotelVoucher(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkHotelVoucher}
-                    onChange={e => setVoucherLinkHotelVoucher(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ hotelVoucher: voucherLinkHotelVoucher })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkHotelVoucher && (
-                    <a href={voucherLinkHotelVoucher} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-
-                {/* Other Files */}
-                <div>
-                  <label style={label}>Other Files</label>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,.doc,.docx"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        await handleGenericFileUpload(file, 'other', 'other-files', 'booking-voucher');
-                        setOtherFiles(file);
-                      }
-                    }}
-                    style={{ fontSize: "14px", width: "100%" }}
-                  />
-                  {(() => {
-                    const uploadedFile = attachments.find(att => 
-                      att.category === 'other' && 
-                      att.source === 'booking-voucher' &&
-                      att.fileType === 'other-files'
-                    );
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: "12px", color: "#059669" }}>
-                            ✓ {uploadedFile.file.name}
-                          </span>
-                          <R2DownloadButton
-                            r2Path={uploadedFile.file.r2Path}
-                            className=""
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleGenericFileRemove(uploadedFile.file.id, 'other-files', 'booking-voucher');
-                              setOtherFiles(null);
-                            }}
-                            style={{
-                              fontSize: "14px",
-                              color: "#ef4444",
-                              background: "transparent",
-                              border: "1px solid #ef4444",
-                              borderRadius: "4px",
-                              padding: "2px 6px",
-                              cursor: "pointer"
-                            }}
-                            title="Remove file"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  <input
-                    type="url"
-                    value={voucherLinkOtherFiles}
-                    onChange={e => setVoucherLinkOtherFiles(e.target.value)}
-                    onBlur={() => saveVoucherLinks({ otherFiles: voucherLinkOtherFiles })}
-                    placeholder="Or paste link here…"
-                    style={{ ...modernInput, marginTop: 8, fontSize: "13px", padding: "8px 12px" }}
-                  />
-                  {voucherLinkOtherFiles && (
-                    <a href={voucherLinkOtherFiles} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 3, wordBreak: 'break-all' }}>
-                      Open link
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Legacy Booking/Voucher Files (uploaded before field tracking) */}
-              {(() => {
-                const currentClientId = clientId || tempClientId;
-                const legacyFiles = FileService.getLegacyFilesBySource(currentClientId, 'booking-voucher');
-                if (legacyFiles.length === 0) return null;
-                return (
-                  <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '8px', border: '1px dashed rgba(251, 191, 36, 0.4)' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: '#92400e' }}>
-                      Previously Uploaded Files ({legacyFiles.length})
-                    </p>
-                    <p style={{ margin: '0 0 8px', fontSize: '11px', color: '#a16207' }}>
-                      These files were uploaded before field tracking was added. Please re-upload to the correct field above, then remove these.
-                    </p>
-                    {legacyFiles.map(att => (
-                      <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '12px', color: '#059669' }}>✓ {att.file.name}</span>
-                        <R2DownloadButton r2Path={att.file.r2Path} className="" />
-                        <button
-                          type="button"
-                          onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
-                          style={{ fontSize: '14px', color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer' }}
-                          title="Remove file"
-                        >✕</button>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                );
-              })()}
+
+                  {/* Tour Voucher */}
+                  {voucherCard('Tour Voucher', 'tour-voucher', voucherLinkTourVoucher,
+                    setVoucherLinkTourVoucher, () => saveVoucherLinks({ tourVoucher: voucherLinkTourVoucher }), setTourVoucher)}
+
+                  {/* Hotel Voucher */}
+                  {voucherCard('Hotel Voucher', 'hotel-voucher', voucherLinkHotelVoucher,
+                    setVoucherLinkHotelVoucher, () => saveVoucherLinks({ hotelVoucher: voucherLinkHotelVoucher }), setHotelVoucher)}
+
+                  {/* Other Files */}
+                  {voucherCard('Other Files', 'other-files', voucherLinkOtherFiles,
+                    setVoucherLinkOtherFiles, () => saveVoucherLinks({ otherFiles: voucherLinkOtherFiles }), setOtherFiles)}
+                </div>
+              );
+            })()}
+
+            {/* Legacy Booking/Voucher Files (uploaded before field tracking) */}
+            {(() => {
+              const currentClientId = clientId || tempClientId;
+              const legacyFiles = FileService.getLegacyFilesBySource(currentClientId, 'booking-voucher');
+              if (legacyFiles.length === 0) return null;
+              return (
+                <div style={{ marginTop: 16, padding: 12, background: 'rgba(251,191,36,0.1)', borderRadius: 8, border: '1px dashed rgba(251,191,36,0.4)' }}>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#92400e' }}>
+                    Previously Uploaded Files ({legacyFiles.length})
+                  </p>
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: '#a16207' }}>
+                    These were uploaded before field tracking. Re-upload above, then remove these.
+                  </p>
+                  {legacyFiles.map(att => (
+                    <div key={att.file.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, color: '#059669' }}>✓ {att.file.name}</span>
+                      <R2DownloadButton r2Path={att.file.r2Path} className="" />
+                      <button type="button" onClick={() => handleGenericFileRemove(att.file.id, 'legacy', 'booking-voucher')}
+                        style={{ fontSize: 14, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Post-Departure SC Section */}
@@ -4525,10 +4245,14 @@ const MainPage: React.FC<MainPageProps> = ({
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active': return '#4CAF50';
+      case 'float': return '#f59e0b';
+      case 'refund': return '#8b5cf6';
+      case 'travel funds': return '#0ea5e9';
+      case 'rebook': return '#06b6d4';
+      case 'cancelled': return '#F44336';
       case 'lead': return '#2196F3';
       case 'referral': return '#FF9800';
       case 'transferred': return '#9C27B0';
-      case 'cancelled': return '#F44336';
       default: return '#757575';
     }
   };
@@ -4997,6 +4721,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 <option value="Float">Float</option>
                 <option value="Refund">Refund</option>
                 <option value="Travel Funds">Travel Funds</option>
+                <option value="Rebook">Rebook</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
