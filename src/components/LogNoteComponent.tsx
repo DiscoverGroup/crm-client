@@ -581,14 +581,24 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   const handleStatusChange = (logNoteId: string, newStatus: 'pending' | 'done' | 'on hold') => {
-    // console.log('Status change called:', { logNoteId, newStatus, clientId });
-    const success = LogNoteService.updateLogNoteStatus(logNoteId, clientId, newStatus);
-    // console.log('Update success:', success);
-    if (success) {
-      const notes = LogNoteService.getLogNotes(clientId);
-      // console.log('Updated notes:', notes);
-      setLogNotes(notes);
-    }
+    // Optimistically update UI immediately
+    setLogNotes(prev => prev.map(n => n.id === logNoteId ? { ...n, status: newStatus } : n));
+
+    // Persist to MongoDB
+    fetch('/.netlify/functions/update-log-note-status', {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logNoteId, status: newStatus })
+    }).then(async res => {
+      if (!res.ok) {
+        // Revert on failure — re-fetch from server to get real state
+        const refreshRes = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, { headers: authHeaders() });
+        const data = await refreshRes.json();
+        if (data.success) {
+          setLogNotes(data.logNotes.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) })));
+        }
+      }
+    }).catch(() => {});
   };
 
   const getStatusStyles = (status: 'pending' | 'done' | 'on hold') => {
