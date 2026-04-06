@@ -137,6 +137,13 @@ export class FileService {
       // Log file upload activity if clientId exists
       if (clientId && currentUser) {
         const client = ClientService.getClientById(clientId);
+        const fileTypeLabels: Record<string, string> = {
+          'after-visa-sc-attachment': 'after-visa',
+          'pre-departure-sc-attachment': 'pre-departure',
+          'post-departure-sc-attachment': 'post-departure',
+          'after-sales-sc-attachment': 'after-sales',
+        };
+        const displayCategory = (fileType && fileTypeLabels[fileType]) ? fileTypeLabels[fileType] : category;
         ActivityLogService.addLog({
           clientId,
           clientName: client?.contactName || 'Unknown',
@@ -144,7 +151,7 @@ export class FileService {
           performedBy: currentUser,
           performedByUser: currentUser,
           profileImageR2Path: getUserProfileImagePath(currentUser),
-          details: `Uploaded file: ${file.name} (${category}${source ? ' - ' + source : ''})`
+          details: `Uploaded file: ${file.name} (${displayCategory}${source ? ' - ' + source : ''})`
         });
       }
       
