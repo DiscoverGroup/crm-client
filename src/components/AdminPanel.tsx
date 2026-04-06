@@ -327,7 +327,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             fontWeight: '800',
             color: '#0A2D74',
             margin: '0 0 8px 0',
-            fontFamily: "'LemonMilk', 'Inter', sans-serif",
+            fontFamily: "'Poppins', sans-serif",
           }}>
             {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : activeTab === 'client-recovery' ? '👤 Client Recovery Requests' : 'ℹ️ Version & System Info'}
           </h1>

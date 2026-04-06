@@ -32,7 +32,7 @@ const modernInput: React.CSSProperties = {
   background: "#ffffff",
   transition: "all 0.2s ease",
   color: "#1e293b",
-  fontFamily: "'Inter', sans-serif"
+  fontFamily: "'Poppins', sans-serif"
 };
 
 // modernInputFocus removed because it was unused
@@ -1731,7 +1731,7 @@ const ClientRecords: React.FC<{
                   fontWeight: 800,
                   color: "#ffffff",
                   letterSpacing: "0.06em",
-                  fontFamily: "'LemonMilk', 'Inter', sans-serif",
+                  fontFamily: "'Poppins', sans-serif",
                   whiteSpace: 'normal'
                 }}>
                   New Client Registration
@@ -4859,7 +4859,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 color: '#ffffff',
                 fontSize: '22px',
                 fontWeight: '800',
-                fontFamily: "'LemonMilk', 'Inter', sans-serif",
+                fontFamily: "'Poppins', sans-serif",
                 letterSpacing: '0.05em'
               }}>
                 Client Records

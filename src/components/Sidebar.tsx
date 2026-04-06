@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   fontSize: '18px',
                   fontWeight: '800',
                   letterSpacing: '0.08em',
-                  fontFamily: "'LemonMilk', 'Inter', sans-serif"
+                  fontFamily: "'Poppins', sans-serif"
                 }}>
                   DG-CRM
                 </h2>

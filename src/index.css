@@ -1,23 +1,7 @@
 @import "tailwindcss";
 @import "./mobile-responsive.css";
 
-/* LEMON MILK Font - Discover Group Brand Font */
-@font-face {
-  font-family: 'LemonMilk';
-  src: url('/fonts/LemonMilk-Regular.woff2') format('woff2'),
-       url('/fonts/LemonMilk-Regular.woff') format('woff');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'LemonMilk';
-  src: url('/fonts/LemonMilk-Bold.woff2') format('woff2'),
-       url('/fonts/LemonMilk-Bold.woff') format('woff');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* Poppins is loaded via Google Fonts in index.html */
 
 /* Global box-sizing and viewport constraints */
 *, *::before, *::after {
@@ -94,8 +78,8 @@ html, body {
   --info-light: #e8f6fd;
 
   /* Typography */
-  --font-brand: 'LemonMilk', 'Inter', 'Segoe UI', sans-serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-brand: 'Poppins', 'Segoe UI', sans-serif;
+  --font-sans: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, monospace;
 
   /* Spacing */

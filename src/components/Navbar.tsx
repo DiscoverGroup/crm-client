@@ -93,7 +93,7 @@ const Navbar: React.FC<NavbarProps> = ({
           fontSize: "clamp(15px, 3.5vw, 18px)",
           fontWeight: "800",
           letterSpacing: "0.08em",
-          fontFamily: "'LemonMilk', 'Inter', sans-serif",
+          fontFamily: "'Poppins', sans-serif",
           color: "#ffffff",
           textShadow: "0 1px 3px rgba(0,0,0,0.3)"
         }}>
