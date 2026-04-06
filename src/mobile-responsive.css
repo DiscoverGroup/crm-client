@@ -154,11 +154,11 @@
   }
 }
 
-/* Desktop styles for main content */
+/* Desktop styles for main content — sidebar is fixed/overlay, offset by collapsed width (80px) */
 @media (min-width: 1024px) {
   .main-content {
-    margin-left: 300px;
-    width: calc(100% - 300px);
+    margin-left: 80px;
+    width: calc(100% - 80px);
   }
 }
 
