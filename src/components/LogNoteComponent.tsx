@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { sanitizeComment, validateLogNoteForm } from '../utils/formSanitizer';
 import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
@@ -1704,7 +1705,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
       </div>
 
       {/* Image Lightbox */}
-      {lightboxSrc && (
+      {lightboxSrc && createPortal(
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, cursor: 'zoom-out' }}
           onClick={() => setLightboxSrc(null)}
@@ -1719,7 +1720,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
             onClick={() => setLightboxSrc(null)}
             style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: 40, height: 40, borderRadius: '50%', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >✕</button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Detail Modal for Activity Logs */}
