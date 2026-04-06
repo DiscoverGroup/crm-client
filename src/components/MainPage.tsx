@@ -191,7 +191,7 @@ const ClientRecords: React.FC<{
   };
 
   // Field tracking setup (kept for companion management only)
-  const { logAction } = useFieldTracking({
+  useFieldTracking({
     clientId: currentClientId,
     userId: currentUserId,
     userName: currentUserName,
