@@ -586,7 +586,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
   const handleStatusChange = (logNoteId: string, newStatus: 'pending' | 'done' | 'on hold') => {
     const changedAt = new Date();
-    const changedBy = currentUserName;
+    const changedBy = currentUserName?.trim() || 'Unknown';
 
     // Optimistically update UI immediately
     setLogNotes(prev => prev.map(n =>

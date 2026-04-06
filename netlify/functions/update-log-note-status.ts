@@ -48,7 +48,11 @@ export const handler = async (event: any) => {
 
     if (status !== 'pending') {
       updateFields.statusChangedAt = changedAt ? new Date(changedAt) : new Date();
-      updateFields.statusChangedBy = typeof changedBy === 'string' ? changedBy.substring(0, 100) : auth.username || 'Unknown';
+      // Prefer the name sent from the frontend; fall back to the name in the JWT
+      const resolvedName = (typeof changedBy === 'string' && changedBy.trim())
+        ? changedBy.trim().substring(0, 100)
+        : (auth.user?.fullName || auth.user?.email || 'Unknown');
+      updateFields.statusChangedBy = resolvedName;
     } else {
       // Clear status change info when reverting to pending
       updateFields.statusChangedAt = null;
