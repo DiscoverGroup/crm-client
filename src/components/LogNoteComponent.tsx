@@ -44,7 +44,7 @@ const R2InlineImage: React.FC<{ r2Path: string; name: string; onOpen: (src: stri
       style={large
         ? { width: '100%', maxHeight: 320, borderRadius: 8, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block', background: '#f8fafc' }
         : { maxWidth: 220, maxHeight: 160, borderRadius: 6, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block' }}
-      onClick={() => onOpen(signedUrl)}
+      onClick={(e) => { e.stopPropagation(); onOpen(signedUrl); }}
       onError={() => setFailed(true)}
     />
   );
