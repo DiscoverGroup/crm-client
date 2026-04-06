@@ -116,10 +116,28 @@ const saveButtonStyle = (isSaving: boolean): React.CSSProperties => ({
   opacity: isSaving ? 0.7 : 1
 });
 
+// ─── File upload security ───────────────────────────────────────────────────
+const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const UPLOAD_ALLOWED_TYPES = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+  'image/bmp', 'image/tiff', 'image/svg+xml', 'image/heic', 'image/heif',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/msword', // .doc
+]);
+function validateUploadFile(file: File): string | null {
+  if (file.size > UPLOAD_MAX_BYTES) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    return `File is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`;
+  }
+  if (!UPLOAD_ALLOWED_TYPES.has(file.type))
+    return 'Invalid file type. Only images (JPEG, PNG, GIF, WebP, BMP, TIFF, SVG, HEIC), PDF, and Word documents (.doc, .docx) are allowed.';
+  return null;
+}
+
 const paymentOptions = [
   { value: "full_cash", label: "Full Cash (1 time payment)", terms: 1 },
   { value: "installment", label: "Installment (up to 20 terms)", terms: 20 },
-  { value: "travel_funds", label: "Travel Funds", terms: 0 },
   { value: "down_payment", label: "Down Payment (2 time payment)", terms: 2 }
 ];
 
@@ -305,7 +323,11 @@ const ClientRecords: React.FC<{
           // Load saved payment data for existing client
           const savedPayment = PaymentService.getPaymentData(clientId);
           if (savedPayment) {
-            if (savedPayment.paymentTerm) setPaymentTerm(savedPayment.paymentTerm as string);
+            if (savedPayment.paymentTerm) {
+              // Migrate legacy "travel_funds" payment term
+              const term = savedPayment.paymentTerm === 'travel_funds' ? 'full_cash' : savedPayment.paymentTerm as string;
+              setPaymentTerm(term);
+            }
             if (typeof savedPayment.termCount === 'number') setTermCount(savedPayment.termCount);
             if (savedPayment.selectedPaymentBox !== undefined) setSelectedPaymentBox(savedPayment.selectedPaymentBox as number | null);
             if (Array.isArray(savedPayment.paymentDetails)) {
@@ -335,6 +357,9 @@ const ClientRecords: React.FC<{
   const setStatusTracked = (value: string) => {
     trackSectionField('client-information', 'status', value, 'Status');
     setStatus(value);
+    if (value === "Rebook" && bookingConfirmations.length < 2) {
+      setBookingConfirmations(prev => [...prev, ""]);
+    }
   };
   
   const setAgentTracked = (value: string) => {
@@ -404,15 +429,9 @@ const ClientRecords: React.FC<{
   const handleBookingConfirmationFileUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      showErrorToast(`File size exceeds 50MB limit.`);
-      e.target.value = '';
-      return;
-    }
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-    if (!allowedTypes.includes(file.type)) {
-      showErrorToast(`Invalid file type. Only images and PDF files are allowed.`);
+    const validationError = validateUploadFile(file);
+    if (validationError) {
+      showErrorToast(validationError);
       e.target.value = '';
       return;
     }
@@ -556,7 +575,7 @@ const ClientRecords: React.FC<{
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
   // PaymentTerm-driven behavior
-  const currentOption = paymentOptions.find(opt => opt.value === paymentTerm)!;
+  const currentOption = paymentOptions.find(opt => opt.value === paymentTerm) ?? paymentOptions[0];
   const showTermCount = paymentTerm === "installment";
   const paymentBoxes = Array.from({ length: currentOption.value === "installment" ? termCount : currentOption.terms }, (_, i) => i + 1);
 
@@ -652,24 +671,16 @@ const ClientRecords: React.FC<{
     const file = event?.target?.files?.[0];
     
     if (file) {
-      // Validation: File size (max 50MB)
-      const maxSize = 50 * 1024 * 1024; // 50MB
-      if (file.size > maxSize) {
-        showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
-        event.target.value = ''; // Clear the input
-        return;
-      }
-
-      // Validation: File type (images and PDFs only)
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-      if (!allowedTypes.includes(file.type)) {
-        showErrorToast(`Invalid file type. Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed. Your file type: ${file.type}`);
-        event.target.value = ''; // Clear the input
+      // Validation: File size and type
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        showErrorToast(validationError);
+        event.target.value = '';
         return;
       }
 
       try {
-        // Save file to FileService with client ID (real or temporary)
+        // Save file to FileService with client ID
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
         await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms", currentUserName);
@@ -784,17 +795,10 @@ const ClientRecords: React.FC<{
     section: string
   ) => {
     try {
-      // Validation: File size (max 50MB)
-      const maxSize = 50 * 1024 * 1024;
-      if (file.size > maxSize) {
-        showErrorToast(`File size exceeds 50MB limit. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
-        return;
-      }
-
-      // Validation: File type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-      if (!allowedTypes.includes(file.type)) {
-        showErrorToast(`Invalid file type. Only images and PDF files are allowed. Your file type: ${file.type}`);
+      // Validation: File size and type
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        showErrorToast(validationError);
         return;
       }
 
@@ -1019,7 +1023,10 @@ const ClientRecords: React.FC<{
         bookingConfirmations: bookingConfirmations.filter(b => b.trim()),
         packageLink: cleanPackageLink,
         clientRequest: sanitizeText(clientRequest || '', 2000),
-        companions: companions
+        companions: companions,
+        travelFundRequestDate,
+        travelFundApprovalDate,
+        travelFundReleasedAmount: travelFundReleasedAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
       };
 
       // Prefer the resolved (post-first-save) ID over the prop so that editing
@@ -1437,6 +1444,12 @@ const ClientRecords: React.FC<{
     const file = event?.target?.files?.[0];
     
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        showErrorToast(validationError);
+        event.target.value = '';
+        return;
+      }
       try {
         // Save file to FileService with client ID for visa payments
         const currentClientId = clientId || tempClientId;
@@ -1510,6 +1523,12 @@ const ClientRecords: React.FC<{
     const file = event?.target?.files?.[0];
     
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        showErrorToast(validationError);
+        event.target.value = '';
+        return;
+      }
       try {
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
@@ -1577,6 +1596,12 @@ const ClientRecords: React.FC<{
     const file = event?.target?.files?.[0];
     
     if (file) {
+      const validationError = validateUploadFile(file);
+      if (validationError) {
+        showErrorToast(validationError);
+        event.target.value = '';
+        return;
+      }
       try {
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
@@ -1840,6 +1865,26 @@ const ClientRecords: React.FC<{
                 />
               </div>
             </div>
+            {/* Travel Funds Details — shown when status is "Travel Funds" */}
+            {status === "Travel Funds" && (
+              <div style={{ marginTop: 18, padding: 20, background: "linear-gradient(145deg, rgba(236,253,245,0.9) 0%, rgba(209,250,229,0.7) 100%)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.3)" }}>
+                <h4 style={{ margin: "0 0 16px", color: "#065f46", fontSize: "15px", fontWeight: 600 }}>Travel Fund Details</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                  <div>
+                    <label style={label}>Request Date</label>
+                    <input style={modernInput} type="date" value={travelFundRequestDate} onChange={e => setTravelFundRequestDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={label}>Approval Date</label>
+                    <input style={modernInput} type="date" value={travelFundApprovalDate} onChange={e => setTravelFundApprovalDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={label}>Approved Amount</label>
+                    <input style={modernInput} type="text" placeholder="Enter approved amount" value={travelFundReleasedAmount} onChange={e => setTravelFundReleasedAmount(e.target.value.replace(/[^0-9.,]/g, ''))} />
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Save Button */}
             <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
               <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
@@ -2035,11 +2080,11 @@ const ClientRecords: React.FC<{
                               Choose file to upload
                             </span>
                             <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
-                              PDF, Image (max 50MB)
+                              PDF, DOCX, Image (max 10 MB)
                             </span>
                             <input
                               type="file"
-                              accept="image/*,.pdf"
+                              accept="image/*,.pdf,.doc,.docx"
                               onChange={e => handleBookingConfirmationFileUpload(idx, e)}
                               style={{ display: 'none' }}
                             />
@@ -2281,7 +2326,7 @@ const ClientRecords: React.FC<{
                   )}
                 </select>
               </div>
-              {paymentTerm !== "travel_funds" && showTermCount && (
+              {showTermCount && (
                 <div style={{ minWidth: 160, flex: "0 0 160px" }}>
                   <label style={label}>Terms</label>
                   <input
@@ -2388,7 +2433,7 @@ const ClientRecords: React.FC<{
               )}
             </div>
 
-            {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
+            {paymentBoxes.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <label style={label}>Payment Counts</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
@@ -2415,63 +2460,8 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
-            {/* Travel Funds Workflow (shown when Travel Funds is selected) */}
-            {paymentTerm === "travel_funds" && (
-              <div style={{
-                marginBottom: 24,
-                padding: 20,
-                background: "linear-gradient(145deg, rgba(236, 253, 245, 0.9) 0%, rgba(209, 250, 229, 0.7) 100%)",
-                borderRadius: 12,
-                border: "1px solid rgba(16, 185, 129, 0.3)"
-              }}>
-                <h4 style={{ margin: "0 0 16px 0", color: "#065f46", fontSize: "16px", fontWeight: "600" }}>
-                  Travel Fund Request Workflow
-                </h4>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                  <div>
-                    <label style={label}>Travel Fund Request Date</label>
-                    <input
-                      style={modernInput}
-                      type="date"
-                      value={travelFundRequestDate}
-                      onChange={e => {
-                        trackSectionField('payment-terms-schedule', 'travelFundRequestDate', e.target.value, 'Travel Fund Request Date');
-                        setTravelFundRequestDate(e.target.value);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={label}>Approval Date</label>
-                    <input
-                      style={modernInput}
-                      type="date"
-                      value={travelFundApprovalDate}
-                      onChange={e => {
-                        trackSectionField('payment-terms-schedule', 'travelFundApprovalDate', e.target.value, 'Travel Fund Approval Date');
-                        setTravelFundApprovalDate(e.target.value);
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={label}>Approved Amount</label>
-                    <input
-                      style={modernInput}
-                      type="text"
-                      placeholder="Enter approved amount"
-                      value={travelFundReleasedAmount}
-                      onChange={e => {
-                        // Allow only numbers, decimals, and commas
-                        const val = e.target.value.replace(/[^0-9.,]/g, '');
-                        trackSectionField('payment-terms-schedule', 'travelFundReleasedAmount', val, 'Travel Fund Released Amount');
-                        setTravelFundReleasedAmount(val);
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Payment Details — horizontal pill list */}
+            {paymentBoxes.length > 0 && (
             {paymentTerm !== "travel_funds" && paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
@@ -2606,8 +2596,8 @@ const ClientRecords: React.FC<{
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
                           <span style={{ fontSize: 20 }}>📎</span>
                           <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, Image (max 50MB)</span>
-                          <input type="file" accept="image/*,.pdf" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} />
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} />
                         </label>
                       );
                     })()}
@@ -2633,8 +2623,8 @@ const ClientRecords: React.FC<{
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
                           <span style={{ fontSize: 20 }}>📎</span>
                           <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, Image (max 50MB)</span>
-                          <input type="file" accept="image/*,.pdf" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} />
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} />
                         </label>
                       );
                     })()}
@@ -2647,7 +2637,6 @@ const ClientRecords: React.FC<{
             {/* Additional Payment Sections */}
             <div style={{ marginTop: 20 }}>
               {/* First Payment */}
-              {paymentTerm !== "travel_funds" && (
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <input
@@ -2670,7 +2659,7 @@ const ClientRecords: React.FC<{
                       <label style={label}>Deposit Slip</label>
                       <input
                         type="file"
-                        accept="image/*,.pdf"
+                        accept="image/*,.pdf,.doc,.docx"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -2707,7 +2696,7 @@ const ClientRecords: React.FC<{
                       <label style={label}>Receipt</label>
                       <input
                         type="file"
-                        accept="image/*,.pdf"
+                        accept="image/*,.pdf,.doc,.docx"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -2743,7 +2732,6 @@ const ClientRecords: React.FC<{
                   </div>
                 )}
               </div>
-              )}
 
               {/* Other Payments */}
               <div style={{ marginBottom: 16 }}>
@@ -2768,7 +2756,7 @@ const ClientRecords: React.FC<{
                       <label style={label}>Attachment</label>
                       <input
                         type="file"
-                        accept="image/*,.pdf"
+                        accept="image/*,.pdf,.doc,.docx"
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -2898,7 +2886,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations'); }} style={{ fontSize: "14px", width: "100%" }} />
+              <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-sales-sc-attachment', 'account-relations'); }} style={{ fontSize: "14px", width: "100%" }} />
               {(() => {
                 const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'account-relations' && att.fileType === 'after-sales-sc-attachment');
                 if (uploadedFile) {
@@ -3081,7 +3069,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Deposit Slip</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleVisaPaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3109,7 +3097,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Receipt</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleVisaPaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3211,7 +3199,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Deposit Slip</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleInsurancePaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3239,7 +3227,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Receipt</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleInsurancePaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3341,7 +3329,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Deposit Slip</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleEtaPaymentChange(idx, "depositSlip", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3369,7 +3357,7 @@ const ClientRecords: React.FC<{
                         <label style={label}>Receipt</label>
                         <input
                           type="file"
-                          accept="image/*,.pdf"
+                          accept="image/*,.pdf,.doc,.docx"
                           onChange={e => handleEtaPaymentChange(idx, "receipt", e)}
                           style={{ fontSize: "14px" }}
                         />
@@ -3451,7 +3439,7 @@ const ClientRecords: React.FC<{
                     <label style={label}>Passport Attachment</label>
                     <input
                       type="file"
-                      accept="image/*,.pdf"
+                      accept="image/*,.pdf,.doc,.docx"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -3489,7 +3477,7 @@ const ClientRecords: React.FC<{
                     <label style={label}>Visa</label>
                     <input
                       type="file"
-                      accept="image/*,.pdf"
+                      accept="image/*,.pdf,.doc,.docx"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -3637,7 +3625,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-visa-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'after-visa-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
               {(() => {
                 const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'after-visa-sc-attachment');
                 if (uploadedFile) {
@@ -3680,7 +3668,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'pre-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'pre-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
               {(() => {
                 const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'pre-departure-sc-attachment');
                 if (uploadedFile) {
@@ -3713,7 +3701,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>International Flight</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3783,7 +3771,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>Local Flight 1</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3853,7 +3841,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>Local Flight 2</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3923,7 +3911,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>Local Flight 3</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3994,7 +3982,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>Hotel Voucher</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -4064,7 +4052,7 @@ const ClientRecords: React.FC<{
                   <label style={label}>Other Files</label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/*,.pdf,.doc,.docx"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -4181,7 +4169,7 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
-              <input type="file" accept="image/*,.pdf" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
+              <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={async (e) => { const file = e.target.files?.[0]; if (file) await handleGenericFileUpload(file, 'other', 'post-departure-sc-attachment', 'sc-report'); }} style={{ fontSize: "14px", width: "100%" }} />
               {(() => {
                 const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'sc-report' && att.fileType === 'post-departure-sc-attachment');
                 if (uploadedFile) {

@@ -55,6 +55,10 @@ export interface ClientData {
   postDepartureSCDate?: string;
   postDepartureSCReport?: string;
   postDepartureSCReportBy?: string;
+  // Travel Funds (when status === "Travel Funds")
+  travelFundRequestDate?: string;
+  travelFundApprovalDate?: string;
+  travelFundReleasedAmount?: string;
   // Booking/Tour Voucher
   bookingVoucher?: string;
   bookingVoucherLinks?: {
