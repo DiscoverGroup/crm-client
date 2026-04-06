@@ -79,7 +79,9 @@ export const handler = async (event: any) => {
       newValue: note.newValue,
       parentActivityLogId: note.parentActivityLogId || null,
       attachments: note.attachments || [],
-      replies: note.replies || []
+      replies: note.replies || [],
+      statusChangedAt: note.statusChangedAt || null,
+      statusChangedBy: note.statusChangedBy || null,
     }));
 
     await client.close();

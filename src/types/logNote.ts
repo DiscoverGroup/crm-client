@@ -24,6 +24,8 @@ export interface LogNote {
   replies: LogReply[];
   parentActivityLogId?: string;
   attachments?: LogNoteAttachment[];
+  statusChangedAt?: Date;
+  statusChangedBy?: string;
 }
 
 export interface LogReply {

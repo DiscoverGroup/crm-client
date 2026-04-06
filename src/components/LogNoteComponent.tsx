@@ -154,6 +154,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           const mongoNotes = data.logNotes.map((note: any) => ({
             ...note,
             timestamp: new Date(note.timestamp),
+            statusChangedAt: note.statusChangedAt ? new Date(note.statusChangedAt) : undefined,
             replies: restoreReplyTimestamps(note.replies)
           }));
 
@@ -195,6 +196,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
               const refreshedNotes = refreshData.logNotes.map((note: any) => ({
                 ...note,
                 timestamp: new Date(note.timestamp),
+                statusChangedAt: note.statusChangedAt ? new Date(note.statusChangedAt) : undefined,
                 replies: restoreReplyTimestamps(note.replies)
               }));
               setLogNotes(refreshedNotes);
@@ -583,21 +585,32 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   const handleStatusChange = (logNoteId: string, newStatus: 'pending' | 'done' | 'on hold') => {
+    const changedAt = new Date();
+    const changedBy = currentUserName;
+
     // Optimistically update UI immediately
-    setLogNotes(prev => prev.map(n => n.id === logNoteId ? { ...n, status: newStatus } : n));
+    setLogNotes(prev => prev.map(n =>
+      n.id === logNoteId
+        ? { ...n, status: newStatus, statusChangedAt: changedAt, statusChangedBy: changedBy }
+        : n
+    ));
 
     // Persist to MongoDB
     fetch('/.netlify/functions/update-log-note-status', {
       method: 'POST',
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ logNoteId, status: newStatus })
+      body: JSON.stringify({ logNoteId, status: newStatus, changedBy, changedAt: changedAt.toISOString() })
     }).then(async res => {
       if (!res.ok) {
         // Revert on failure — re-fetch from server to get real state
         const refreshRes = await fetch(`/.netlify/functions/get-log-notes?clientId=${clientId}`, { headers: authHeaders() });
         const data = await refreshRes.json();
         if (data.success) {
-          setLogNotes(data.logNotes.map((n: any) => ({ ...n, timestamp: new Date(n.timestamp) })));
+          setLogNotes(data.logNotes.map((n: any) => ({
+            ...n,
+            timestamp: new Date(n.timestamp),
+            statusChangedAt: n.statusChangedAt ? new Date(n.statusChangedAt) : undefined
+          })));
         }
       }
     }).catch(() => {});
@@ -1497,6 +1510,29 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   <option value="on hold">On Hold</option>
                 </select>
               </div>
+
+              {/* Status change audit trail */}
+              {note.status !== 'pending' && note.statusChangedAt && note.statusChangedBy && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  marginTop: '5px',
+                  padding: '4px 8px',
+                  background: note.status === 'done' ? 'rgba(22, 163, 74, 0.07)' : 'rgba(220, 38, 38, 0.07)',
+                  borderRadius: '6px',
+                  border: `1px solid ${note.status === 'done' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(220, 38, 38, 0.2)'}`,
+                  fontSize: '10px',
+                  color: note.status === 'done' ? '#15803d' : '#b91c1c',
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <span>
+                    Marked <strong>{note.status}</strong> by <strong>{note.statusChangedBy}</strong> on {note.statusChangedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {note.statusChangedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div style={{

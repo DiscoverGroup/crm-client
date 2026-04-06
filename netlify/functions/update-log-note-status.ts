@@ -26,7 +26,7 @@ export const handler = async (event: any) => {
   }
 
   try {
-    const { logNoteId, status } = JSON.parse(event.body || '{}');
+    const { logNoteId, status, changedBy, changedAt } = JSON.parse(event.body || '{}');
 
     if (!logNoteId || !status) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing logNoteId or status' }) };
@@ -41,6 +41,20 @@ export const handler = async (event: any) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid logNoteId' }) };
     }
 
+    const updateFields: Record<string, any> = {
+      status,
+      updatedAt: new Date(),
+    };
+
+    if (status !== 'pending') {
+      updateFields.statusChangedAt = changedAt ? new Date(changedAt) : new Date();
+      updateFields.statusChangedBy = typeof changedBy === 'string' ? changedBy.substring(0, 100) : auth.username || 'Unknown';
+    } else {
+      // Clear status change info when reverting to pending
+      updateFields.statusChangedAt = null;
+      updateFields.statusChangedBy = null;
+    }
+
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,
       connectTimeoutMS: 10000,
@@ -53,7 +67,7 @@ export const handler = async (event: any) => {
     const db = client.db(DB_NAME);
     const result = await db.collection('log_notes').updateOne(
       { _id: new ObjectId(logNoteId) },
-      { $set: { status, updatedAt: new Date() } }
+      { $set: updateFields }
     );
 
     await client.close();
