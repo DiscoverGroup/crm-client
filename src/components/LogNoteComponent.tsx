@@ -20,7 +20,7 @@ interface LogNoteComponentProps {
 }
 
 // Fetches a signed URL from R2 and renders an inline image
-const R2InlineImage: React.FC<{ r2Path: string; name: string; onOpen: (src: string) => void }> = ({ r2Path, name, onOpen }) => {
+const R2InlineImage: React.FC<{ r2Path: string; name: string; onOpen: (src: string) => void; large?: boolean }> = ({ r2Path, name, onOpen, large }) => {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -36,12 +36,14 @@ const R2InlineImage: React.FC<{ r2Path: string; name: string; onOpen: (src: stri
   }, [r2Path]);
 
   if (failed) return null;
-  if (!signedUrl) return <div style={{ width: 120, height: 80, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>Loading…</div>;
+  if (!signedUrl) return <div style={{ width: large ? '100%' : 120, height: large ? 200 : 80, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8' }}>Loading…</div>;
   return (
     <img
       src={signedUrl}
       alt={name}
-      style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block' }}
+      style={large
+        ? { width: '100%', maxHeight: 320, borderRadius: 8, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block', background: '#f8fafc' }
+        : { maxWidth: 220, maxHeight: 160, borderRadius: 6, cursor: 'zoom-in', objectFit: 'contain', border: '1px solid #e2e8f0', display: 'block' }}
       onClick={() => onOpen(signedUrl)}
       onError={() => setFailed(true)}
     />
@@ -277,7 +279,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   // Render attachment chips/images in a note or reply
-  const renderAttachments = (attachments: LogNoteAttachment[] | undefined) => {
+  const renderAttachments = (attachments: LogNoteAttachment[] | undefined, large = false) => {
     if (!attachments || attachments.length === 0) return null;
     return (
       <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -286,7 +288,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           return (
             <div key={att.id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {isImg && att.r2Path && (
-                <R2InlineImage r2Path={att.r2Path} name={att.name} onOpen={setLightboxSrc} />
+                <R2InlineImage r2Path={att.r2Path} name={att.name} onOpen={setLightboxSrc} large={large} />
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 {!isImg && <span style={{ fontSize: 14 }}>📄</span>}
@@ -2129,7 +2131,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                   {selectedNote.description}
                 </div>
               )}
-              {renderAttachments(selectedNote.attachments)}
+              {renderAttachments(selectedNote.attachments, true)}
             </div>
 
             {/* Status */}
