@@ -40,7 +40,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
   <nav style={{
-    padding: "0 clamp(1rem, 4vw, 2rem)",
+    padding: "0 clamp(0.75rem, 3vw, 2rem)",
     background: "linear-gradient(135deg, #071f55 0%, #0A2D74 60%, #1a4a9e 100%)",
     color: "#fff",
     display: "flex",
@@ -50,10 +50,10 @@ const Navbar: React.FC<NavbarProps> = ({
     position: "sticky",
     top: 0,
     zIndex: 999,
-    flexWrap: "wrap",
-    gap: "12px",
+    gap: "8px",
     height: "64px",
-    borderBottom: "1px solid rgba(40, 162, 220, 0.3)"
+    borderBottom: "1px solid rgba(40, 162, 220, 0.3)",
+    overflow: "hidden"
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
       {/* Mobile Hamburger Menu */}
@@ -135,7 +135,8 @@ const Navbar: React.FC<NavbarProps> = ({
         display: "flex",
         alignItems: "center",
         gap: "clamp(6px, 1.5vw, 12px)",
-        flexWrap: "wrap"
+        flexShrink: 0,
+        overflow: "hidden"
       }}>
         {/* Sync Status Indicator */}
         <SyncStatusIndicator />
@@ -272,7 +273,7 @@ const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* User info */}
-        <div style={{
+        <div className="navbar-user-info" style={{
           textAlign: 'right',
           borderLeft: "1px solid rgba(40, 162, 220, 0.3)",
           paddingLeft: "12px"
@@ -287,6 +288,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
         <button
           onClick={onLogout}
+          className="navbar-logout-btn"
           style={{
             background: "rgba(239, 68, 68, 0.15)",
             color: "#fca5a5",
