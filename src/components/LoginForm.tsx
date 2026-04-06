@@ -232,7 +232,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
           fontSize: windowWidth < 640 ? '26px' : '32px',
           fontWeight: '700',
           marginBottom: '12px',
-          color: '#0d47a1',
+          color: '#0A2D74',
           margin: 0,
           letterSpacing: '-0.5px'
         }}>
@@ -377,7 +377,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
           style={{
             width: '100%',
             padding: windowWidth < 640 ? '16px' : '14px',
-            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+            background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
@@ -486,7 +486,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
               margin: '0 0 12px 0',
               fontSize: '24px',
               fontWeight: '700',
-              color: '#0d47a1'
+              color: '#0A2D74'
             }}>
               Reset Password
             </h2>
@@ -544,7 +544,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+                    background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '10px',
@@ -596,7 +596,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
               margin: '0 0 12px 0',
               fontSize: '24px',
               fontWeight: '700',
-              color: '#0d47a1'
+              color: '#0A2D74'
             }}>
               Create New Password
             </h2>
@@ -738,7 +738,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+                    background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '10px',

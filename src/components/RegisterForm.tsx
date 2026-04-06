@@ -591,7 +591,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register
           style={{
             width: '100%',
             padding: windowWidth < 640 ? '16px' : '14px',
-            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 50%, #fbbf24 100%)',
+            background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',

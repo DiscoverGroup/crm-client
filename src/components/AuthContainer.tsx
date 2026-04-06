@@ -28,7 +28,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
     <div style={{
       width: '100%',
       height: '100vh',
-      background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+      background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #1a4a9e 75%, #28A2DC 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -65,7 +65,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
         {/* Mobile Header with Logo and Navigation */}
         {windowWidth < 768 && (
           <div style={{
-            background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+            background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #1a4a9e 75%, #28A2DC 100%)',
             padding: '20px',
             display: 'flex',
             alignItems: 'center',
@@ -186,7 +186,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
           width: windowWidth < 768 ? '100%' : '50%',
           height: windowWidth < 768 ? 'auto' : '100%',
           minHeight: windowWidth < 768 ? '200px' : 'auto',
-          background: 'linear-gradient(135deg, #0d47a1 0%, #1565a0 40%, #1e7bb8 70%, #fbbf24 100%)',
+          background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #1a4a9e 75%, #28A2DC 100%)',
           display: windowWidth < 768 ? 'none' : 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
@@ -278,10 +278,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
                     transition: 'all 0.2s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#fbbf24';
-                    e.currentTarget.style.color = '#0d47a1';
+                    e.currentTarget.style.background = '#28A2DC';
+                    e.currentTarget.style.color = '#ffffff';
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.borderColor = '#fbbf24';
+                    e.currentTarget.style.borderColor = '#28A2DC';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
@@ -331,10 +331,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#fbbf24';
-                    e.currentTarget.style.color = '#0d47a1';
+                    e.currentTarget.style.background = '#28A2DC';
+                    e.currentTarget.style.color = '#ffffff';
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.borderColor = '#fbbf24';
+                    e.currentTarget.style.borderColor = '#28A2DC';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'rgba(255,255,255,0.15)';

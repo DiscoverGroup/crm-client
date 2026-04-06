@@ -311,7 +311,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   return (
     <div style={{
       padding: '24px',
-      backgroundColor: '#f8fafc',
+      backgroundColor: 'transparent',
       minHeight: '100vh'
     }}>
       {/* Header */}
@@ -323,10 +323,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       }}>
         <div>
           <h1 style={{
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#1e293b',
-            margin: '0 0 8px 0'
+            fontSize: '26px',
+            fontWeight: '800',
+            color: '#0A2D74',
+            margin: '0 0 8px 0',
+            fontFamily: "'LemonMilk', 'Inter', sans-serif",
           }}>
             {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : activeTab === 'client-recovery' ? '👤 Client Recovery Requests' : 'ℹ️ Version & System Info'}
           </h1>
@@ -351,7 +352,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             }}
             style={{
               padding: '10px 20px',
-              background: '#3b82f6',
+              background: 'linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -387,18 +388,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       {/* Tab Navigation */}
       <div style={{
         display: 'flex',
-        gap: '8px',
+        gap: '4px',
         marginBottom: '24px',
-        borderBottom: '2px solid #e2e8f0'
+        borderBottom: '2px solid rgba(10,45,116,0.12)',
+        overflowX: 'auto'
       }}>
         <button
           onClick={() => setActiveTab('users')}
           style={{
             padding: '12px 24px',
             background: activeTab === 'users' ? 'white' : 'transparent',
-            color: activeTab === 'users' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'users' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'users' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'users' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -413,9 +415,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'client-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'client-recovery' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'client-recovery' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'client-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'client-recovery' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -448,9 +450,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'file-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'file-recovery' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'file-recovery' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'file-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'file-recovery' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -483,9 +485,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'version' ? 'white' : 'transparent',
-            color: activeTab === 'version' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'version' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'version' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'version' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -500,9 +502,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'workflows' ? 'white' : 'transparent',
-            color: activeTab === 'workflows' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'workflows' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'workflows' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'workflows' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -517,9 +519,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'monitoring' ? 'white' : 'transparent',
-            color: activeTab === 'monitoring' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'monitoring' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'monitoring' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'monitoring' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -534,9 +536,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'territory' ? 'white' : 'transparent',
-            color: activeTab === 'territory' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'territory' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'territory' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'territory' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -551,9 +553,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'stress-test' ? 'white' : 'transparent',
-            color: activeTab === 'stress-test' ? '#3b82f6' : '#64748b',
+            color: activeTab === 'stress-test' ? '#0A2D74' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'stress-test' ? '3px solid #3b82f6' : '3px solid transparent',
+            borderBottom: activeTab === 'stress-test' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -582,7 +584,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>VERSION</p>
-                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>{getFullVersion()}</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#0A2D74' }}>{getFullVersion()}</p>
                 </div>
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>BUILD INFO</p>
@@ -730,7 +732,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Admins</p>
-          <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#3b82f6' }}>
+          <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#0A2D74' }}>
             {users.filter(u => u.role === 'admin').length}
           </p>
         </div>

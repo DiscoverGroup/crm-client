@@ -38,7 +38,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={`sidebar-container ${isOpen ? 'open' : ''}`}
         style={{
           width: isCollapsed ? '80px' : '280px',
-          background: 'linear-gradient(180deg, #0d47a1 0%, #083d63 50%, #062e4a 100%)',
+          background: 'linear-gradient(180deg, #071f55 0%, #0A2D74 50%, #1a4a9e 100%)',
           color: 'white',
           padding: isCollapsed ? '16px' : '24px',
           height: '100vh',
@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           zIndex: 10001,
           overflowY: 'auto',
           overflowX: 'hidden',
-          borderRight: '2px solid rgba(251, 191, 36, 0.2)',
+          borderRight: '1px solid rgba(40, 162, 220, 0.25)',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
       {/* Header */}
@@ -85,20 +85,26 @@ const Sidebar: React.FC<SidebarProps> = ({
               width: '100%'
             }}>
               <img 
-                src="/DG.jpg" 
+                src={localStorage.getItem('crm_company_logo') || '/DG.jpg'}
                 alt="Discover Group Logo" 
+                onError={(e) => { e.currentTarget.src = '/DG.jpg'; }}
                 style={{
-                  width: '50px',
-                  height: '50px',
-                  objectFit: 'contain'
+                  width: '44px',
+                  height: '44px',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  border: '1.5px solid rgba(40,162,220,0.4)',
+                  background: '#fff',
+                  padding: '2px'
                 }}
               />
               <div style={{ textAlign: 'left' }}>
                 <h2 style={{ 
                   margin: '0 0 4px 0',
-                  fontSize: '20px',
-                  fontWeight: '600',
-                  letterSpacing: '0.5px'
+                  fontSize: '18px',
+                  fontWeight: '800',
+                  letterSpacing: '0.08em',
+                  fontFamily: "'LemonMilk', 'Inter', sans-serif"
                 }}>
                   DG-CRM
                 </h2>
@@ -122,12 +128,17 @@ const Sidebar: React.FC<SidebarProps> = ({
               width: '100%'
             }}>
               <img 
-                src="/DG.jpg" 
-                alt="DG" 
+                src={localStorage.getItem('crm_company_logo') || '/DG.jpg'}
+                alt="DG"
+                onError={(e) => { e.currentTarget.src = '/DG.jpg'; }}
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  objectFit: 'contain'
+                  width: '38px',
+                  height: '38px',
+                  objectFit: 'contain',
+                  borderRadius: '7px',
+                  border: '1.5px solid rgba(40,162,220,0.4)',
+                  background: '#fff',
+                  padding: '2px'
                 }}
               />
             </div>
@@ -141,7 +152,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             width: '32px',
             height: '32px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
             border: '2px solid rgba(255,255,255,0.3)',
             color: 'white',
             fontSize: '14px',
@@ -157,7 +168,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.5)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(40, 162, 220, 0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
@@ -207,9 +218,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.backgroundColor = 'rgba(40,162,220,0.2)';
             e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
-            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+            e.currentTarget.style.borderColor = 'rgba(40,162,220,0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
@@ -245,9 +256,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.backgroundColor = 'rgba(40,162,220,0.2)';
             e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
-            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+            e.currentTarget.style.borderColor = 'rgba(40,162,220,0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
@@ -283,9 +294,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.backgroundColor = 'rgba(40,162,220,0.2)';
             e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
-            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+            e.currentTarget.style.borderColor = 'rgba(40,162,220,0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
@@ -321,9 +332,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.backgroundColor = 'rgba(40,162,220,0.2)';
             e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
-            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+            e.currentTarget.style.borderColor = 'rgba(40,162,220,0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
@@ -359,9 +370,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             whiteSpace: 'nowrap'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.backgroundColor = 'rgba(40,162,220,0.2)';
             e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
-            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+            e.currentTarget.style.borderColor = 'rgba(40,162,220,0.5)';
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
@@ -425,7 +436,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           style={{
             width: '100%',
             padding: isCollapsed ? '12px 0' : '14px 16px',
-            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',

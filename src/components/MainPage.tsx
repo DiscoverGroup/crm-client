@@ -22,16 +22,17 @@ import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog }
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 // Utility for modern UI
-const modernInput = {
-  padding: "14px 16px",
-  border: "2px solid rgba(147, 197, 253, 0.3)",
-  borderRadius: "12px",
-  fontSize: "16px",
+const modernInput: React.CSSProperties = {
+  padding: "11px 14px",
+  border: "1.5px solid #d1dbe8",
+  borderRadius: "10px",
+  fontSize: "15px",
   width: "100%",
   boxSizing: "border-box" as const,
-  background: "rgba(255, 255, 255, 0.9)",
-  transition: "all 0.3s ease",
-  boxShadow: "0 2px 4px rgba(59, 130, 246, 0.1)"
+  background: "#ffffff",
+  transition: "all 0.2s ease",
+  color: "#1e293b",
+  fontFamily: "'Inter', sans-serif"
 };
 
 // modernInputFocus removed because it was unused
@@ -39,7 +40,7 @@ const modernInput = {
 const modernCheckbox = {
   width: "18px",
   height: "18px",
-  accentColor: "#3b82f6",
+  accentColor: "#28A2DC",
   transform: "scale(1.2)",
   cursor: "pointer"
 };
@@ -48,69 +49,71 @@ const checkboxLabel = {
   display: "flex",
   alignItems: "center",
   gap: "12px",
-  padding: "12px 16px",
-  background: "rgba(255, 255, 255, 0.7)",
+  padding: "11px 16px",
+  background: "#f8fafc",
   borderRadius: "8px",
-  border: "1px solid rgba(147, 197, 253, 0.2)",
+  border: "1.5px solid #e2e8f0",
   cursor: "pointer",
   transition: "all 0.2s ease",
   fontWeight: 500,
   color: "#1e293b"
 };
+
 const sectionStyle = (w: number): React.CSSProperties => ({
-  background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+  background: "#ffffff",
   borderRadius: "16px",
-  boxShadow: "0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04)",
-  padding: w < 640 ? "16px" : w <= 1366 ? "20px" : "32px",
-  marginBottom: w < 640 ? "16px" : w <= 1366 ? "16px" : "32px",
-  border: "1px solid rgba(147, 197, 253, 0.3)",
+  boxShadow: "0 2px 12px rgba(10, 45, 116, 0.08), 0 1px 3px rgba(0,0,0,0.04)",
+  padding: w < 640 ? "16px" : w <= 1366 ? "20px" : "28px",
+  marginBottom: w < 640 ? "16px" : w <= 1366 ? "16px" : "24px",
+  border: "1px solid rgba(10, 45, 116, 0.1)",
   position: "relative" as const,
   overflow: "hidden" as const
 });
 
-const sectionHeader = {
+const sectionHeader: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  marginBottom: "24px",
-  paddingBottom: "16px",
-  borderBottom: "2px solid rgba(59, 130, 246, 0.1)"
+  marginBottom: "20px",
+  paddingBottom: "14px",
+  borderBottom: "2px solid rgba(40, 162, 220, 0.25)"
 };
-const label = {
-  fontWeight: 700,
-  color: "#1e293b",
-  marginBottom: "8px",
+
+const label: React.CSSProperties = {
+  fontWeight: 600,
+  color: "#0A2D74",
+  marginBottom: "6px",
   display: "block",
-  fontSize: "15px",
-  letterSpacing: "0.025em"
+  fontSize: "13px",
+  letterSpacing: "0.02em",
+  textTransform: "uppercase" as const
 };
 
 const subLabel = {
   fontWeight: 500,
   color: "#64748b",
-  fontSize: "13px",
-  marginTop: "4px",
+  fontSize: "12px",
+  marginTop: "3px",
   fontStyle: "italic"
 };
 
-const saveButtonStyle = (isSaving: boolean) => ({
-  background: isSaving 
-    ? "linear-gradient(145deg, #9ca3af 0%, #6b7280 100%)"
-    : "linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%)",
+const saveButtonStyle = (isSaving: boolean): React.CSSProperties => ({
+  background: isSaving
+    ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+    : "linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)",
   color: "#fff",
   padding: "10px 24px",
   border: "none",
-  borderRadius: "12px",
-  fontSize: "16px",
+  borderRadius: "10px",
+  fontSize: "14px",
   fontWeight: 600,
   cursor: isSaving ? "not-allowed" : "pointer",
-  boxShadow: isSaving 
-    ? "0 4px 12px rgba(156, 163, 175, 0.3)"
-    : "0 8px 20px rgba(59, 130, 246, 0.4), 0 4px 8px rgba(0, 0, 0, 0.1)",
-  transition: "all 0.3s ease",
-  marginTop: "24px",
-  position: "relative" as const,
-  overflow: "hidden" as const,
-  transform: isSaving ? "scale(0.98)" : "scale(1)"
+  boxShadow: isSaving
+    ? "none"
+    : "0 4px 14px rgba(10, 45, 116, 0.35)",
+  transition: "all 0.25s ease",
+  marginTop: "20px",
+  letterSpacing: "0.02em",
+  opacity: isSaving ? 0.7 : 1
 });
 
 const paymentOptions = [
@@ -1670,7 +1673,7 @@ const ClientRecords: React.FC<{
     <div style={{
       flex: 1,
       overflowY: 'auto',
-      background: "linear-gradient(135deg, #e1f4fd 0%, #cde9fb 50%, #b8ddf9 100%)",
+      background: "transparent",
       position: 'relative'
     }}>
       <div style={{
@@ -1685,10 +1688,7 @@ const ClientRecords: React.FC<{
         {/* Main Content - Left Side */}
         <div style={{
           flex: 1,
-          background: "rgba(255, 255, 255, 0.95)",
-          borderRadius: 16,
-          boxShadow: "0 4px 32px 0 rgba(59, 130, 246, 0.15)",
-          backdropFilter: "blur(10px)"
+          background: "transparent"
         }}>
           <form style={{ padding: 24 }} autoComplete="off">
           {isLoadingClients ? (
@@ -1697,12 +1697,12 @@ const ClientRecords: React.FC<{
           <>
           {/* Header */}
           <div style={{ 
-            background: "linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)", 
-            borderRadius: "16px", 
-            padding: windowWidth < 640 ? "16px" : windowWidth <= 1366 ? "16px 20px" : "32px", 
-            marginBottom: windowWidth <= 1366 ? "16px" : "32px",
-            boxShadow: "0 8px 32px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.05)",
-            border: "1px solid rgba(147, 197, 253, 0.3)",
+            background: "linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)",
+            borderRadius: "16px",
+            padding: windowWidth < 640 ? "16px" : windowWidth <= 1366 ? "16px 20px" : "28px",
+            marginBottom: windowWidth <= 1366 ? "16px" : "24px",
+            boxShadow: "0 8px 32px rgba(10, 45, 116, 0.3)",
+            border: "none",
             display: 'flex',
             flexDirection: windowWidth < 640 ? 'column' : 'row',
             justifyContent: 'space-between',
@@ -1718,7 +1718,7 @@ const ClientRecords: React.FC<{
               right: '-20%',
               width: '200px',
               height: '200px',
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.05) 100%)',
+              background: 'rgba(255,255,255,0.08)',
               borderRadius: '50%',
               zIndex: 0
             }}></div>
@@ -1727,13 +1727,11 @@ const ClientRecords: React.FC<{
                 
                 <h1 style={{ 
                   margin: 0, 
-                  color: "#1e293b", 
-                  fontSize: windowWidth < 640 ? '20px' : '28px', 
+                  fontSize: windowWidth < 640 ? '20px' : '26px', 
                   fontWeight: 800,
-                  background: "linear-gradient(135deg, #1e293b 0%, #3b82f6 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  letterSpacing: "-0.025em",
+                  color: "#ffffff",
+                  letterSpacing: "0.06em",
+                  fontFamily: "'LemonMilk', 'Inter', sans-serif",
                   whiteSpace: 'normal'
                 }}>
                   New Client Registration
@@ -1744,20 +1742,21 @@ const ClientRecords: React.FC<{
               type="button"
               onClick={onNavigateBack}
               style={{
-                padding: windowWidth < 640 ? '10px 16px' : '12px 24px',
-                backgroundColor: '#6c757d',
+                padding: windowWidth < 640 ? '9px 14px' : '10px 20px',
+                backgroundColor: 'rgba(255,255,255,0.15)',
                 color: 'white',
-                border: 'none',
+                border: '1px solid rgba(255,255,255,0.35)',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: windowWidth < 640 ? '12px' : '14px',
-                fontWeight: '500',
-                transition: 'background-color 0.3s ease',
+                fontSize: windowWidth < 640 ? '12px' : '13px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease',
                 width: windowWidth < 640 ? '100%' : 'auto',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                backdropFilter: 'blur(10px)'
               }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
+              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'; }}
+              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'; }}
             >
               ← Back to Dashboard
             </button>
@@ -2837,7 +2836,7 @@ const ClientRecords: React.FC<{
           {/* Account Relations Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Account Relations
               </h2>
             </div>
@@ -2863,7 +2862,7 @@ const ClientRecords: React.FC<{
           {/* After Sales SC Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>After Sales SC</h2>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>After Sales SC</h2>
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
@@ -3555,7 +3554,7 @@ const ClientRecords: React.FC<{
           {/* Embassy Information Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Embassy Information
               </h2>
             </div>
@@ -3602,7 +3601,7 @@ const ClientRecords: React.FC<{
           {/* After Visa SC Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>After Visa SC</h2>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>After Visa SC</h2>
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
@@ -3645,7 +3644,7 @@ const ClientRecords: React.FC<{
           {/* Pre-Departure SC Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>Pre-Departure SC</h2>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>Pre-Departure SC</h2>
             </div>
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
@@ -3688,7 +3687,7 @@ const ClientRecords: React.FC<{
           {/* Tour Voucher Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>Tour Voucher</h2>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>Tour Voucher</h2>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginTop: "16px" }}>
                 {/* International Flight */}
@@ -4146,7 +4145,7 @@ const ClientRecords: React.FC<{
           {/* Post-Departure SC Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
-              <h2 style={{ margin: 0, color: "#1e293b", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.025em" }}>
+              <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Post-Departure
               </h2>
             </div>
