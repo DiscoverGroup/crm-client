@@ -688,14 +688,9 @@ const ClientRecords: React.FC<{
       // Only validate when marking as completed (not when unchecking)
       if (value === true) {
         const detail = paymentDetails[idx];
-        const amountVal = parseFloat((detail?.amount || '').replace(/,/g, '')) || 0;
         const hasDeposit = attachments.some(a => a.category === 'deposit-slip' && a.paymentIndex === idx && a.source === 'payment-terms');
         const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
 
-        if (amountVal <= 0) {
-          showErrorToast('Please enter an amount before marking as completed.');
-          return;
-        }
         if (!hasDeposit) {
           showErrorToast('Please upload a deposit slip before marking as completed.');
           return;
@@ -705,18 +700,26 @@ const ClientRecords: React.FC<{
           return;
         }
 
-        // For full cash, validate that payment amount matches total amount
-        if (paymentTerm === 'full_cash') {
-          const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
-          if (total > 0 && amountVal !== total) {
-            showErrorToast(`Full Cash payment amount (₱${amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}) must match the total amount (₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}).`);
+        // For non-full-cash, require amount
+        if (paymentTerm !== 'full_cash') {
+          const amountVal = parseFloat((detail?.amount || '').replace(/,/g, '')) || 0;
+          if (amountVal <= 0) {
+            showErrorToast('Please enter an amount before marking as completed.');
             return;
           }
         }
       }
-      setPaymentDetails(pd =>
-        pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
-      );
+
+      // For full cash, auto-set amount to total amount when marking as paid
+      if (paymentTerm === 'full_cash' && value === true) {
+        setPaymentDetails(pd =>
+          pd.map((row, i) => i === idx ? { ...row, completed: true, amount: totalAmount } : row)
+        );
+      } else {
+        setPaymentDetails(pd =>
+          pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
+        );
+      }
       return;
     }
 
@@ -2693,35 +2696,52 @@ const ClientRecords: React.FC<{
                           {completed && <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}> Done</span>}
                         </button>
 
-                        {/* Inline amount input */}
-                        <input
-                          type="text"
-                          placeholder="Amount"
-                          value={detail.amount || ""}
-                          onChange={e => handlePaymentDetailChange(idx, "amount", e.target.value.replace(/[^0-9.,]/g, ''))}
-                          onClick={e => e.stopPropagation()}
-                          style={{
-                            ...modernInput,
-                            margin: 0,
-                            flex: 1,
-                            minWidth: 100,
-                            maxWidth: 180,
-                            textAlign: "right",
-                            fontWeight: 600,
-                            fontSize: 14,
-                          }}
-                        />
+                        {paymentTerm === 'full_cash' ? (
+                          /* Full Cash: Mark as Paid checkbox instead of amount */
+                          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", flex: 1 }} onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={completed}
+                              onChange={e => handlePaymentDetailChange(idx, "completed", e.target.checked)}
+                              style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
+                            />
+                            <span style={{ fontSize: 14, fontWeight: 600, color: completed ? "#059669" : "#475569" }}>
+                              {completed ? "✓ Paid" : "Mark as Paid"}
+                            </span>
+                          </label>
+                        ) : (
+                          <>
+                            {/* Inline amount input */}
+                            <input
+                              type="text"
+                              placeholder="Amount"
+                              value={detail.amount || ""}
+                              onChange={e => handlePaymentDetailChange(idx, "amount", e.target.value.replace(/[^0-9.,]/g, ''))}
+                              onClick={e => e.stopPropagation()}
+                              style={{
+                                ...modernInput,
+                                margin: 0,
+                                flex: 1,
+                                minWidth: 100,
+                                maxWidth: 180,
+                                textAlign: "right",
+                                fontWeight: 600,
+                                fontSize: 14,
+                              }}
+                            />
 
-                        {/* Amount display */}
-                        <span style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: amountVal > 0 ? "#059669" : "#94a3b8",
-                          minWidth: 60,
-                          textAlign: "right",
-                        }}>
-                          {amountVal > 0 ? `₱${amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "—"}
-                        </span>
+                            {/* Amount display */}
+                            <span style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: amountVal > 0 ? "#059669" : "#94a3b8",
+                              minWidth: 60,
+                              textAlign: "right",
+                            }}>
+                              {amountVal > 0 ? `₱${amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "—"}
+                            </span>
+                          </>
+                        )}
 
                         {/* Date if set */}
                         {detail.date && (
@@ -2765,18 +2785,20 @@ const ClientRecords: React.FC<{
                     Payment {paymentModalIdx + 1}
                   </h3>
 
-                  {/* Completed checkbox */}
-                  <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer", userSelect: "none" }}>
-                    <input
-                      type="checkbox"
-                      checked={!!paymentDetails[paymentModalIdx]?.completed}
-                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "completed", e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
-                    />
-                    <span style={{ fontSize: 15, fontWeight: 600, color: paymentDetails[paymentModalIdx]?.completed ? "#059669" : "#475569" }}>
-                      {paymentDetails[paymentModalIdx]?.completed ? "✓ Completed" : "Mark as Completed"}
-                    </span>
-                  </label>
+                  {/* Completed checkbox — hidden for full_cash since it's inline */}
+                  {paymentTerm !== 'full_cash' && (
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer", userSelect: "none" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!paymentDetails[paymentModalIdx]?.completed}
+                        onChange={e => handlePaymentDetailChange(paymentModalIdx, "completed", e.target.checked)}
+                        style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
+                      />
+                      <span style={{ fontSize: 15, fontWeight: 600, color: paymentDetails[paymentModalIdx]?.completed ? "#059669" : "#475569" }}>
+                        {paymentDetails[paymentModalIdx]?.completed ? "✓ Completed" : "Mark as Completed"}
+                      </span>
+                    </label>
+                  )}
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Due Date</label>
                     <input
@@ -2798,7 +2820,8 @@ const ClientRecords: React.FC<{
                     />
                   </div>
 
-                  {/* Amount */}
+                  {/* Amount — hidden for full_cash (auto-set from total) */}
+                  {paymentTerm !== 'full_cash' && (
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Amount</label>
                     <input
@@ -2809,6 +2832,7 @@ const ClientRecords: React.FC<{
                       style={{ ...modernInput, margin: 0 }}
                     />
                   </div>
+                  )}
 
                   {/* Deposit Slip */}
                   <div style={{ marginBottom: 16 }}>
