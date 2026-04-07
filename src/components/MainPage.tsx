@@ -737,6 +737,25 @@ const ClientRecords: React.FC<{
         pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
       );
       trackSectionField('payment-terms-schedule', `payment${idx + 1}_completed`, value as boolean, `Payment ${idx + 1} Completed`);
+
+      // Log a clear entry with the amount paid
+      if (value === true) {
+        const amountPaid = parseFloat((paymentDetails[idx]?.amount || '').replace(/,/g, '')) || 0;
+        const formattedAmount = amountPaid > 0 ? `₱${amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '(no amount)';
+        logSectionAction(
+          'payment-terms-schedule',
+          `Payment ${idx + 1} Marked as Completed`,
+          `Amount paid: ${formattedAmount}`,
+          'done'
+        );
+      } else {
+        logSectionAction(
+          'payment-terms-schedule',
+          `Payment ${idx + 1} Marked as Incomplete`,
+          'Completion status removed',
+          'pending'
+        );
+      }
       return;
     }
 
