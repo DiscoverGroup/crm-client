@@ -5396,7 +5396,7 @@ const MainPage: React.FC<MainPageProps> = ({
                                     ActivityLogService.addLog({
                                       clientId: client.id,
                                       clientName: client.contactName || 'Unknown',
-                                      action: 'updated',
+                                      action: 'edited',
                                       performedBy: currentUser.fullName,
                                       profileImageR2Path: getCurrentUserProfileImagePath(),
                                       performedByUser: currentUser.fullName,
@@ -5490,7 +5490,7 @@ const MainPage: React.FC<MainPageProps> = ({
                               ActivityLogService.addLog({
                                 clientId: client.id,
                                 clientName: client.contactName || 'Unknown',
-                                action: 'updated',
+                                action: 'edited',
                                 performedBy: currentUser.fullName,
                                 profileImageR2Path: getCurrentUserProfileImagePath(),
                                 performedByUser: currentUser.fullName,

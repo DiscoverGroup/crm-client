@@ -45,7 +45,7 @@ const ArchivedClients: React.FC<ArchivedClientsProps> = ({ currentUser, onBack }
         ActivityLogService.addLog({
           clientId: client.id,
           clientName: client.contactName || 'Unknown',
-          action: 'updated',
+          action: 'edited',
           performedBy: currentUser,
           performedByUser: currentUser,
           profileImageR2Path: getCurrentUserProfileImagePath(),
