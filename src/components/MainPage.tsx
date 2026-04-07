@@ -677,12 +677,16 @@ const ClientRecords: React.FC<{
     value: string | boolean | React.ChangeEvent<HTMLInputElement>
   ) => {
     if (field === "dueDate" || field === "date") {
+      const label = field === "dueDate" ? "Due Date" : "Payment Date";
+      const currentVal = paymentDetails[idx]?.[field] || "";
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_${field}`, currentVal, `Payment ${idx + 1} ${label}`);
       setPaymentDetails(pd =>
         pd.map((row, i) => {
           if (i !== idx) return row;
           return { ...row, [field]: value as string };
         })
       );
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_${field}`, value as string, `Payment ${idx + 1} ${label}`);
       return;
     }
     if (field === "amount") {
@@ -692,9 +696,12 @@ const ClientRecords: React.FC<{
         return;
       }
       const sanitized = (value as string).replace(/[^0-9.,]/g, '');
+      const currentAmt = paymentDetails[idx]?.amount || "";
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_amount`, currentAmt, `Payment ${idx + 1} Amount`);
       setPaymentDetails(pd =>
         pd.map((row, i) => i === idx ? { ...row, amount: sanitized } : row)
       );
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_amount`, sanitized, `Payment ${idx + 1} Amount`);
       return;
     }
     if (field === "completed") {
@@ -725,9 +732,11 @@ const ClientRecords: React.FC<{
         }
       }
 
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_completed`, paymentDetails[idx]?.completed ?? false, `Payment ${idx + 1} Completed`);
       setPaymentDetails(pd =>
         pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
       );
+      trackSectionField('payment-terms-schedule', `payment${idx + 1}_completed`, value as boolean, `Payment ${idx + 1} Completed`);
       return;
     }
 
