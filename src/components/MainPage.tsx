@@ -705,31 +705,16 @@ const ClientRecords: React.FC<{
           return;
         }
 
-        // For non-full-cash, require amount
-        if (paymentTerm !== 'full_cash') {
-          const amountVal = parseFloat((detail?.amount || '').replace(/,/g, '')) || 0;
-          if (amountVal <= 0) {
-            showErrorToast('Please enter an amount before marking as completed.');
-            return;
-          }
+        const amountVal = parseFloat((detail?.amount || '').replace(/,/g, '')) || 0;
+        if (amountVal <= 0) {
+          showErrorToast('Please enter an amount before marking as completed.');
+          return;
         }
       }
 
-      // For full cash, auto-set amount to overall total when marking as paid
-      if (paymentTerm === 'full_cash' && value === true) {
-        const packageAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
-        const visaAmt = (!visaFOC && visaService) ? (parseFloat(visaAmount.replace(/,/g, '')) || 0) : 0;
-        const insAmt = (!insuranceFOC && insuranceService) ? (parseFloat(insuranceAmount.replace(/,/g, '')) || 0) : 0;
-        const etaAmt = eta ? (parseFloat(etaAmount.replace(/,/g, '')) || 0) : 0;
-        const overallTotal = packageAmt + visaAmt + insAmt + etaAmt;
-        setPaymentDetails(pd =>
-          pd.map((row, i) => i === idx ? { ...row, completed: true, amount: String(overallTotal) } : row)
-        );
-      } else {
-        setPaymentDetails(pd =>
-          pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
-        );
-      }
+      setPaymentDetails(pd =>
+        pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
+      );
       return;
     }
 
@@ -2776,56 +2761,21 @@ const ClientRecords: React.FC<{
                           {completed && <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}> Done</span>}
                         </button>
 
-                        {paymentTerm === 'full_cash' ? (
-                          /* Full Cash: Mark as Paid checkbox instead of amount */
-                          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none", flex: 1 }} onClick={e => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={completed}
-                              onChange={e => handlePaymentDetailChange(idx, "completed", e.target.checked)}
-                              style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
-                            />
-                            <span style={{ fontSize: 14, fontWeight: 600, color: completed ? "#059669" : "#475569" }}>
-                              {completed ? "✓ Paid" : "Mark as Paid"}
-                            </span>
-                          </label>
-                        ) : (
-                          <>
-                            {/* Inline amount input */}
-                            <input
-                              type="text"
-                              placeholder="Amount"
-                              value={detail.amount || ""}
-                              onChange={e => handlePaymentDetailChange(idx, "amount", e.target.value.replace(/[^0-9.,]/g, ''))}
-                              onClick={e => e.stopPropagation()}
-                              style={{
-                                ...modernInput,
-                                margin: 0,
-                                flex: 1,
-                                minWidth: 100,
-                                maxWidth: 180,
-                                textAlign: "right",
-                                fontWeight: 600,
-                                fontSize: 14,
-                              }}
-                            />
-
-                            {/* Amount display */}
-                            <span style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: amountVal > 0 ? "#059669" : "#94a3b8",
-                              minWidth: 60,
-                              textAlign: "right",
-                            }}>
-                              {amountVal > 0 ? `₱${amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : "—"}
-                            </span>
-                          </>
+                        {/* Summary info from modal data */}
+                        {amountVal > 0 && (
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>
+                            ₱{amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </span>
                         )}
 
-                        {/* Date if set */}
                         {detail.date && (
                           <span style={{ fontSize: 12, color: "#64748b" }}>{detail.date}</span>
+                        )}
+
+                        {(hasDeposit || hasReceipt) && (
+                          <span style={{ fontSize: 11, color: "#6366f1", fontWeight: 500 }}>
+                            {[hasDeposit && "Deposit", hasReceipt && "Receipt"].filter(Boolean).join(" · ")}
+                          </span>
                         )}
                       </div>
                     );
@@ -2865,20 +2815,18 @@ const ClientRecords: React.FC<{
                     Payment {paymentModalIdx + 1}
                   </h3>
 
-                  {/* Completed checkbox — hidden for full_cash since it's inline */}
-                  {paymentTerm !== 'full_cash' && (
-                    <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer", userSelect: "none" }}>
-                      <input
-                        type="checkbox"
-                        checked={!!paymentDetails[paymentModalIdx]?.completed}
-                        onChange={e => handlePaymentDetailChange(paymentModalIdx, "completed", e.target.checked)}
-                        style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
-                      />
-                      <span style={{ fontSize: 15, fontWeight: 600, color: paymentDetails[paymentModalIdx]?.completed ? "#059669" : "#475569" }}>
-                        {paymentDetails[paymentModalIdx]?.completed ? "✓ Completed" : "Mark as Completed"}
-                      </span>
-                    </label>
-                  )}
+                  {/* Completed checkbox */}
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, cursor: "pointer", userSelect: "none" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!paymentDetails[paymentModalIdx]?.completed}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "completed", e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: "#059669", cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: 15, fontWeight: 600, color: paymentDetails[paymentModalIdx]?.completed ? "#059669" : "#475569" }}>
+                      {paymentDetails[paymentModalIdx]?.completed ? "✓ Completed" : "Mark as Completed"}
+                    </span>
+                  </label>
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Due Date</label>
                     <input
@@ -2900,8 +2848,7 @@ const ClientRecords: React.FC<{
                     />
                   </div>
 
-                  {/* Amount — hidden for full_cash (auto-set from total) */}
-                  {paymentTerm !== 'full_cash' && (
+                  {/* Amount */}
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Amount</label>
                     <input
@@ -2912,7 +2859,6 @@ const ClientRecords: React.FC<{
                       style={{ ...modernInput, margin: 0 }}
                     />
                   </div>
-                  )}
 
                   {/* Deposit Slip */}
                   <div style={{ marginBottom: 16 }}>
