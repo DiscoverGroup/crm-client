@@ -517,6 +517,11 @@ const ClientRecords: React.FC<{
   const [insuranceService, setInsuranceService] = useState(false);
   const [eta, setEta] = useState(false);
   
+  // Service amount states
+  const [visaAmount, setVisaAmount] = useState("");
+  const [insuranceAmount, setInsuranceAmount] = useState("");
+  const [etaAmount, setEtaAmount] = useState("");
+  
   // Passport names — one per pax (dynamic)
   const [passportNames, setPassportNames] = useState<string[]>([""]);
   
@@ -710,10 +715,15 @@ const ClientRecords: React.FC<{
         }
       }
 
-      // For full cash, auto-set amount to total amount when marking as paid
+      // For full cash, auto-set amount to overall total when marking as paid
       if (paymentTerm === 'full_cash' && value === true) {
+        const packageAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+        const visaAmt = (!visaFOC && visaService) ? (parseFloat(visaAmount.replace(/,/g, '')) || 0) : 0;
+        const insAmt = (!insuranceFOC && insuranceService) ? (parseFloat(insuranceAmount.replace(/,/g, '')) || 0) : 0;
+        const etaAmt = eta ? (parseFloat(etaAmount.replace(/,/g, '')) || 0) : 0;
+        const overallTotal = packageAmt + visaAmt + insAmt + etaAmt;
         setPaymentDetails(pd =>
-          pd.map((row, i) => i === idx ? { ...row, completed: true, amount: totalAmount } : row)
+          pd.map((row, i) => i === idx ? { ...row, completed: true, amount: String(overallTotal) } : row)
         );
       } else {
         setPaymentDetails(pd =>
@@ -913,6 +923,11 @@ const ClientRecords: React.FC<{
         paymentTerm,
         termCount,
         totalAmount,
+        visaAmount: (!visaFOC && visaService) ? visaAmount : '',
+        insuranceAmount: (!insuranceFOC && insuranceService) ? insuranceAmount : '',
+        etaAmount: eta ? etaAmount : '',
+        visaFOC,
+        insuranceFOC,
         selectedPaymentBox,
         paymentDetails,
         additionalPayments: {
@@ -2574,50 +2589,115 @@ const ClientRecords: React.FC<{
               )}
             </div>
 
-            {/* Total Amount */}
+            {/* Package Amount */}
             <div style={{ marginBottom: 20 }}>
-              <label style={label}>Total Amount</label>
+              <label style={label}>Package Amount</label>
               <input
                 style={modernInput}
                 type="text"
-                placeholder="Enter total amount"
+                placeholder="Enter package amount"
                 value={totalAmount}
                 onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
               />
             </div>
 
-            {/* Payment Balance Summary */}
-            {paymentBoxes.length > 0 && (
-              (() => {
-                const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
-                const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
-                const remaining = total - paid;
-                return (
-                  <div style={{ marginBottom: 20, padding: "16px 20px", background: "linear-gradient(135deg, #f0f9ff, #eff6ff)", borderRadius: 12, border: "1px solid #bfdbfe" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 24, fontSize: 15 }}>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Amount</div>
-                        <div style={{ color: "#1e293b", fontWeight: 700, fontSize: 18 }}>
-                          {total > 0 ? `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+            {/* Overall Expenses Summary */}
+            {(() => {
+              const packageAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+              const visaAmt = (!visaFOC && visaService) ? (parseFloat(visaAmount.replace(/,/g, '')) || 0) : 0;
+              const insAmt = (!insuranceFOC && insuranceService) ? (parseFloat(insuranceAmount.replace(/,/g, '')) || 0) : 0;
+              const etaAmt = eta ? (parseFloat(etaAmount.replace(/,/g, '')) || 0) : 0;
+              const overallTotal = packageAmt + visaAmt + insAmt + etaAmt;
+              const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
+              const remaining = overallTotal - paid;
+              const hasServices = visaAmt > 0 || insAmt > 0 || etaAmt > 0;
+              return (
+                <div style={{ marginBottom: 20, padding: "16px 20px", background: "linear-gradient(135deg, #f0f9ff, #eff6ff)", borderRadius: 12, border: "1px solid #bfdbfe" }}>
+                  {/* Subtotals */}
+                  {hasServices && (
+                    <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #dbeafe" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Breakdown</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                          <span style={{ color: "#475569" }}>Package Amount</span>
+                          <span style={{ fontWeight: 600, color: "#1e293b" }}>{packageAmt > 0 ? `₱${packageAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}</span>
                         </div>
+                        {visaAmt > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#475569" }}>Visa Service</span>
+                            <span style={{ fontWeight: 600, color: "#1e293b" }}>₱{visaAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {visaFOC && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#059669" }}>Visa Service (FOC)</span>
+                            <span style={{ fontWeight: 600, color: "#059669" }}>FREE</span>
+                          </div>
+                        )}
+                        {insAmt > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#475569" }}>Insurance Service</span>
+                            <span style={{ fontWeight: 600, color: "#1e293b" }}>₱{insAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        {insuranceFOC && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#059669" }}>Insurance Service (FOC)</span>
+                            <span style={{ fontWeight: 600, color: "#059669" }}>FREE</span>
+                          </div>
+                        )}
+                        {etaAmt > 0 && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#475569" }}>ETA</span>
+                            <span style={{ fontWeight: 600, color: "#1e293b" }}>₱{etaAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Paid</div>
-                        <div style={{ color: "#059669", fontWeight: 700, fontSize: 18 }}>
-                          ₱{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
+                    </div>
+                  )}
+                  {/* FOC indicators when no other services */}
+                  {!hasServices && (visaFOC || insuranceFOC) && (
+                    <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid #dbeafe" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {visaFOC && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#059669" }}>Visa Service (FOC)</span>
+                            <span style={{ fontWeight: 600, color: "#059669" }}>FREE</span>
+                          </div>
+                        )}
+                        {insuranceFOC && (
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                            <span style={{ color: "#059669" }}>Insurance Service (FOC)</span>
+                            <span style={{ fontWeight: 600, color: "#059669" }}>FREE</span>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Remaining Balance</div>
-                        <div style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700, fontSize: 18 }}>
-                          {total > 0 ? `₱${remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                        </div>
+                    </div>
+                  )}
+                  {/* Main totals */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 24, fontSize: 15 }}>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Overall Total</div>
+                      <div style={{ color: "#1e293b", fontWeight: 700, fontSize: 18 }}>
+                        {overallTotal > 0 ? `₱${overallTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Paid</div>
+                      <div style={{ color: "#059669", fontWeight: 700, fontSize: 18 }}>
+                        ₱{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                      <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Remaining Balance</div>
+                      <div style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700, fontSize: 18 }}>
+                        {overallTotal > 0 ? `₱${remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
                       </div>
                     </div>
                   </div>
-                );
-              })()
-            )}
+                </div>
+              );
+            })()}
 
             {paymentBoxes.length > 1 && (
               <div style={{ marginBottom: 24 }}>
@@ -3244,34 +3324,70 @@ const ClientRecords: React.FC<{
 
             {/* Visa Service Options (hidden when FOC is checked) */}
             {!visaFOC && (
-            <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-              <label style={checkboxLabel}>
-                <input
-                  type="checkbox"
-                  style={modernCheckbox}
-                  checked={visaService}
-                  onChange={e => setVisaService(e.target.checked)}
-                />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Visa Service</span>
-              </label>
-              <label style={checkboxLabel}>
-                <input
-                  type="checkbox"
-                  style={modernCheckbox}
-                  checked={insuranceService}
-                  onChange={e => setInsuranceService(e.target.checked)}
-                />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Insurance Service</span>
-              </label>
-              <label style={checkboxLabel}>
-                <input
-                  type="checkbox"
-                  style={modernCheckbox}
-                  checked={eta}
-                  onChange={e => setEta(e.target.checked)}
-                />
-                <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>ETA</span>
-              </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
+                  <input
+                    type="checkbox"
+                    style={modernCheckbox}
+                    checked={visaService}
+                    onChange={e => setVisaService(e.target.checked)}
+                  />
+                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Visa Service</span>
+                </label>
+                {visaService && (
+                  <input
+                    type="text"
+                    placeholder="Amount"
+                    value={visaAmount}
+                    onChange={e => setVisaAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
+                  />
+                )}
+                {visaService && (() => { const v = parseFloat(visaAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
+                  <input
+                    type="checkbox"
+                    style={modernCheckbox}
+                    checked={insuranceService}
+                    onChange={e => setInsuranceService(e.target.checked)}
+                  />
+                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Insurance Service</span>
+                </label>
+                {insuranceService && (
+                  <input
+                    type="text"
+                    placeholder="Amount"
+                    value={insuranceAmount}
+                    onChange={e => setInsuranceAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
+                  />
+                )}
+                {insuranceService && (() => { const v = parseFloat(insuranceAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
+                  <input
+                    type="checkbox"
+                    style={modernCheckbox}
+                    checked={eta}
+                    onChange={e => setEta(e.target.checked)}
+                  />
+                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>ETA</span>
+                </label>
+                {eta && (
+                  <input
+                    type="text"
+                    placeholder="Amount"
+                    value={etaAmount}
+                    onChange={e => setEtaAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
+                  />
+                )}
+                {eta && (() => { const v = parseFloat(etaAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
+              </div>
             </div>
             )}
 
