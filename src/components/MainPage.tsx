@@ -5296,6 +5296,14 @@ const MainPage: React.FC<MainPageProps> = ({
                       onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#f8faff')}
                       onClick={() => handleClientEdit(client)}
                     >
+                        <td style={{
+                        padding: '15px 16px',
+                        color: '#64748b',
+                        fontSize: '13px',
+                        fontFamily: 'monospace'
+                      }}>
+                        {client.clientNo || '—'}
+                      </td>
                       <td style={{
                         padding: '15px 20px',
                         color: '#0A2D74',
@@ -5332,14 +5340,7 @@ const MainPage: React.FC<MainPageProps> = ({
                       }}>
                         {client.contactNo || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>No phone</span>}
                       </td>
-                      <td style={{
-                        padding: '15px 16px',
-                        color: '#64748b',
-                        fontSize: '13px',
-                        fontFamily: 'monospace'
-                      }}>
-                        {client.clientNo || '—'}
-                      </td>
+                    
                       <td style={{
                         padding: '15px 16px',
                         color: '#64748b',
