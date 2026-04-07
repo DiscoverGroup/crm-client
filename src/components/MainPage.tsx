@@ -2714,7 +2714,7 @@ const ClientRecords: React.FC<{
             {/* Payment Details — horizontal pill list */}
             {paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {paymentDetails.slice(0, paymentBoxes.length).map((detail, idx) => {
                     const hasDeposit = attachments.some(a => a.category === 'deposit-slip' && a.paymentIndex === idx && a.source === 'payment-terms');
                     const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
@@ -2723,61 +2723,36 @@ const ClientRecords: React.FC<{
                     const completed = !!detail.completed;
                     const amountVal = parseFloat((detail.amount || '').replace(/,/g, '')) || 0;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={idx}
+                        onClick={() => setPaymentModalIdx(idx)}
                         style={{
                           display: "flex",
+                          flexDirection: "column",
                           alignItems: "center",
-                          gap: 12,
-                          padding: "10px 14px",
+                          gap: 4,
+                          padding: "10px 16px",
                           borderRadius: 10,
                           border: completed ? "2px solid #059669" : filled ? "2px solid #6366f1" : "2px solid #e2e8f0",
-                          background: completed ? "rgba(5,150,105,0.04)" : filled ? "rgba(99,102,241,0.04)" : "#f8fafc",
+                          background: completed ? "linear-gradient(135deg,#059669,#10b981)" : filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#f8fafc",
+                          color: completed || filled ? "#fff" : "#475569",
+                          cursor: "pointer",
                           transition: "all 0.15s",
+                          minWidth: 100,
+                          fontFamily: "inherit",
                         }}
                       >
-                        {/* Payment label + status */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentModalIdx(idx)}
-                          style={{
-                            padding: "6px 14px",
-                            borderRadius: 6,
-                            border: completed ? "1.5px solid #059669" : filled ? "1.5px solid #6366f1" : "1.5px solid #cbd5e1",
-                            background: completed ? "linear-gradient(135deg,#059669,#10b981)" : filled ? "linear-gradient(135deg,#6366f1,#818cf8)" : "#fff",
-                            color: completed || filled ? "#fff" : "#475569",
-                            fontWeight: 600,
-                            fontSize: 13,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 5,
-                            minWidth: 110,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {completed && <span style={{ fontSize: 12 }}>✓</span>}
-                          Payment {idx + 1}
-                          {completed && <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.9 }}> Done</span>}
-                        </button>
-
-                        {/* Summary info from modal data */}
+                        <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap" }}>
+                          {completed && "✓ "}Payment {idx + 1}
+                        </span>
                         {amountVal > 0 && (
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.9 }}>
                             ₱{amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </span>
                         )}
-
-                        {detail.date && (
-                          <span style={{ fontSize: 12, color: "#64748b" }}>{detail.date}</span>
-                        )}
-
-                        {(hasDeposit || hasReceipt) && (
-                          <span style={{ fontSize: 11, color: "#6366f1", fontWeight: 500 }}>
-                            {[hasDeposit && "Deposit", hasReceipt && "Receipt"].filter(Boolean).join(" · ")}
-                          </span>
-                        )}
-                      </div>
+                        {completed && <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.85 }}>Done</span>}
+                      </button>
                     );
                   })}
                 </div>
