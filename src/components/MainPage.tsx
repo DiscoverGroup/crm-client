@@ -1736,6 +1736,7 @@ const ClientRecords: React.FC<{
 
   function handlePaymentTermChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const selected = e.target.value;
+    trackSectionField('payment-terms-schedule', 'paymentTerm', paymentTerm, 'Payment Terms');
     trackSectionField('payment-terms-schedule', 'paymentTerm', selected, 'Payment Terms');
     setPaymentTerm(selected);
     const opt = paymentOptions.find(o => o.value === selected)!;
@@ -1743,9 +1744,11 @@ const ClientRecords: React.FC<{
     setIsEditingMaxTerms(false);
     if (selected === "installment") {
       setTermCount(0); // start at 0, let user choose
+      trackSectionField('payment-terms-schedule', 'termCount', termCount, 'Number of Terms');
       trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
     } else {
       setTermCount(opt.terms);
+      trackSectionField('payment-terms-schedule', 'termCount', termCount, 'Number of Terms');
       trackSectionField('payment-terms-schedule', 'termCount', opt.terms, 'Number of Terms');
     }
     setSelectedPaymentBox(null);
@@ -2605,7 +2608,7 @@ const ClientRecords: React.FC<{
                 type="text"
                 placeholder="Enter package amount"
                 value={totalAmount}
-                onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'totalAmount', val, 'Package Amount'); setTotalAmount(val); }}
+                onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'totalAmount', totalAmount, 'Package Amount'); setTotalAmount(val); trackSectionField('payment-terms-schedule', 'totalAmount', val, 'Package Amount'); }}
               />
             </div>
 
@@ -3209,7 +3212,7 @@ const ClientRecords: React.FC<{
                   type="checkbox"
                   style={modernCheckbox}
                   checked={visaFOC}
-                  onChange={e => { trackSectionField('payment-terms-schedule', 'visaFOC', e.target.checked, 'Visa FOC'); setVisaFOC(e.target.checked); }}
+                  onChange={e => { trackSectionField('payment-terms-schedule', 'visaFOC', visaFOC, 'Visa FOC'); setVisaFOC(e.target.checked); trackSectionField('payment-terms-schedule', 'visaFOC', e.target.checked, 'Visa FOC'); }}
                 />
                 <span style={{ fontSize: "15px", color: visaFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
                   Visa FOC (Free of Charge)
@@ -3233,7 +3236,7 @@ const ClientRecords: React.FC<{
                   type="checkbox"
                   style={modernCheckbox}
                   checked={insuranceFOC}
-                  onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceFOC', e.target.checked, 'Insurance FOC'); setInsuranceFOC(e.target.checked); }}
+                  onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceFOC', insuranceFOC, 'Insurance FOC'); setInsuranceFOC(e.target.checked); trackSectionField('payment-terms-schedule', 'insuranceFOC', e.target.checked, 'Insurance FOC'); }}
                 />
                 <span style={{ fontSize: "15px", color: insuranceFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
                   Insurance FOC (Free of Charge)
@@ -3255,7 +3258,7 @@ const ClientRecords: React.FC<{
                     type="checkbox"
                     style={modernCheckbox}
                     checked={visaService}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'visaService', e.target.checked, 'Visa Service'); setVisaService(e.target.checked); }}
+                    onChange={e => { trackSectionField('payment-terms-schedule', 'visaService', visaService, 'Visa Service'); setVisaService(e.target.checked); trackSectionField('payment-terms-schedule', 'visaService', e.target.checked, 'Visa Service'); }}
                   />
                   <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Visa Service</span>
                 </label>
@@ -3264,7 +3267,7 @@ const ClientRecords: React.FC<{
                     type="text"
                     placeholder="Amount"
                     value={visaAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'visaAmount', val, 'Visa Amount'); setVisaAmount(val); }}
+                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'visaAmount', visaAmount, 'Visa Amount'); setVisaAmount(val); trackSectionField('payment-terms-schedule', 'visaAmount', val, 'Visa Amount'); }}
                     style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
                   />
                 )}
@@ -3276,7 +3279,7 @@ const ClientRecords: React.FC<{
                     type="checkbox"
                     style={modernCheckbox}
                     checked={insuranceService}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceService', e.target.checked, 'Insurance Service'); setInsuranceService(e.target.checked); }}
+                    onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceService', insuranceService, 'Insurance Service'); setInsuranceService(e.target.checked); trackSectionField('payment-terms-schedule', 'insuranceService', e.target.checked, 'Insurance Service'); }}
                   />
                   <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Insurance Service</span>
                 </label>
@@ -3285,7 +3288,7 @@ const ClientRecords: React.FC<{
                     type="text"
                     placeholder="Amount"
                     value={insuranceAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'insuranceAmount', val, 'Insurance Amount'); setInsuranceAmount(val); }}
+                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'insuranceAmount', insuranceAmount, 'Insurance Amount'); setInsuranceAmount(val); trackSectionField('payment-terms-schedule', 'insuranceAmount', val, 'Insurance Amount'); }}
                     style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
                   />
                 )}
@@ -3297,7 +3300,7 @@ const ClientRecords: React.FC<{
                     type="checkbox"
                     style={modernCheckbox}
                     checked={eta}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'eta', e.target.checked, 'ETA'); setEta(e.target.checked); }}
+                    onChange={e => { trackSectionField('payment-terms-schedule', 'eta', eta, 'ETA'); setEta(e.target.checked); trackSectionField('payment-terms-schedule', 'eta', e.target.checked, 'ETA'); }}
                   />
                   <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>ETA</span>
                 </label>
@@ -3306,7 +3309,7 @@ const ClientRecords: React.FC<{
                     type="text"
                     placeholder="Amount"
                     value={etaAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'etaAmount', val, 'ETA Amount'); setEtaAmount(val); }}
+                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'etaAmount', etaAmount, 'ETA Amount'); setEtaAmount(val); trackSectionField('payment-terms-schedule', 'etaAmount', val, 'ETA Amount'); }}
                     style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
                   />
                 )}
