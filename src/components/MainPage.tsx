@@ -2694,33 +2694,6 @@ const ClientRecords: React.FC<{
               );
             })()}
 
-            {paymentBoxes.length > 1 && (
-              <div style={{ marginBottom: 24 }}>
-                <label style={label}>Payment Counts</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-                  {paymentBoxes.map(num => (
-                    <button
-                      type="button"
-                      key={num}
-                      onClick={() => setSelectedPaymentBox(num)}
-                      style={{
-                        width: 34, height: 34,
-                        fontSize: 15,
-                        border: "1.5px solid #6366f1",
-                        borderRadius: 8,
-                        background: selectedPaymentBox === num ? "#6366f1" : "#fff",
-                        color: selectedPaymentBox === num ? "#fff" : "#222",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        transition: "background .13s"
-                      }}>
-                      {num}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Payment Details — horizontal pill list */}
             {paymentBoxes.length > 0 && (
               <div style={{ marginTop: 20 }}>
