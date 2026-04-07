@@ -685,6 +685,35 @@ const ClientRecords: React.FC<{
       return;
     }
     if (field === "completed") {
+      // Only validate when marking as completed (not when unchecking)
+      if (value === true) {
+        const detail = paymentDetails[idx];
+        const amountVal = parseFloat((detail?.amount || '').replace(/,/g, '')) || 0;
+        const hasDeposit = attachments.some(a => a.category === 'deposit-slip' && a.paymentIndex === idx && a.source === 'payment-terms');
+        const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
+
+        if (amountVal <= 0) {
+          showErrorToast('Please enter an amount before marking as completed.');
+          return;
+        }
+        if (!hasDeposit) {
+          showErrorToast('Please upload a deposit slip before marking as completed.');
+          return;
+        }
+        if (!hasReceipt) {
+          showErrorToast('Please upload a receipt before marking as completed.');
+          return;
+        }
+
+        // For full cash, validate that payment amount matches total amount
+        if (paymentTerm === 'full_cash') {
+          const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+          if (total > 0 && amountVal !== total) {
+            showErrorToast(`Full Cash payment amount (₱${amountVal.toLocaleString(undefined, { minimumFractionDigits: 2 })}) must match the total amount (₱${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}).`);
+            return;
+          }
+        }
+      }
       setPaymentDetails(pd =>
         pd.map((row, i) => i === idx ? { ...row, completed: value as boolean } : row)
       );
@@ -2587,7 +2616,7 @@ const ClientRecords: React.FC<{
               })()
             )}
 
-            {paymentBoxes.length > 0 && (
+            {paymentBoxes.length > 1 && (
               <div style={{ marginBottom: 24 }}>
                 <label style={label}>Payment Counts</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
