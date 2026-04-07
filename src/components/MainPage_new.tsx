@@ -131,6 +131,7 @@ const MainPage: React.FC = () => {
             onNavigateToClientRecords={handleNavigateToClientRecords}
             onNavigateToProfile={() => {}}
             onNavigateToDeleted={() => {}}
+            onNavigateToArchived={() => {}}
             onNavigateToActivityLog={() => {}}
             onNavigateToCalendar={() => {}}
           />
