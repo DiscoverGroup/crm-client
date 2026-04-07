@@ -52,8 +52,7 @@ const Navbar: React.FC<NavbarProps> = ({
     zIndex: 999,
     gap: "8px",
     height: "64px",
-    borderBottom: "1px solid rgba(40, 162, 220, 0.3)",
-    overflow: "hidden"
+    borderBottom: "1px solid rgba(40, 162, 220, 0.3)"
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
       {/* Mobile Hamburger Menu */}
