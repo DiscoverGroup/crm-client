@@ -424,15 +424,15 @@ All security documentation is organized in a comprehensive library with multiple
 ### Additional Documentation
 
 #### Feature-Specific Documentation
-- **[MESSAGING-OPTIMIZATION.md](MESSAGING-OPTIMIZATION.md)** - Messaging system security
-- **[MONGODB-SETUP.md](MONGODB-SETUP.md)** - Database security configuration
-- **[R2-INTEGRATION-COMPLETE.md](R2-INTEGRATION-COMPLETE.md)** - Cloud storage security
-- **[ADMIN-CREDENTIALS.md](ADMIN-CREDENTIALS.md)** - Admin account management
+- **[MESSAGING-OPTIMIZATION.md](../messaging/MESSAGING-OPTIMIZATION.md)** - Messaging system security
+- **[MONGODB-SETUP.md](../infrastructure/MONGODB-SETUP.md)** - Database security configuration
+- **[R2-INTEGRATION-COMPLETE.md](../infrastructure/R2-INTEGRATION-COMPLETE.md)** - Cloud storage security
+- **[ADMIN-CREDENTIALS.md](../deployment/ADMIN-CREDENTIALS.md)** - Admin account management
 
 #### System Documentation
-- **[README.md](README.md)** - Project overview and setup
-- **[README-CRM-FEATURES.md](src/README-CRM-FEATURES.md)** - CRM feature documentation
-- **[SYSTEM-ANALYSIS-ISSUES.md](SYSTEM-ANALYSIS-ISSUES.md)** - Known issues and fixes
+- **[README.md](../../README.md)** - Project overview and setup
+- **[README-CRM-FEATURES.md](../features/README-CRM-FEATURES.md)** - CRM feature documentation
+- **[SYSTEM-ANALYSIS-ISSUES.md](../system/SYSTEM-ANALYSIS-ISSUES.md)** - Known issues and fixes
 
 ### Code Examples Location
 

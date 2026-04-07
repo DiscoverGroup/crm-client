@@ -2,6 +2,7 @@ export type PaymentDetail = {
   dueDate: string;
   date: string;
   completed?: boolean;
+  amount?: string;
   depositSlip?: File | null;
   receipt?: File | null;
 };
@@ -22,6 +23,7 @@ export interface OtherPayments {
 export interface PaymentData {
   paymentTerm: string;
   termCount: number;
+  totalAmount: string;
   selectedPaymentBox: number | null;
   paymentDetails: PaymentDetail[];
   additionalPayments: {
@@ -35,11 +37,13 @@ export interface PaymentData {
 export interface SerializedPaymentData {
   paymentTerm: string;
   termCount: number;
+  totalAmount?: string;
   selectedPaymentBox: number | null;
   paymentDetails: Array<{
     dueDate: string;
     date: string;
     completed?: boolean;
+    amount?: string;
     depositSlip: string | null;
     receipt: string | null;
   }>;

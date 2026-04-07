@@ -65,12 +65,7 @@ export class FileRecoveryService {
 
   // Save all recovery requests
   private static saveRequests(requests: FileRecoveryRequest[]): void {
-    try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
-    } catch (error) {
-      // console.error('Error saving file recovery requests:', error);
-      throw error;
-    }
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(requests));
   }
 
   // Create a new recovery request

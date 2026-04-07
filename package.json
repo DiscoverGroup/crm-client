@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:local": "concurrently --names \"vite,fns,tunnel\" --prefix-colors \"cyan,yellow,magenta\" \"vite\" \"tsx local-functions-server.ts\" \"tsx start-tunnel.ts\"",
+    "dev:local": "concurrently --names \"vite,fns,tunnel\" --prefix-colors \"cyan,yellow,magenta\" \"vite\" \"tsx scripts/local-functions-server.ts\" \"tsx scripts/start-tunnel.ts\"",
     "netlify": "netlify dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "check": "bash scripts/pre-push-check.sh",
+    "check:fix": "bash scripts/pre-push-check.sh --fix",
     "storage:status": "powershell -Command \"Get-Service MinIOCRM | Select-Object Name,Status,StartType | Format-Table -AutoSize\"",
     "storage:start": "powershell -Command \"Start-Service MinIOCRM; Write-Host 'MinIO started. Console: http://localhost:9001'\"",
     "storage:stop": "powershell -Command \"Stop-Service MinIOCRM; Write-Host 'MinIO stopped.'\""

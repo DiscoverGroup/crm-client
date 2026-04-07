@@ -36,9 +36,9 @@ try {
 const PORT = 9999;
 
 // Cache handlers so each function module is only imported once per run
-const handlerCache = new Map<string, Function>();
+const handlerCache = new Map<string, (event: unknown) => Promise<unknown>>();
 
-async function getHandler(name: string): Promise<Function | null> {
+async function getHandler(name: string): Promise<((event: unknown) => Promise<unknown>) | null> {
   if (!handlerCache.has(name)) {
     try {
       // tsx registers a TypeScript loader so dynamic import of .ts files works

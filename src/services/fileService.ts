@@ -98,68 +98,63 @@ export class FileService {
     currentUser?: string,
     fileType?: string
   ): Promise<string> {
-    try {
-      // Determine folder based on category
-      const folder = this.getFolderByCategory(category, source);
-      
-      const storedFile = await this.fileToStoredFile(file, folder);
-      const attachment: FileAttachment = {
-        file: storedFile,
-        category,
-        clientId,
-        paymentIndex,
-        paymentType,
-        source,
-        fileType
-      };
+    // Determine folder based on category
+    const folder = this.getFolderByCategory(category, source);
+    
+    const storedFile = await this.fileToStoredFile(file, folder);
+    const attachment: FileAttachment = {
+      file: storedFile,
+      category,
+      clientId,
+      paymentIndex,
+      paymentType,
+      source,
+      fileType
+    };
 
-      const existingAttachments = this.getAllFileAttachments();
-      existingAttachments.push(attachment);
-      
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
-      
-      // Fire-and-forget sync to MongoDB
-      this.saveAttachmentToMongoDB(attachment).then(() => {
-        realtimeSync.signalChange('file_attachments');
-      }).catch(() => {});
-      
-      // Helper function to get current user's profile image R2 path
-      const getUserProfileImagePath = (userName: string): string | undefined => {
-        const users = localStorage.getItem('crm_users');
-        if (users) {
-          const userList = JSON.parse(users);
-          const user = userList.find((u: any) => u.fullName === userName);
-          return user?.profileImageR2Path;
-        }
-        return undefined;
-      };
-      
-      // Log file upload activity if clientId exists
-      if (clientId && currentUser) {
-        const client = ClientService.getClientById(clientId);
-        const fileTypeLabels: Record<string, string> = {
-          'after-visa-sc-attachment': 'after-visa',
-          'pre-departure-sc-attachment': 'pre-departure',
-          'post-departure-sc-attachment': 'post-departure',
-          'after-sales-sc-attachment': 'after-sales',
-        };
-        const displayCategory = (fileType && fileTypeLabels[fileType]) ? fileTypeLabels[fileType] : category;
-        ActivityLogService.addLog({
-          clientId,
-          clientName: client?.contactName || 'Unknown',
-          action: 'file_uploaded',
-          performedBy: currentUser,
-          performedByUser: currentUser,
-          profileImageR2Path: getUserProfileImagePath(currentUser),
-          details: `Uploaded file: ${file.name} (${displayCategory}${source ? ' - ' + source : ''})`
-        });
+    const existingAttachments = this.getAllFileAttachments();
+    existingAttachments.push(attachment);
+    
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
+    
+    // Fire-and-forget sync to MongoDB
+    this.saveAttachmentToMongoDB(attachment).then(() => {
+      realtimeSync.signalChange('file_attachments');
+    }).catch(() => {});
+    
+    // Helper function to get current user's profile image R2 path
+    const getUserProfileImagePath = (userName: string): string | undefined => {
+      const users = localStorage.getItem('crm_users');
+      if (users) {
+        const userList = JSON.parse(users);
+        const user = userList.find((u: any) => u.fullName === userName);
+        return user?.profileImageR2Path;
       }
-      
-      return storedFile.id;
-    } catch (error) {
-      // console.error('Error saving file attachment:', error);
-      throw error;
+      return undefined;
+    };
+    
+    // Log file upload activity if clientId exists
+    if (clientId && currentUser) {
+      const client = ClientService.getClientById(clientId);
+      const fileTypeLabels: Record<string, string> = {
+        'after-visa-sc-attachment': 'after-visa',
+        'pre-departure-sc-attachment': 'pre-departure',
+        'post-departure-sc-attachment': 'post-departure',
+        'after-sales-sc-attachment': 'after-sales',
+      };
+      const displayCategory = (fileType && fileTypeLabels[fileType]) ? fileTypeLabels[fileType] : category;
+      ActivityLogService.addLog({
+        clientId,
+        clientName: client?.contactName || 'Unknown',
+        action: 'file_uploaded',
+        performedBy: currentUser,
+        performedByUser: currentUser,
+        profileImageR2Path: getUserProfileImagePath(currentUser),
+        details: `Uploaded file: ${file.name} (${displayCategory}${source ? ' - ' + source : ''})`
+      });
     }
+    
+    return storedFile.id;
   }
 
   // Get folder path based on category and source

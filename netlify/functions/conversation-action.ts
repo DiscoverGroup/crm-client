@@ -74,18 +74,20 @@ export const handler: Handler = async (event) => {
     let updateField: any = {};
 
     switch (action) {
-      case 'togglePin':
+      case 'togglePin': {
         // Get current state and toggle it
         const currentPinDoc = await conversationMetaCol.findOne({ userId, conversationKey });
         updateField = { isPinned: !(currentPinDoc?.isPinned || false) };
         break;
-      case 'toggleArchive':
+      }
+      case 'toggleArchive': {
         // Get current state and toggle it
         const currentArchiveDoc = await conversationMetaCol.findOne({ userId, conversationKey });
         updateField = { isArchived: !(currentArchiveDoc?.isArchived || false) };
         break;
+      }
       case 'isPinned':
-      case 'isArchived':
+      case 'isArchived': {
         // Query operation
         const doc = await conversationMetaCol.findOne({
           userId,
@@ -100,6 +102,7 @@ export const handler: Handler = async (event) => {
             data: doc ? doc[action] : false 
           })
         };
+      }
       default:
         await client.close();
         return {

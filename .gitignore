@@ -27,10 +27,10 @@ dist-ssr
 *.sln
 *.sw?
 # Sensitive files - should never be committed
-ADMIN-CREDENTIALS.md
+docs/deployment/ADMIN-CREDENTIALS.md
 SECRETS.md
 CREDENTIALS.md
-test-mongodb.js
+scripts/test-mongodb.js
 
 # Netlify
 .netlify

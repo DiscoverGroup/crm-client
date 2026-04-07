@@ -128,7 +128,7 @@ const UPLOAD_ALLOWED_TYPES = new Set([
 function validateUploadFile(file: File): string | null {
   if (file.size > UPLOAD_MAX_BYTES) {
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
-    return `File is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`;
+    return `File is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`;
   }
   if (!UPLOAD_ALLOWED_TYPES.has(file.type))
     return 'Invalid file type. Only images (JPEG, PNG, GIF, WebP, BMP, TIFF, SVG, HEIC), PDF, and Word documents (.doc, .docx) are allowed.';
@@ -323,6 +323,16 @@ const ClientRecords: React.FC<{
           setVoucherLinkHotelVoucher(vl.hotelVoucher || '');
           setVoucherLinkOtherFiles(vl.otherFiles || '');
 
+          // Load travel fund data
+          const clientAny = existingClient as any;
+          setTravelFundRequestDate(clientAny.travelFundRequestDate || '');
+          setTravelFundApprovalDate(clientAny.travelFundApprovalDate || '');
+          setTravelFundReleasedAmount(clientAny.travelFundReleasedAmount || '');
+          setTravelFundTotalAmount(clientAny.travelFundTotalAmount || '');
+          if (Array.isArray(clientAny.travelFundPayments) && clientAny.travelFundPayments.length > 0) {
+            setTravelFundPayments(clientAny.travelFundPayments);
+          }
+
           // Load saved payment data for existing client
           const savedPayment = PaymentService.getPaymentData(clientId);
           if (savedPayment) {
@@ -332,12 +342,14 @@ const ClientRecords: React.FC<{
               setPaymentTerm(term);
             }
             if (typeof savedPayment.termCount === 'number') setTermCount(savedPayment.termCount);
+            if ((savedPayment as any).totalAmount) setTotalAmount((savedPayment as any).totalAmount);
             if (savedPayment.selectedPaymentBox !== undefined) setSelectedPaymentBox(savedPayment.selectedPaymentBox as number | null);
             if (Array.isArray(savedPayment.paymentDetails)) {
               setPaymentDetails(savedPayment.paymentDetails.map((d: any) => ({
                 dueDate: (d.dueDate as string) || '',
                 date: (d.date as string) || '',
                 completed: !!(d.completed),
+                amount: (d.amount as string) || '',
                 depositSlip: null,
                 receipt: null,
               })));
@@ -457,6 +469,7 @@ const ClientRecords: React.FC<{
   // Payment state
   const [paymentTerm, setPaymentTerm] = useState(paymentOptions[0].value);
   const [termCount, setTermCount] = useState(0);
+  const [totalAmount, setTotalAmount] = useState("");
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
   const [paymentModalIdx, setPaymentModalIdx] = useState<number | null>(null);
   const [companionModalIdx, setCompanionModalIdx] = useState<number | null>(null);
@@ -468,8 +481,9 @@ const ClientRecords: React.FC<{
   const [companions, setCompanions] = useState<Companion[]>([]);
 
   // Payment Details Table for terms
+  const initialPaymentCount = paymentOptions[0].value === "installment" ? termCount : paymentOptions[0].terms;
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
-    Array.from({ length: termCount }, () => ({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null }))
+    Array.from({ length: initialPaymentCount }, () => ({ dueDate: "", date: "", completed: false, amount: "", depositSlip: null, receipt: null }))
   );
 
   // Additional payment states
@@ -538,6 +552,8 @@ const ClientRecords: React.FC<{
   const [travelFundRequestDate, setTravelFundRequestDate] = useState("");
   const [travelFundApprovalDate, setTravelFundApprovalDate] = useState("");
   const [travelFundReleasedAmount, setTravelFundReleasedAmount] = useState("");
+  const [travelFundTotalAmount, setTravelFundTotalAmount] = useState("");
+  const [travelFundPayments, setTravelFundPayments] = useState<{ date: string; amount: string }[]>([{ date: "", amount: "" }]);
 
   // Visa payment state
   type VisaPayment = {
@@ -579,18 +595,19 @@ const ClientRecords: React.FC<{
   const showTermCount = paymentTerm === "installment";
   const paymentBoxes = Array.from({ length: currentOption.value === "installment" ? termCount : currentOption.terms }, (_, i) => i + 1);
 
-  // Sync paymentDetails rows with termCount
+  // Sync paymentDetails rows with actual payment box count (handles full_cash, down_payment, installment)
+  const actualPaymentCount = currentOption.value === "installment" ? termCount : currentOption.terms;
   useEffect(() => {
     setPaymentDetails(prev => {
       const next = [...prev];
-      if (next.length < termCount) {
-        for (let i = next.length; i < termCount; i++) next.push({ dueDate: "", date: "", completed: false, depositSlip: null, receipt: null });
-      } else if (next.length > termCount) {
-        next.length = termCount;
+      if (next.length < actualPaymentCount) {
+        for (let i = next.length; i < actualPaymentCount; i++) next.push({ dueDate: "", date: "", completed: false, amount: "", depositSlip: null, receipt: null });
+      } else if (next.length > actualPaymentCount) {
+        next.length = actualPaymentCount;
       }
       return next;
     });
-  }, [termCount]);
+  }, [actualPaymentCount]);
 
   // Load file attachments
   useEffect(() => {
@@ -648,7 +665,7 @@ const ClientRecords: React.FC<{
 
   const handlePaymentDetailChange = async (
     idx: number,
-    field: "dueDate" | "date" | "completed" | "depositSlip" | "receipt",
+    field: "dueDate" | "date" | "completed" | "depositSlip" | "receipt" | "amount",
     value: string | boolean | React.ChangeEvent<HTMLInputElement>
   ) => {
     if (field === "dueDate" || field === "date") {
@@ -657,6 +674,13 @@ const ClientRecords: React.FC<{
           if (i !== idx) return row;
           return { ...row, [field]: value as string };
         })
+      );
+      return;
+    }
+    if (field === "amount") {
+      const sanitized = (value as string).replace(/[^0-9.,]/g, '');
+      setPaymentDetails(pd =>
+        pd.map((row, i) => i === idx ? { ...row, amount: sanitized } : row)
       );
       return;
     }
@@ -856,6 +880,7 @@ const ClientRecords: React.FC<{
       const paymentData: PaymentData = {
         paymentTerm,
         termCount,
+        totalAmount,
         selectedPaymentBox,
         paymentDetails,
         additionalPayments: {
@@ -1027,6 +1052,8 @@ const ClientRecords: React.FC<{
         travelFundRequestDate,
         travelFundApprovalDate,
         travelFundReleasedAmount: travelFundReleasedAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
+        travelFundTotalAmount: travelFundTotalAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
+        travelFundPayments: travelFundPayments.map(p => ({ date: p.date, amount: p.amount.replace(/[^0-9.,]/g, '').slice(0, 50) })),
       };
 
       // Prefer the resolved (post-first-save) ID over the prop so that editing
@@ -1880,6 +1907,91 @@ const ClientRecords: React.FC<{
                     <input style={modernInput} type="text" placeholder="Enter approved amount" value={travelFundReleasedAmount} onChange={e => setTravelFundReleasedAmount(e.target.value.replace(/[^0-9.,]/g, ''))} />
                   </div>
                 </div>
+
+                {/* Travel Fund Total Amount & Payments */}
+                <div style={{ marginTop: 16 }}>
+                  <label style={label}>Total Amount</label>
+                  <input
+                    style={modernInput}
+                    type="text"
+                    placeholder="Enter total amount"
+                    value={travelFundTotalAmount}
+                    onChange={e => setTravelFundTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                  />
+                </div>
+
+                {/* Payment entries */}
+                <div style={{ marginTop: 16 }}>
+                  <label style={label}>Payments</label>
+                  {travelFundPayments.map((payment, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 12, alignItems: "center", marginTop: idx === 0 ? 6 : 8 }}>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          style={modernInput}
+                          type="date"
+                          value={payment.date}
+                          onChange={e => {
+                            const updated = [...travelFundPayments];
+                            updated[idx] = { ...updated[idx], date: e.target.value };
+                            setTravelFundPayments(updated);
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          style={modernInput}
+                          type="text"
+                          placeholder="Amount"
+                          value={payment.amount}
+                          onChange={e => {
+                            const updated = [...travelFundPayments];
+                            updated[idx] = { ...updated[idx], amount: e.target.value.replace(/[^0-9.,]/g, '') };
+                            setTravelFundPayments(updated);
+                          }}
+                        />
+                      </div>
+                      {travelFundPayments.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setTravelFundPayments(prev => prev.filter((_, i) => i !== idx))}
+                          style={{ background: "transparent", border: "1px solid #ef4444", color: "#ef4444", borderRadius: 4, padding: "4px 8px", cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+                        >✕</button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setTravelFundPayments(prev => [...prev, { date: "", amount: "" }])}
+                    style={{ marginTop: 8, fontSize: 13, color: "#059669", background: "transparent", border: "1px dashed #059669", borderRadius: 6, padding: "6px 14px", cursor: "pointer", fontWeight: 600 }}
+                  >+ Add Payment</button>
+                </div>
+
+                {/* Travel Fund Balance Summary */}
+                {travelFundTotalAmount && (
+                  (() => {
+                    const total = parseFloat(travelFundTotalAmount.replace(/,/g, '')) || 0;
+                    const paid = travelFundPayments.reduce((sum, p) => sum + (parseFloat((p.amount || '').replace(/,/g, '')) || 0), 0);
+                    const remaining = total - paid;
+                    return (
+                      <div style={{ marginTop: 16, padding: "14px 18px", background: "rgba(255,255,255,0.7)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.25)" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 14 }}>
+                          <div>
+                            <span style={{ color: "#065f46", fontWeight: 500 }}>Total Amount: </span>
+                            <span style={{ color: "#1e293b", fontWeight: 700 }}>{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: "#065f46", fontWeight: 500 }}>Total Paid: </span>
+                            <span style={{ color: "#059669", fontWeight: 700 }}>{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div>
+                            <span style={{ color: "#065f46", fontWeight: 500 }}>Remaining Balance: </span>
+                            <span style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700 }}>{remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
               </div>
             )}
             {/* Save Button */}
@@ -2077,7 +2189,7 @@ const ClientRecords: React.FC<{
                               Choose file to upload
                             </span>
                             <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
-                              PDF, DOCX, Image (max 10 MB)
+                              PDF, DOCX, Image (max 10 MB)
                             </span>
                             <input
                               type="file"
@@ -2430,6 +2542,18 @@ const ClientRecords: React.FC<{
               )}
             </div>
 
+            {/* Total Amount */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={label}>Total Amount</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Enter total amount"
+                value={totalAmount}
+                onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+              />
+            </div>
+
             {paymentBoxes.length > 0 && (
               <div style={{ marginBottom: 24 }}>
                 <label style={label}>Payment Counts</label>
@@ -2508,6 +2632,33 @@ const ClientRecords: React.FC<{
               </div>
             )}
 
+            {/* Payment Balance Summary */}
+            {paymentBoxes.length > 0 && totalAmount && (
+              (() => {
+                const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+                const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
+                const remaining = total - paid;
+                return (
+                  <div style={{ marginTop: 16, padding: "14px 18px", background: "linear-gradient(135deg, #f8fafc, #f1f5f9)", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 14 }}>
+                      <div>
+                        <span style={{ color: "#64748b", fontWeight: 500 }}>Total Amount: </span>
+                        <span style={{ color: "#1e293b", fontWeight: 700 }}>{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div>
+                        <span style={{ color: "#64748b", fontWeight: 500 }}>Total Paid: </span>
+                        <span style={{ color: "#059669", fontWeight: 700 }}>{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <div>
+                        <span style={{ color: "#64748b", fontWeight: 500 }}>Remaining Balance: </span>
+                        <span style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700 }}>{remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
             {/* Payment Detail Modal */}
             {paymentModalIdx !== null && createPortal(
               <div
@@ -2572,6 +2723,18 @@ const ClientRecords: React.FC<{
                     />
                   </div>
 
+                  {/* Amount */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Amount</label>
+                    <input
+                      type="text"
+                      placeholder="Enter amount"
+                      value={paymentDetails[paymentModalIdx]?.amount || ""}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "amount", e.target.value)}
+                      style={{ ...modernInput, margin: 0 }}
+                    />
+                  </div>
+
                   {/* Deposit Slip */}
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Deposit Slip</label>
@@ -2592,7 +2755,7 @@ const ClientRecords: React.FC<{
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
                           <span style={{ fontSize: 20 }}>📎</span>
                           <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
                           <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} />
                         </label>
                       );
@@ -2619,7 +2782,7 @@ const ClientRecords: React.FC<{
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
                           <span style={{ fontSize: 20 }}>📎</span>
                           <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
                           <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} />
                         </label>
                       );

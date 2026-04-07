@@ -5,30 +5,25 @@ class DatabaseService {
   private static readonly API_BASE = '/.netlify/functions';
 
   static async query(collection: string, operation: string, params: any = {}) {
-    try {
-      const response = await fetch(`${this.API_BASE}/database`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          collection,
-          operation,
-          ...params
-        })
-      });
+    const response = await fetch(`${this.API_BASE}/database`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        collection,
+        operation,
+        ...params
+      })
+    });
 
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Database operation failed');
-      }
-
-      return result.data;
-    } catch (error) {
-      // console.error('Database query error:', error);
-      throw error;
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || 'Database operation failed');
     }
+
+    return result.data;
   }
 
   // Users collection

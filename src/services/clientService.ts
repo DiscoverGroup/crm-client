@@ -59,6 +59,8 @@ export interface ClientData {
   travelFundRequestDate?: string;
   travelFundApprovalDate?: string;
   travelFundReleasedAmount?: string;
+  travelFundTotalAmount?: string;
+  travelFundPayments?: Array<{ date: string; amount: string }>;
   // Booking/Tour Voucher
   bookingVoucher?: string;
   bookingVoucherLinks?: {

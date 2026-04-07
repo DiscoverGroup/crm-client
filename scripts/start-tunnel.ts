@@ -30,7 +30,7 @@ try {
 
 if (!ngrokDomain) {
   console.log('  [tunnel] NGROK_DOMAIN not set in .env — tunnel not started.');
-  console.log('  [tunnel] Run setup-tunnel.ps1 to configure it.');
+  console.log('  [tunnel] Run scripts/setup-tunnel.ps1 to configure it.');
   process.exit(0);
 }
 
@@ -43,7 +43,7 @@ const proc = spawn('ngrok', ['http', `--domain=${ngrokDomain}`, '9000'], {
 
 proc.on('error', (err) => {
   if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-    console.error('  [tunnel] ngrok not found. Run: setup-tunnel.ps1 to install it.');
+    console.error('  [tunnel] ngrok not found. Run: scripts/setup-tunnel.ps1 to install it.');
   } else {
     console.error('  [tunnel] ngrok error:', err.message);
   }

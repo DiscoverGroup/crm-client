@@ -49,21 +49,16 @@ export class MessagingService {
 
   // Helper to make API calls (always attaches JWT)
   private static async apiCall(endpoint: string, data: any): Promise<any> {
-    try {
-      const response = await fetch(`${this.API_BASE}/${endpoint}`, {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'API call failed');
-      }
-      return result.data;
-    } catch (error) {
-      // console.error(`API call to ${endpoint} failed:`, error);
-      throw error;
+    const response = await fetch(`${this.API_BASE}/${endpoint}`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'API call failed');
     }
+    return result.data;
   }
 
   // Get all messages (fallback for localStorage)

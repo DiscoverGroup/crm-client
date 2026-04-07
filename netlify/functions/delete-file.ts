@@ -111,7 +111,7 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Storage not configured. Run setup-local-storage.ps1 first.' }),
+        body: JSON.stringify({ error: 'Storage not configured. Run scripts/setup-local-storage.ps1 first.' }),
       };
     }
 
