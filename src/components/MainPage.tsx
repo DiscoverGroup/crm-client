@@ -683,6 +683,11 @@ const ClientRecords: React.FC<{
       return;
     }
     if (field === "amount") {
+      const pkgAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+      if (pkgAmt <= 0) {
+        showErrorToast('Please enter a Package Amount before adding payment details.');
+        return;
+      }
       const sanitized = (value as string).replace(/[^0-9.,]/g, '');
       setPaymentDetails(pd =>
         pd.map((row, i) => i === idx ? { ...row, amount: sanitized } : row)
@@ -692,6 +697,11 @@ const ClientRecords: React.FC<{
     if (field === "completed") {
       // Only validate when marking as completed (not when unchecking)
       if (value === true) {
+        const pkgAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+        if (pkgAmt <= 0) {
+          showErrorToast('Please enter a Package Amount before marking a payment as completed.');
+          return;
+        }
         const detail = paymentDetails[idx];
         const hasDeposit = attachments.some(a => a.category === 'deposit-slip' && a.paymentIndex === idx && a.source === 'payment-terms');
         const hasReceipt = attachments.some(a => a.category === 'receipt' && a.paymentIndex === idx && a.source === 'payment-terms');
@@ -2726,7 +2736,14 @@ const ClientRecords: React.FC<{
                       <button
                         type="button"
                         key={idx}
-                        onClick={() => setPaymentModalIdx(idx)}
+                        onClick={() => {
+                          const pkgAmt = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+                          if (pkgAmt <= 0) {
+                            showErrorToast('Please enter a Package Amount before adding payment details.');
+                            return;
+                          }
+                          setPaymentModalIdx(idx);
+                        }}
                         style={{
                           display: "flex",
                           flexDirection: "column",
