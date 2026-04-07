@@ -947,7 +947,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "visible" }}>
       {showOTPVerification && (
         <OTPVerification
           email={pendingUserEmail}
