@@ -60,9 +60,12 @@ export const handler = async (event: any) => {
         }))
       : [];
 
+    // Strip HTML tags and null/control chars but preserve printable chars (no HTML entity encoding)
+    const stripTags = (s: string) => s.replace(/<[^>]*>/g, '').replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
+
     // Sanitise string inputs and enforce length caps
-    const cleanDescription = sanitizeInput(String(description)).substring(0, 5000);
-    const cleanAction = sanitizeInput(String(action)).substring(0, 200);
+    const cleanDescription = stripTags(String(description)).substring(0, 5000);
+    const cleanAction = stripTags(String(action)).substring(0, 200);
     const cleanUserName = sanitizeInput(String(userName)).substring(0, 100);
     const cleanClientId = String(clientId).replace(/[^a-zA-Z0-9_\-]/g, '').substring(0, 100);
     const cleanUserId = sanitizeInput(String(userId)).substring(0, 100);
