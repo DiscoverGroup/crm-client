@@ -2425,6 +2425,18 @@ const ClientRecords: React.FC<{
                 Payment Terms & Schedule
               </h2>
             </div>
+
+            {/* Total Amount */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={label}>Total Amount</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Enter total amount"
+                value={totalAmount}
+                onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+              />
+            </div>
             
             <div style={{ display: "flex", alignItems: "flex-end", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
               <div style={{ minWidth: 240, flex: "1 1 240px" }}>
@@ -2540,18 +2552,6 @@ const ClientRecords: React.FC<{
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Total Amount */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={label}>Total Amount</label>
-              <input
-                style={modernInput}
-                type="text"
-                placeholder="Enter total amount"
-                value={totalAmount}
-                onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
-              />
             </div>
 
             {paymentBoxes.length > 0 && (
