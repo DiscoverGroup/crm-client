@@ -12,6 +12,7 @@ import NotesThreadComponent from './NotesThreadComponent';
 import Sidebar from "./Sidebar";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
+import ArchivedClients from './ArchivedClients';
 import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import TeamCalendar from './TeamCalendar';
@@ -1874,6 +1875,7 @@ const ClientRecords: React.FC<{
                   <option>Travel Funds</option>
                   <option>Rebook</option>
                   <option>Cancelled</option>
+                  <option>Archived</option>
                 </select>
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
@@ -4361,6 +4363,18 @@ const MainPage: React.FC<MainPageProps> = ({
     }
     return false;
   });
+  const [viewArchived, setViewArchived] = useState(() => {
+    const saved = sessionStorage.getItem('crm_current_view');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.viewArchived || false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [viewActivityLog, setViewActivityLog] = useState(() => {
     const saved = sessionStorage.getItem('crm_current_view');
     if (saved) {
@@ -4448,11 +4462,12 @@ const MainPage: React.FC<MainPageProps> = ({
       viewingForm,
       viewProfile,
       viewDeleted,
+      viewArchived,
       viewActivityLog,
       viewCalendar,
       viewAdminPanel
     }));
-  }, [viewingForm, viewProfile, viewDeleted, viewActivityLog, viewCalendar, viewAdminPanel]);
+  }, [viewingForm, viewProfile, viewDeleted, viewArchived, viewActivityLog, viewCalendar, viewAdminPanel]);
 
   // Check if current user is admin
   const isAdmin = () => {
@@ -4534,6 +4549,7 @@ const MainPage: React.FC<MainPageProps> = ({
       case 'lead': return '#2196F3';
       case 'referral': return '#FF9800';
       case 'transferred': return '#9C27B0';
+      case 'archived': return '#92400e';
       default: return '#757575';
     }
   };
@@ -4542,6 +4558,7 @@ const MainPage: React.FC<MainPageProps> = ({
     setViewingForm(null);
     setViewProfile(false);
     setViewDeleted(false);
+    setViewArchived(false);
     setViewActivityLog(false);
     setViewAdminPanel(false);
     setViewCalendar(false);
@@ -4561,6 +4578,10 @@ const MainPage: React.FC<MainPageProps> = ({
             onNavigateToDeleted={() => {
               setViewingForm(null);
               setViewDeleted(true);
+            }}
+            onNavigateToArchived={() => {
+              setViewingForm(null);
+              setViewArchived(true);
             }}
             onNavigateToActivityLog={() => {
               setViewingForm(null);
@@ -4602,6 +4623,10 @@ const MainPage: React.FC<MainPageProps> = ({
             onNavigateToDeleted={() => {
               setViewProfile(false);
               setViewDeleted(true);
+            }}
+            onNavigateToArchived={() => {
+              setViewProfile(false);
+              setViewArchived(true);
             }}
             onNavigateToActivityLog={() => {
               setViewProfile(false);
@@ -4654,6 +4679,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewProfile(true);
             }}
             onNavigateToDeleted={() => setViewDeleted(true)}
+            onNavigateToArchived={() => {
+              setViewDeleted(false);
+              setViewArchived(true);
+            }}
             onNavigateToActivityLog={() => {
               setViewDeleted(false);
               setViewActivityLog(true);
@@ -4687,6 +4716,55 @@ const MainPage: React.FC<MainPageProps> = ({
             />
           </div>
         </div>
+      ) : viewArchived ? (
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <Sidebar 
+            onNavigateToClientRecords={() => {
+              setViewArchived(false);
+              loadClients();
+            }}
+            onNavigateToProfile={() => {
+              setViewArchived(false);
+              setViewProfile(true);
+            }}
+            onNavigateToDeleted={() => {
+              setViewArchived(false);
+              setViewDeleted(true);
+            }}
+            onNavigateToArchived={() => setViewArchived(true)}
+            onNavigateToActivityLog={() => {
+              setViewArchived(false);
+              setViewActivityLog(true);
+            }}
+            onNavigateToCalendar={() => {
+              setViewArchived(false);
+              setViewCalendar(true);
+            }}
+            onNavigateToAdminPanel={isAdmin() ? () => {
+              setViewArchived(false);
+              setViewAdminPanel(true);
+            } : undefined}
+            isOpen={isSidebarOpen}
+            onClose={onCloseSidebar}
+          />
+          <div 
+            className="main-content"
+            style={{
+            padding: '20px',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            background: 'transparent'
+          }}>
+            <ArchivedClients
+              currentUser={currentUser.fullName}
+              onBack={() => {
+                setViewArchived(false);
+                loadClients();
+              }}
+            />
+          </div>
+        </div>
       ) : viewActivityLog ? (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
@@ -4701,6 +4779,10 @@ const MainPage: React.FC<MainPageProps> = ({
             onNavigateToDeleted={() => {
               setViewActivityLog(false);
               setViewDeleted(true);
+            }}
+            onNavigateToArchived={() => {
+              setViewActivityLog(false);
+              setViewArchived(true);
             }}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
             onNavigateToCalendar={() => {
@@ -4743,6 +4825,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewAdminPanel(false);
               setViewDeleted(true);
             }}
+            onNavigateToArchived={() => {
+              setViewAdminPanel(false);
+              setViewArchived(true);
+            }}
             onNavigateToActivityLog={() => {
               setViewAdminPanel(false);
               setViewActivityLog(true);
@@ -4782,6 +4868,10 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewCalendar(false);
               setViewDeleted(true);
             }}
+            onNavigateToArchived={() => {
+              setViewCalendar(false);
+              setViewArchived(true);
+            }}
             onNavigateToActivityLog={() => {
               setViewCalendar(false);
               setViewActivityLog(true);
@@ -4814,6 +4904,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onNavigateToClientRecords={handleNavigateToClientRecords}
             onNavigateToProfile={() => setViewProfile(true)}
             onNavigateToDeleted={() => setViewDeleted(true)}
+            onNavigateToArchived={() => setViewArchived(true)}
             onNavigateToActivityLog={() => setViewActivityLog(true)}
             onNavigateToCalendar={() => {
               setViewProfile(false);
@@ -5004,6 +5095,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 <option value="Travel Funds">Travel Funds</option>
                 <option value="Rebook">Rebook</option>
                 <option value="Cancelled">Cancelled</option>
+                <option value="Archived">Archived</option>
               </select>
             </div>
           </div>
@@ -5174,7 +5266,7 @@ const MainPage: React.FC<MainPageProps> = ({
                       letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
-                      Agent
+                     Sales Agent
                     </th>
                     <th style={{
                       padding: '13px 16px',
@@ -5256,86 +5348,176 @@ const MainPage: React.FC<MainPageProps> = ({
                         {client.agent || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>Unassigned</span>}
                       </td>
                       <td style={{
-                        padding: '15px 16px',
+                        padding: '12px 16px',
                         textAlign: 'center'
                       }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleClientEdit(client);
-                            }}
-                            style={{
-                              padding: '6px 16px',
-                              background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '600',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 2px 6px rgba(40, 162, 220, 0.3)'
-                            }}
-                            onMouseOver={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-1px)';
-                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(40, 162, 220, 0.45)';
-                            }}
-                            onMouseOut={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(40, 162, 220, 0.3)';
-                            }}
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const confirmed = await showConfirmDialog(
-                                'Delete Client',
-                                `Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`,
-                                'error'
-                              );
-                              if (confirmed) {
-                                const success = ClientService.deleteClient(client.id, currentUser.fullName);
-                                if (success) {
-                                  ActivityLogService.addLog({
-                                    clientId: client.id,
-                                    clientName: client.contactName || 'Unknown',
-                                    action: 'deleted',
-                                    performedBy: currentUser.fullName,
-                                    profileImageR2Path: getCurrentUserProfileImagePath(),
-                                    performedByUser: currentUser.fullName,
-                                    details: `Client moved to trash`
-                                  });
-                                  showSuccessToast('Client moved to trash. You can recover it from Deleted Clients page.');
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                          {/* Action buttons row */}
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleClientEdit(client);
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 6px rgba(40, 162, 220, 0.3)'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(40, 162, 220, 0.45)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(40, 162, 220, 0.3)';
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const confirmed = await showConfirmDialog(
+                                  'Archive Client',
+                                  `Archive "${client.contactName}"? They will be moved to the Archived Clients section.`,
+                                  'info'
+                                );
+                                if (confirmed) {
+                                  const success = ClientService.archiveClient(client.id, currentUser.fullName);
+                                  if (success) {
+                                    ActivityLogService.addLog({
+                                      clientId: client.id,
+                                      clientName: client.contactName || 'Unknown',
+                                      action: 'updated',
+                                      performedBy: currentUser.fullName,
+                                      profileImageR2Path: getCurrentUserProfileImagePath(),
+                                      performedByUser: currentUser.fullName,
+                                      details: 'Client archived'
+                                    });
+                                    showSuccessToast('Client archived. View in Archived Clients section.');
+                                  }
+                                  loadClients();
                                 }
-                                loadClients();
-                              }
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.45)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(245, 158, 11, 0.3)';
+                              }}
+                            >
+                              🗃️ Archive
+                            </button>
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const confirmed = await showConfirmDialog(
+                                  'Delete Client',
+                                  `Are you sure you want to delete client "${client.contactName}"? This can be recovered from the Deleted Clients page.`,
+                                  'error'
+                                );
+                                if (confirmed) {
+                                  const success = ClientService.deleteClient(client.id, currentUser.fullName);
+                                  if (success) {
+                                    ActivityLogService.addLog({
+                                      clientId: client.id,
+                                      clientName: client.contactName || 'Unknown',
+                                      action: 'deleted',
+                                      performedBy: currentUser.fullName,
+                                      profileImageR2Path: getCurrentUserProfileImagePath(),
+                                      performedByUser: currentUser.fullName,
+                                      details: `Client moved to trash`
+                                    });
+                                    showSuccessToast('Client moved to trash. You can recover it from Deleted Clients page.');
+                                  }
+                                  loadClients();
+                                }
+                              }}
+                              style={{
+                                padding: '5px 12px',
+                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
+                              }}
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(239, 68, 68, 0.45)';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.3)';
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
+                          {/* Quick status changer */}
+                          <select
+                            value={client.status || ''}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={async (e) => {
+                              e.stopPropagation();
+                              const newStatus = e.target.value;
+                              await ClientService.saveClient({ ...client, status: newStatus });
+                              ActivityLogService.addLog({
+                                clientId: client.id,
+                                clientName: client.contactName || 'Unknown',
+                                action: 'updated',
+                                performedBy: currentUser.fullName,
+                                profileImageR2Path: getCurrentUserProfileImagePath(),
+                                performedByUser: currentUser.fullName,
+                                details: `Status changed to ${newStatus}`
+                              });
+                              loadClients();
                             }}
                             style={{
-                              padding: '6px 16px',
-                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
+                              padding: '4px 8px',
+                              fontSize: '11px',
                               fontWeight: '600',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
-                            }}
-                            onMouseOver={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-1px)';
-                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(239, 68, 68, 0.45)';
-                            }}
-                            onMouseOut={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.3)';
+                              borderRadius: '8px',
+                              border: `1.5px solid ${getStatusColor(client.status || 'unknown')}`,
+                              color: getStatusColor(client.status || 'unknown'),
+                              background: '#fff',
+                              cursor: 'pointer',
+                              outline: 'none',
+                              minWidth: '110px'
                             }}
                           >
-                            🗑️ Delete
-                          </button>
+                            <option value="Active">Active</option>
+                            <option value="Float">Float</option>
+                            <option value="Refund">Refund</option>
+                            <option value="Travel Funds">Travel Funds</option>
+                            <option value="Rebook">Rebook</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
                         </div>
                       </td>
                     </tr>

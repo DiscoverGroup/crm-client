@@ -4,6 +4,7 @@ interface SidebarProps {
   onNavigateToClientRecords: () => void;
   onNavigateToProfile: () => void;
   onNavigateToDeleted: () => void;
+  onNavigateToArchived: () => void;
   onNavigateToActivityLog: () => void;
   onNavigateToCalendar: () => void;
   onNavigateToAdminPanel?: () => void;
@@ -15,6 +16,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNavigateToClientRecords, 
   onNavigateToProfile, 
   onNavigateToDeleted, 
+  onNavigateToArchived,
   onNavigateToActivityLog, 
   onNavigateToCalendar,
   onNavigateToAdminPanel,
@@ -322,6 +324,46 @@ const Sidebar: React.FC<SidebarProps> = ({
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
           </svg>
           {!isCollapsed && <span>Deleted Clients</span>}
+        </button>
+
+        {/* Archived Clients Button */}
+        <button
+          onClick={() => handleNavigation(onNavigateToArchived)}
+          style={{
+            width: '100%',
+            padding: isCollapsed ? '12px 0' : '13px 16px',
+            backgroundColor: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '10px',
+            fontSize: '14px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            marginBottom: '6px',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: '11px',
+            backdropFilter: 'blur(10px)',
+            whiteSpace: 'nowrap'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(251,191,36,0.2)';
+            e.currentTarget.style.transform = isCollapsed ? 'scale(1.05)' : 'translateX(4px)';
+            e.currentTarget.style.borderColor = 'rgba(251,191,36,0.5)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+            e.currentTarget.style.transform = isCollapsed ? 'scale(1)' : 'translateX(0)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+          }}
+          title={isCollapsed ? 'Archived Clients' : ''}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>
+          </svg>
+          {!isCollapsed && <span>Archived Clients</span>}
         </button>
 
         {/* Activity Log Button */}

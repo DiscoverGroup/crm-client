@@ -96,6 +96,9 @@ export interface ClientData {
   deletedAt?: string;
   deletedBy?: string;
   isDeleted?: boolean;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 export interface ClientSearchFilters {
@@ -307,8 +310,8 @@ export class ClientService {
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       const allClients = data ? JSON.parse(data) : [];
-      // Filter out deleted clients by default
-      return allClients.filter((client: ClientData) => !client.isDeleted);
+      // Filter out deleted and archived clients by default
+      return allClients.filter((client: ClientData) => !client.isDeleted && !client.isArchived);
     } catch (error) {
       // console.error('Error loading clients:', error);
       return [];
@@ -342,6 +345,74 @@ export class ClientService {
     } catch (error) {
       // console.error('Error loading deleted clients:', error);
       return [];
+    }
+  }
+
+  static getArchivedClients(): ClientData[] {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      const allClients = data ? JSON.parse(data) : [];
+      return allClients.filter((client: ClientData) => client.isArchived && !client.isDeleted);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  static archiveClient(clientId: string, archivedBy?: string): boolean {
+    try {
+      const clients = this.getAllClientsIncludingDeleted();
+      const clientIndex = clients.findIndex(client => client.id === clientId);
+      if (clientIndex === -1) return false;
+
+      const archivedByUser = archivedBy || 'Unknown';
+      clients[clientIndex] = {
+        ...clients[clientIndex],
+        isArchived: true,
+        archivedAt: new Date().toISOString(),
+        archivedBy: archivedByUser
+      };
+
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+
+      MongoDBService.updateClient(clientId, {
+        isArchived: true,
+        archivedAt: clients[clientIndex].archivedAt,
+        archivedBy: archivedByUser,
+        updatedAt: clients[clientIndex].updatedAt
+      }).then(() => {
+        realtimeSync.signalChange('clients');
+      }).catch(() => {});
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  static async unarchiveClient(clientId: string): Promise<boolean> {
+    try {
+      const clients = this.getAllClientsIncludingDeleted();
+      const clientIndex = clients.findIndex(client => client.id === clientId);
+      if (clientIndex === -1) return false;
+
+      delete clients[clientIndex].isArchived;
+      delete clients[clientIndex].archivedAt;
+      delete clients[clientIndex].archivedBy;
+      clients[clientIndex].updatedAt = new Date().toISOString();
+
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+
+      await MongoDBService.updateClient(clientId, {
+        isArchived: false,
+        archivedAt: null,
+        archivedBy: null,
+        updatedAt: clients[clientIndex].updatedAt
+      });
+      realtimeSync.signalChange('clients');
+
+      return true;
+    } catch {
+      return false;
     }
   }
 
