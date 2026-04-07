@@ -5206,7 +5206,19 @@ const MainPage: React.FC<MainPageProps> = ({
                       letterSpacing: '0.06em',
                       whiteSpace: 'nowrap'
                     }}>
-                      Client Name
+                      Client No.
+                    </th>
+                    <th style={{
+                      padding: '13px 16px',
+                      textAlign: 'left',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Client name
                     </th>
                     <th style={{
                       padding: '13px 16px',
@@ -5243,18 +5255,6 @@ const MainPage: React.FC<MainPageProps> = ({
                       whiteSpace: 'nowrap'
                     }}>
                       Phone
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      Client No.
                     </th>
                     <th style={{
                       padding: '13px 16px',
