@@ -2426,51 +2426,6 @@ const ClientRecords: React.FC<{
               </h2>
             </div>
 
-            {/* Total Amount */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={label}>Total Amount</label>
-              <input
-                style={modernInput}
-                type="text"
-                placeholder="Enter total amount"
-                value={totalAmount}
-                onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
-              />
-            </div>
-
-            {/* Payment Balance Summary */}
-            {paymentBoxes.length > 0 && (
-              (() => {
-                const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
-                const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
-                const remaining = total - paid;
-                return (
-                  <div style={{ marginBottom: 20, padding: "16px 20px", background: "linear-gradient(135deg, #f0f9ff, #eff6ff)", borderRadius: 12, border: "1px solid #bfdbfe" }}>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 24, fontSize: 15 }}>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Amount</div>
-                        <div style={{ color: "#1e293b", fontWeight: 700, fontSize: 18 }}>
-                          {total > 0 ? `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Paid</div>
-                        <div style={{ color: "#059669", fontWeight: 700, fontSize: 18 }}>
-                          ₱{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 120 }}>
-                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Remaining Balance</div>
-                        <div style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700, fontSize: 18 }}>
-                          {total > 0 ? `₱${remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()
-            )}
-            
             <div style={{ display: "flex", alignItems: "flex-end", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
               <div style={{ minWidth: 240, flex: "1 1 240px" }}>
                 <label style={label}>Payment Terms</label>
@@ -2586,6 +2541,51 @@ const ClientRecords: React.FC<{
                 </div>
               )}
             </div>
+
+            {/* Total Amount */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={label}>Total Amount</label>
+              <input
+                style={modernInput}
+                type="text"
+                placeholder="Enter total amount"
+                value={totalAmount}
+                onChange={e => setTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+              />
+            </div>
+
+            {/* Payment Balance Summary */}
+            {paymentBoxes.length > 0 && (
+              (() => {
+                const total = parseFloat(totalAmount.replace(/,/g, '')) || 0;
+                const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
+                const remaining = total - paid;
+                return (
+                  <div style={{ marginBottom: 20, padding: "16px 20px", background: "linear-gradient(135deg, #f0f9ff, #eff6ff)", borderRadius: 12, border: "1px solid #bfdbfe" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 24, fontSize: 15 }}>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Amount</div>
+                        <div style={{ color: "#1e293b", fontWeight: 700, fontSize: 18 }}>
+                          {total > 0 ? `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Total Paid</div>
+                        <div style={{ color: "#059669", fontWeight: 700, fontSize: 18 }}>
+                          ₱{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <div style={{ color: "#64748b", fontWeight: 500, fontSize: 12, marginBottom: 2 }}>Remaining Balance</div>
+                        <div style={{ color: remaining > 0 ? "#dc2626" : "#059669", fontWeight: 700, fontSize: 18 }}>
+                          {total > 0 ? `₱${remaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
 
             {paymentBoxes.length > 0 && (
               <div style={{ marginBottom: 24 }}>
