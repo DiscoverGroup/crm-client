@@ -592,6 +592,8 @@ const ClientRecords: React.FC<{
   const [voucherLinkHotelVoucher, setVoucherLinkHotelVoucher] = useState('');
   const [voucherLinkOtherFiles, setVoucherLinkOtherFiles] = useState('');
 
+  // Voucher modal state: null = closed, 'international-flight'|'tour-voucher'|'hotel-voucher'|'other-files'|'local-flight-N'
+  const [voucherModalType, setVoucherModalType] = useState<string | null>(null);
   // File attachment state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
 
@@ -3981,152 +3983,144 @@ const ClientRecords: React.FC<{
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>Tour Voucher</h2>
             </div>
 
-            {/* --- Voucher field renderer --- */}
+            {/* --- Voucher pills --- */}
             {(() => {
               const isValidUrl = (url: string) => {
                 try { return ['http:', 'https:'].includes(new URL(url).protocol); } catch { return false; }
               };
-              const voucherCard = (
-                fieldLabel: string,
-                fileType: string,
-                linkValue: string,
-                setLink: (v: string) => void,
-                onBlurSave: () => void,
-                onFileSet: (f: File | null) => void,
-              ) => (
-                <div key={fileType} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: 16 }}>
-                  <label style={{ ...label, marginBottom: 10 }}>{fieldLabel}</label>
-                  {/* uploaded file display */}
-                  {(() => {
-                    const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === fileType);
-                    if (uploadedFile) {
-                      return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)', marginBottom: 10 }}>
-                          <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
-                          <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                          <button type="button" onClick={() => { handleGenericFileRemove(uploadedFile.file.id, fileType, 'booking-voucher'); onFileSet(null); }}
-                            style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
-                        </div>
-                      );
-                    }
-                    return (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginBottom: 10 }}>
-                        <span style={{ fontSize: 20 }}>📎</span>
-                        <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                        <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10{'\u00a0'}MB)</span>
-                        <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
-                          onChange={async (e) => { const file = e.target.files?.[0]; if (file) { await handleGenericFileUpload(file, 'other', fileType, 'booking-voucher'); onFileSet(file); } }} />
-                      </label>
-                    );
-                  })()}
-                  {/* link */}
-                  <input type="url" value={linkValue} onChange={e => setLink(e.target.value)} onBlur={onBlurSave}
-                    placeholder="Or paste link here…" style={{ ...modernInput, fontSize: 13, padding: '8px 12px' }} />
-                  {linkValue && isValidUrl(linkValue) && (
-                    <a href={linkValue} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 4, wordBreak: 'break-all' }}>Open link ↗</a>
-                  )}
-                </div>
-              );
+
+              // Helper: does a given fileType have an upload or link?
+              const hasVoucherContent = (fileType: string, link: string) => {
+                const uploaded = attachments.find(a => a.category === 'other' && a.source === 'booking-voucher' && a.fileType === fileType);
+                return !!uploaded || isValidUrl(link);
+              };
+
+              // Modal content for a given voucherModalType
+              const renderModalContent = () => {
+                if (!voucherModalType) return null;
+
+                let fieldLabel = '';
+                let fileType = voucherModalType;
+                let linkValue = '';
+                let setLink: (v: string) => void = () => {};
+                let onBlurSave: () => void = () => {};
+                let onFileSet: (f: File | null) => void = () => {};
+                let localIdx = -1;
+
+                if (voucherModalType === 'international-flight') {
+                  fieldLabel = 'International Flight'; linkValue = voucherLinkIntlFlight;
+                  setLink = setVoucherLinkIntlFlight;
+                  onBlurSave = () => saveVoucherLinks({ intlFlight: voucherLinkIntlFlight });
+                  onFileSet = setIntlFlight;
+                } else if (voucherModalType === 'tour-voucher') {
+                  fieldLabel = 'Tour Voucher'; linkValue = voucherLinkTourVoucher;
+                  setLink = setVoucherLinkTourVoucher;
+                  onBlurSave = () => saveVoucherLinks({ tourVoucher: voucherLinkTourVoucher });
+                  onFileSet = setTourVoucher;
+                } else if (voucherModalType === 'hotel-voucher') {
+                  fieldLabel = 'Hotel Voucher'; linkValue = voucherLinkHotelVoucher;
+                  setLink = setVoucherLinkHotelVoucher;
+                  onBlurSave = () => saveVoucherLinks({ hotelVoucher: voucherLinkHotelVoucher });
+                  onFileSet = setHotelVoucher;
+                } else if (voucherModalType === 'other-files') {
+                  fieldLabel = 'Other Files'; linkValue = voucherLinkOtherFiles;
+                  setLink = setVoucherLinkOtherFiles;
+                  onBlurSave = () => saveVoucherLinks({ otherFiles: voucherLinkOtherFiles });
+                  onFileSet = setOtherFiles;
+                } else if (voucherModalType.startsWith('local-flight-')) {
+                  localIdx = parseInt(voucherModalType.replace('local-flight-', '')) - 1;
+                  fieldLabel = `Local Flight ${localIdx + 1}`;
+                  linkValue = localFlightLinks[localIdx] ?? '';
+                  setLink = (v) => setLocalFlightLinks(prev => prev.map((l, i) => i === localIdx ? v : l));
+                  onBlurSave = () => saveVoucherLinks({ localFlights: localFlightLinks });
+                  onFileSet = (f) => setLocalFlightFiles(prev => prev.map((x, i) => i === localIdx ? f : x));
+                }
+
+                const uploadedFile = attachments.find(a => a.category === 'other' && a.source === 'booking-voucher' && a.fileType === fileType);
+
+                return createPortal(
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => setVoucherModalType(null)}>
+                    <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', position: 'relative' }}
+                      onClick={e => e.stopPropagation()}>
+                      <button type="button" onClick={() => setVoucherModalType(null)}
+                        style={{ position: 'absolute', top: 16, right: 16, background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+                      <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700, color: '#1e293b' }}>{fieldLabel}</h3>
+
+                      {/* File upload */}
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ ...label, display: 'block', marginBottom: 6 }}>File</label>
+                        {uploadedFile ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)' }}>
+                            <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
+                            <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
+                            <button type="button" onClick={() => { handleGenericFileRemove(uploadedFile.file.id, fileType, 'booking-voucher'); onFileSet(null); }}
+                              style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
+                          </div>
+                        ) : (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
+                            <span style={{ fontSize: 20 }}>📎</span>
+                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                            <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
+                              onChange={async (e) => { const file = e.target.files?.[0]; if (file) { await handleGenericFileUpload(file, 'other', fileType, 'booking-voucher'); onFileSet(file); } }} />
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Link */}
+                      <div>
+                        <label style={{ ...label, display: 'block', marginBottom: 6 }}>Or paste link</label>
+                        <input type="url" value={linkValue} onChange={e => setLink(e.target.value)} onBlur={onBlurSave}
+                          placeholder="https://..." style={{ ...modernInput, margin: 0 }} />
+                        {linkValue && isValidUrl(linkValue) && (
+                          <a href={linkValue} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#3b82f6', display: 'block', marginTop: 6, wordBreak: 'break-all' }}>Open link ↗</a>
+                        )}
+                      </div>
+                    </div>
+                  </div>,
+                  document.body
+                );
+              };
+
+              // Pill helper
+              const pill = (label: string, fileType: string, link: string, onClick: () => void) => {
+                const has = hasVoucherContent(fileType, link);
+                return (
+                  <button type="button" key={fileType} onClick={onClick} style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                    padding: '10px 16px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                    border: has ? '2px solid #6366f1' : '2px solid #e2e8f0',
+                    background: has ? 'linear-gradient(135deg,#6366f1,#818cf8)' : '#f8fafc',
+                    color: has ? '#fff' : '#475569', transition: 'all 0.15s',
+                  }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{label}</span>
+                    {has && <span style={{ fontSize: 10, opacity: 0.85 }}>✓ Uploaded</span>}
+                  </button>
+                );
+              };
 
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-                  {/* International Flight */}
-                  {voucherCard('International Flight', 'international-flight', voucherLinkIntlFlight,
-                    setVoucherLinkIntlFlight, () => saveVoucherLinks({ intlFlight: voucherLinkIntlFlight }), setIntlFlight)}
-
-                  {/* Local Flights — dynamic add/remove */}
-                  <div style={{ background: '#f0f7ff', borderRadius: 12, border: '1px solid rgba(40,162,220,0.2)', padding: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <label style={{ ...label, margin: 0 }}>
-                        Local Flights
-                        <span style={{ fontSize: 12, fontWeight: 400, color: '#64748b', textTransform: 'none', marginLeft: 8 }}>
-                          ({localFlightLinks.length})
-                        </span>
-                      </label>
-                      <button type="button" onClick={() => {
-                        setLocalFlightLinks(prev => [...prev, '']);
-                        setLocalFlightFiles(prev => [...prev, null]);
-                      }} style={{
-                        padding: '6px 14px', background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
-                        color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        boxShadow: '0 2px 6px rgba(40,162,220,0.3)', transition: 'all 0.2s ease'
-                      }}>
-                        <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Add Local Flight
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {localFlightLinks.map((link, idx) => (
-                        <div key={idx} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: 14, position: 'relative' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2D74' }}>Local Flight {idx + 1}</span>
-                            {localFlightLinks.length > 1 && (
-                              <button type="button" onClick={() => {
-                                const flightFileType = `local-flight-${idx + 1}`;
-                                const uploaded = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === flightFileType);
-                                if (uploaded) handleGenericFileRemove(uploaded.file.id, flightFileType, 'booking-voucher');
-                                setLocalFlightLinks(prev => prev.filter((_, i) => i !== idx));
-                                setLocalFlightFiles(prev => prev.filter((_, i) => i !== idx));
-                                saveVoucherLinks({ localFlights: localFlightLinks.filter((_, i) => i !== idx) });
-                              }} style={{
-                                padding: '3px 10px', fontSize: 12, color: '#ef4444', background: 'transparent',
-                                border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 500
-                              }}>✕ Remove</button>
-                            )}
-                          </div>
-                          {/* uploaded file display */}
-                          {(() => {
-                            const flightFileType = `local-flight-${idx + 1}`;
-                            const uploadedFile = attachments.find(att => att.category === 'other' && att.source === 'booking-voucher' && att.fileType === flightFileType);
-                            if (uploadedFile) {
-                              return (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,150,105,0.07)', borderRadius: 8, border: '1px solid rgba(5,150,105,0.25)', marginBottom: 8 }}>
-                                  <span style={{ fontSize: 13, color: '#059669', flex: 1 }}>✓ {uploadedFile.file.name}</span>
-                                  <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                                  <button type="button" onClick={() => {
-                                    handleGenericFileRemove(uploadedFile.file.id, flightFileType, 'booking-voucher');
-                                    setLocalFlightFiles(prev => prev.map((f, i) => i === idx ? null : f));
-                                  }} style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
-                                </div>
-                              );
-                            }
-                            return (
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 10, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginBottom: 8 }}>
-                                <span style={{ fontSize: 18 }}>📎</span>
-                                <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 600 }}>Upload file</span>
-                                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10{'\u00a0'}MB)</span>
-                                <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
-                                  onChange={async (e) => { const file = e.target.files?.[0]; if (file) {
-                                    await handleGenericFileUpload(file, 'other', flightFileType, 'booking-voucher');
-                                    setLocalFlightFiles(prev => prev.map((f, i) => i === idx ? file : f));
-                                  }}} />
-                              </label>
-                            );
-                          })()}
-                          <input type="url" value={link}
-                            onChange={e => setLocalFlightLinks(prev => prev.map((l, i) => i === idx ? e.target.value : l))}
-                            onBlur={() => saveVoucherLinks({ localFlights: localFlightLinks })}
-                            placeholder="Or paste link here…" style={{ ...modernInput, fontSize: 13, padding: '8px 12px' }} />
-                          {link && isValidUrl(link) && (
-                            <a href={link} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', display: 'block', marginTop: 4, wordBreak: 'break-all' }}>Open link ↗</a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                    {pill('International Flight', 'international-flight', voucherLinkIntlFlight, () => setVoucherModalType('international-flight'))}
+                    {localFlightLinks.map((link, idx) =>
+                      pill(`Local Flight ${idx + 1}`, `local-flight-${idx + 1}`, link, () => setVoucherModalType(`local-flight-${idx + 1}`))
+                    )}
+                    <button type="button" onClick={() => {
+                      setLocalFlightLinks(prev => [...prev, '']);
+                      setLocalFlightFiles(prev => [...prev, null]);
+                    }} style={{
+                      padding: '10px 16px', borderRadius: 10, border: '2px dashed #bfdbfe',
+                      background: '#eff6ff', color: '#3b82f6', fontWeight: 600, fontSize: 13,
+                      cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    }}>+ Local Flight</button>
+                    {pill('Tour Voucher', 'tour-voucher', voucherLinkTourVoucher, () => setVoucherModalType('tour-voucher'))}
+                    {pill('Hotel Voucher', 'hotel-voucher', voucherLinkHotelVoucher, () => setVoucherModalType('hotel-voucher'))}
+                    {pill('Other Files', 'other-files', voucherLinkOtherFiles, () => setVoucherModalType('other-files'))}
                   </div>
-
-                  {/* Tour Voucher */}
-                  {voucherCard('Tour Voucher', 'tour-voucher', voucherLinkTourVoucher,
-                    setVoucherLinkTourVoucher, () => saveVoucherLinks({ tourVoucher: voucherLinkTourVoucher }), setTourVoucher)}
-
-                  {/* Hotel Voucher */}
-                  {voucherCard('Hotel Voucher', 'hotel-voucher', voucherLinkHotelVoucher,
-                    setVoucherLinkHotelVoucher, () => saveVoucherLinks({ hotelVoucher: voucherLinkHotelVoucher }), setHotelVoucher)}
-
-                  {/* Other Files */}
-                  {voucherCard('Other Files', 'other-files', voucherLinkOtherFiles,
-                    setVoucherLinkOtherFiles, () => saveVoucherLinks({ otherFiles: voucherLinkOtherFiles }), setOtherFiles)}
-                </div>
+                  {renderModalContent()}
+                </>
               );
             })()}
 
@@ -4155,7 +4149,6 @@ const ClientRecords: React.FC<{
               );
             })()}
           </div>
-
           {/* Post-Departure SC Section */}
           <div style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
