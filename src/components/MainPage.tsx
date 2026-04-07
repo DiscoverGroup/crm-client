@@ -5348,7 +5348,7 @@ const MainPage: React.FC<MainPageProps> = ({
                         {client.agent || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>Unassigned</span>}
                       </td>
                       <td style={{
-                        padding: '12px 16px',
+                        padding: '15px 16px',
                         textAlign: 'center'
                       }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
@@ -5479,45 +5479,6 @@ const MainPage: React.FC<MainPageProps> = ({
                               🗑️ Delete
                             </button>
                           </div>
-                          {/* Quick status changer */}
-                          <select
-                            value={client.status || ''}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={async (e) => {
-                              e.stopPropagation();
-                              const newStatus = e.target.value;
-                              await ClientService.saveClient({ ...client, status: newStatus });
-                              ActivityLogService.addLog({
-                                clientId: client.id,
-                                clientName: client.contactName || 'Unknown',
-                                action: 'edited',
-                                performedBy: currentUser.fullName,
-                                profileImageR2Path: getCurrentUserProfileImagePath(),
-                                performedByUser: currentUser.fullName,
-                                details: `Status changed to ${newStatus}`
-                              });
-                              loadClients();
-                            }}
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              borderRadius: '8px',
-                              border: `1.5px solid ${getStatusColor(client.status || 'unknown')}`,
-                              color: getStatusColor(client.status || 'unknown'),
-                              background: '#fff',
-                              cursor: 'pointer',
-                              outline: 'none',
-                              minWidth: '110px'
-                            }}
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Float">Float</option>
-                            <option value="Refund">Refund</option>
-                            <option value="Travel Funds">Travel Funds</option>
-                            <option value="Rebook">Rebook</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
                         </div>
                       </td>
                     </tr>
