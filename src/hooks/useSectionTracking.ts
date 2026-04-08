@@ -95,39 +95,41 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
     previousValues.current[fieldKey] = currentValue;
   }, []);
 
-  // Save all changes for a section and create a log entry
+  // Save all changes for a section — creates one log entry per changed field
   const saveSection = useCallback((
     sectionName: string,
-    sectionDisplayName?: string
+    _sectionDisplayName?: string
   ) => {
     const changes = sectionChanges.current.get(sectionName) || [];
     
     if (changes.length > 0) {
-      // Create detailed description of all changes
-      const changeDescriptions = changes.map(change => 
-        `• ${change.displayName}: "${change.oldValue}" → "${change.newValue}"`
-      ).join('\n');
-      
-      const description = `Updated ${sectionDisplayName || sectionName}:\n${changeDescriptions}`;
-      
-      // Create the log entry in localStorage
-      LogNoteService.logSectionUpdate(
-        options.clientId,
-        options.userId,
-        options.userName,
-        sectionDisplayName || sectionName,
-        description
-      );
+      for (const change of changes) {
+        const description = `${change.displayName} changed from "${change.oldValue}" to "${change.newValue}"`;
 
-      // Also persist to MongoDB
-      saveLogNoteToMongoDB(
-        options.clientId,
-        options.userId,
-        options.userName,
-        `Section Updated: ${sectionDisplayName || sectionName}`,
-        description
-      );
-      
+        // Write to localStorage immediately
+        LogNoteService.logFieldChange(
+          options.clientId,
+          options.userId,
+          options.userName,
+          change.displayName,
+          change.oldValue,
+          change.newValue
+        );
+
+        // Persist to MongoDB
+        saveLogNoteToMongoDB(
+          options.clientId,
+          options.userId,
+          options.userName,
+          'Field Updated',
+          description,
+          'done',
+          change.displayName,
+          change.oldValue,
+          change.newValue
+        );
+      }
+
       // Clear the changes for this section
       sectionChanges.current.delete(sectionName);
       
@@ -143,14 +145,21 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
     fileName: string,
     attachmentType?: string
   ) => {
-    const description = `${action.charAt(0).toUpperCase() + action.slice(1)} ${attachmentType || 'attachment'}: ${fileName}`;
-    
-    LogNoteService.logSectionUpdate(
+    const fieldLabel = attachmentType || `${sectionName} attachment`;
+    const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+    const description = `${actionLabel}: ${fieldLabel} → ${fileName}`;
+
+    LogNoteService.addLogNote(
       options.clientId,
       options.userId,
       options.userName,
-      sectionName,
-      description
+      'auto',
+      'File Uploaded',
+      description,
+      'done',
+      fieldLabel,
+      undefined,
+      fileName
     );
 
     // Also persist to MongoDB
@@ -158,8 +167,12 @@ export const useSectionTracking = (options: UseSectionTrackingOptions) => {
       options.clientId,
       options.userId,
       options.userName,
-      `Section Updated: ${sectionName}`,
-      description
+      'File Uploaded',
+      description,
+      'done',
+      fieldLabel,
+      undefined,
+      fileName
     );
     
     options.onLogAdded?.();

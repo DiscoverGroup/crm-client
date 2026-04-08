@@ -1973,15 +1973,15 @@ const ClientRecords: React.FC<{
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
                   <div>
                     <label style={label}>Request Date</label>
-                    <input style={modernInput} type="date" value={travelFundRequestDate} onChange={e => setTravelFundRequestDate(e.target.value)} />
+                    <input style={modernInput} type="date" value={travelFundRequestDate} onChange={e => { trackSectionField('client-information', 'travelFundRequestDate', travelFundRequestDate, 'Travel Fund Request Date'); setTravelFundRequestDate(e.target.value); trackSectionField('client-information', 'travelFundRequestDate', e.target.value, 'Travel Fund Request Date'); }} />
                   </div>
                   <div>
                     <label style={label}>Approval Date</label>
-                    <input style={modernInput} type="date" value={travelFundApprovalDate} onChange={e => setTravelFundApprovalDate(e.target.value)} />
+                    <input style={modernInput} type="date" value={travelFundApprovalDate} onChange={e => { trackSectionField('client-information', 'travelFundApprovalDate', travelFundApprovalDate, 'Travel Fund Approval Date'); setTravelFundApprovalDate(e.target.value); trackSectionField('client-information', 'travelFundApprovalDate', e.target.value, 'Travel Fund Approval Date'); }} />
                   </div>
                   <div>
                     <label style={label}>Approved Amount</label>
-                    <input style={modernInput} type="text" placeholder="Enter approved amount" value={travelFundReleasedAmount} onChange={e => setTravelFundReleasedAmount(e.target.value.replace(/[^0-9.,]/g, ''))} />
+                    <input style={modernInput} type="text" placeholder="Enter approved amount" value={travelFundReleasedAmount} onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('client-information', 'travelFundReleasedAmount', travelFundReleasedAmount, 'Travel Fund Approved Amount'); setTravelFundReleasedAmount(val); trackSectionField('client-information', 'travelFundReleasedAmount', val, 'Travel Fund Approved Amount'); }} />
                   </div>
                 </div>
 
@@ -1993,7 +1993,7 @@ const ClientRecords: React.FC<{
                     type="text"
                     placeholder="Enter total amount"
                     value={travelFundTotalAmount}
-                    onChange={e => setTravelFundTotalAmount(e.target.value.replace(/[^0-9.,]/g, ''))}
+                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('client-information', 'travelFundTotalAmount', travelFundTotalAmount, 'Travel Fund Total Amount'); setTravelFundTotalAmount(val); trackSectionField('client-information', 'travelFundTotalAmount', val, 'Travel Fund Total Amount'); }}
                   />
                 </div>
 
@@ -2317,7 +2317,7 @@ const ClientRecords: React.FC<{
                   placeholder="Enter package URL (e.g., https://...)"
                   maxLength={500}
                   value={packageLink}
-                  onChange={e => setPackageLink(e.target.value)}
+                  onChange={e => { trackSectionField('package-information', 'packageLink', packageLink, 'Package Link'); setPackageLink(e.target.value); trackSectionField('package-information', 'packageLink', e.target.value, 'Package Link'); }}
                 />
               </div>
             </div>
@@ -2331,7 +2331,7 @@ const ClientRecords: React.FC<{
                   placeholder="Enter any special requests or notes from the client..."
                   maxLength={2000}
                   value={clientRequest}
-                  onChange={e => setClientRequest(e.target.value)}
+                  onChange={e => { trackSectionField('package-information', 'clientRequest', clientRequest, 'Client Request'); setClientRequest(e.target.value); trackSectionField('package-information', 'clientRequest', e.target.value, 'Client Request'); }}
                 />
               </div>
             </div>
@@ -3138,7 +3138,7 @@ const ClientRecords: React.FC<{
                 type="text"
                 placeholder="Full name"
                 value={arm}
-                onChange={e => setArm(e.target.value)}
+                onChange={e => { trackSectionField('account-relations', 'arm', arm, 'ARM'); setArm(e.target.value); trackSectionField('account-relations', 'arm', e.target.value, 'ARM'); }}
               />
             </div>
 
@@ -3157,16 +3157,16 @@ const ClientRecords: React.FC<{
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={afterSalesSCDate} onChange={e => setAfterSalesSCDate(e.target.value)} />
+                <input style={modernInput} type="date" value={afterSalesSCDate} onChange={e => { trackSectionField('after-sales-sc', 'afterSalesSCDate', afterSalesSCDate, 'After Sales SC Date'); setAfterSalesSCDate(e.target.value); trackSectionField('after-sales-sc', 'afterSalesSCDate', e.target.value, 'After Sales SC Date'); }} />
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterSalesSCReport} onChange={e => setAfterSalesSCReport(e.target.value)} />
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterSalesSCReport} onChange={e => { trackSectionField('after-sales-sc', 'afterSalesSCReport', afterSalesSCReport, 'After Sales SC Report'); setAfterSalesSCReport(e.target.value); trackSectionField('after-sales-sc', 'afterSalesSCReport', e.target.value, 'After Sales SC Report'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={afterSalesSCReportBy} onChange={e => setAfterSalesSCReportBy(e.target.value)} />
+              <input style={modernInput} type="text" placeholder="Full name" value={afterSalesSCReportBy} onChange={e => { trackSectionField('after-sales-sc', 'afterSalesSCReportBy', afterSalesSCReportBy, 'After Sales SC Report By'); setAfterSalesSCReportBy(e.target.value); trackSectionField('after-sales-sc', 'afterSalesSCReportBy', e.target.value, 'After Sales SC Report By'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
@@ -3216,7 +3216,7 @@ const ClientRecords: React.FC<{
                 type="text"
                 placeholder="Full name"
                 value={visaOfficerAppointed}
-                onChange={e => setVisaOfficerAppointed(e.target.value)}
+                onChange={e => { trackSectionField('visa-service', 'visaOfficerAppointed', visaOfficerAppointed, 'Visa Officer Appointed'); setVisaOfficerAppointed(e.target.value); trackSectionField('visa-service', 'visaOfficerAppointed', e.target.value, 'Visa Officer Appointed'); }}
               />
             </div>
 
@@ -3751,7 +3751,9 @@ const ClientRecords: React.FC<{
                       onChange={e => {
                         const updated = [...passportNames];
                         updated[idx] = e.target.value;
+                        trackSectionField('package-information', `passportName_${idx + 1}`, passportNames[idx] || '', `Passport Name ${idx + 1}`);
                         setPassportNames(updated);
+                        trackSectionField('package-information', `passportName_${idx + 1}`, e.target.value, `Passport Name ${idx + 1}`);
                       }}
                     />
                   </div>
@@ -3932,16 +3934,16 @@ const ClientRecords: React.FC<{
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={afterVisaSCDate} onChange={e => setAfterVisaSCDate(e.target.value)} />
+                <input style={modernInput} type="date" value={afterVisaSCDate} onChange={e => { trackSectionField('after-visa-sc', 'afterVisaSCDate', afterVisaSCDate, 'After Visa SC Date'); setAfterVisaSCDate(e.target.value); trackSectionField('after-visa-sc', 'afterVisaSCDate', e.target.value, 'After Visa SC Date'); }} />
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterVisaSCReport} onChange={e => setAfterVisaSCReport(e.target.value)} />
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={afterVisaSCReport} onChange={e => { trackSectionField('after-visa-sc', 'afterVisaSCReport', afterVisaSCReport, 'After Visa SC Report'); setAfterVisaSCReport(e.target.value); trackSectionField('after-visa-sc', 'afterVisaSCReport', e.target.value, 'After Visa SC Report'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={afterVisaSCReportBy} onChange={e => setAfterVisaSCReportBy(e.target.value)} />
+              <input style={modernInput} type="text" placeholder="Full name" value={afterVisaSCReportBy} onChange={e => { trackSectionField('after-visa-sc', 'afterVisaSCReportBy', afterVisaSCReportBy, 'After Visa SC Report By'); setAfterVisaSCReportBy(e.target.value); trackSectionField('after-visa-sc', 'afterVisaSCReportBy', e.target.value, 'After Visa SC Report By'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
@@ -3975,16 +3977,16 @@ const ClientRecords: React.FC<{
             <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={label}>Date</label>
-                <input style={modernInput} type="date" value={preDepartureSCDate} onChange={e => setPreDepartureSCDate(e.target.value)} />
+                <input style={modernInput} type="date" value={preDepartureSCDate} onChange={e => { trackSectionField('pre-departure-sc', 'preDepartureSCDate', preDepartureSCDate, 'Pre-Departure SC Date'); setPreDepartureSCDate(e.target.value); trackSectionField('pre-departure-sc', 'preDepartureSCDate', e.target.value, 'Pre-Departure SC Date'); }} />
               </div>
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={preDepartureSCReport} onChange={e => setPreDepartureSCReport(e.target.value)} />
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={preDepartureSCReport} onChange={e => { trackSectionField('pre-departure-sc', 'preDepartureSCReport', preDepartureSCReport, 'Pre-Departure SC Report'); setPreDepartureSCReport(e.target.value); trackSectionField('pre-departure-sc', 'preDepartureSCReport', e.target.value, 'Pre-Departure SC Report'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={preDepartureSCReportBy} onChange={e => setPreDepartureSCReportBy(e.target.value)} />
+              <input style={modernInput} type="text" placeholder="Full name" value={preDepartureSCReportBy} onChange={e => { trackSectionField('pre-departure-sc', 'preDepartureSCReportBy', preDepartureSCReportBy, 'Pre-Departure SC Report By'); setPreDepartureSCReportBy(e.target.value); trackSectionField('pre-departure-sc', 'preDepartureSCReportBy', e.target.value, 'Pre-Departure SC Report By'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>
@@ -4191,15 +4193,15 @@ const ClientRecords: React.FC<{
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Date</label>
-              <input style={modernInput} type="date" value={postDepartureSCDate} onChange={e => setPostDepartureSCDate(e.target.value)} />
+              <input style={modernInput} type="date" value={postDepartureSCDate} onChange={e => { trackSectionField('post-departure-sc', 'postDepartureSCDate', postDepartureSCDate, 'Post-Departure Date'); setPostDepartureSCDate(e.target.value); trackSectionField('post-departure-sc', 'postDepartureSCDate', e.target.value, 'Post-Departure Date'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report</label>
-              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => setPostDepartureSCReport(e.target.value)} />
+              <textarea style={{ ...modernInput, minHeight: 80, resize: "vertical" }} placeholder="SC report details..." value={postDepartureSCReport} onChange={e => { trackSectionField('post-departure-sc', 'postDepartureSCReport', postDepartureSCReport, 'Post-Departure SC Report'); setPostDepartureSCReport(e.target.value); trackSectionField('post-departure-sc', 'postDepartureSCReport', e.target.value, 'Post-Departure SC Report'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>SC Report By</label>
-              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => setPostDepartureSCReportBy(e.target.value)} />
+              <input style={modernInput} type="text" placeholder="Full name" value={postDepartureSCReportBy} onChange={e => { trackSectionField('post-departure-sc', 'postDepartureSCReportBy', postDepartureSCReportBy, 'Post-Departure SC Report By'); setPostDepartureSCReportBy(e.target.value); trackSectionField('post-departure-sc', 'postDepartureSCReportBy', e.target.value, 'Post-Departure SC Report By'); }} />
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={label}>Add Attachment</label>

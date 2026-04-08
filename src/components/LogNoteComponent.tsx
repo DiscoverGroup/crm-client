@@ -1434,45 +1434,130 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     </span>
                   </div>
                   
-                  {/* Action description */}
-                  <div style={{
-                    color: '#475569',
-                    fontSize: '12px',
-                    lineHeight: '1.4',
-                    wordBreak: 'break-word'
-                  }}>
-                    {note.type === 'auto' && note.action.includes('Section Updated') ? (
+                  {/* Action description — organized by type */}
+                  <div style={{ color: '#475569', fontSize: '12px', lineHeight: '1.4', wordBreak: 'break-word' }}>
+
+                    {/* ── Field Changed ── */}
+                    {note.type === 'auto' && note.action === 'Field Updated' && note.fieldChanged ? (
                       <div>
+                        <span style={{
+                          display: 'inline-block',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          borderRadius: '4px',
+                          padding: '1px 7px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.3px',
+                          marginBottom: '6px'
+                        }}>✏️ Field Changed</span>
                         <div style={{
-                          fontWeight: '500',
-                          color: '#1e293b',
-                          marginBottom: '3px'
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          padding: '7px 10px',
+                          fontSize: '11px'
                         }}>
-                          {note.action.replace('Section Updated: ', '')}
-                        </div>
-                        <div style={{
-                          color: '#64748b',
-                          fontSize: '11px',
-                          whiteSpace: 'pre-line'
-                        }}>
-                          {renderTextWithMentions(note.description.split('\n').slice(1).join('\n'))}
+                          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '5px' }}>
+                            {note.fieldChanged}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{
+                              background: '#fee2e2', color: '#991b1b',
+                              padding: '2px 8px', borderRadius: '4px',
+                              textDecoration: 'line-through', fontSize: '11px'
+                            }}>
+                              {note.oldValue || '(empty)'}
+                            </span>
+                            <span style={{ color: '#94a3b8', fontWeight: 700 }}>→</span>
+                            <span style={{
+                              background: '#dcfce7', color: '#166534',
+                              padding: '2px 8px', borderRadius: '4px',
+                              fontWeight: 600, fontSize: '11px'
+                            }}>
+                              {note.newValue || '(empty)'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
+                    /* ── File Uploaded ── */
+                    ) : note.type === 'auto' && note.action === 'File Uploaded' && note.fieldChanged ? (
+                      <div>
+                        <span style={{
+                          display: 'inline-block',
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          borderRadius: '4px',
+                          padding: '1px 7px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.3px',
+                          marginBottom: '6px'
+                        }}>📎 File Uploaded</span>
+                        <div style={{
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          padding: '7px 10px',
+                          fontSize: '11px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{note.fieldChanged}</span>
+                            <span style={{ color: '#94a3b8', fontWeight: 700 }}>→</span>
+                            <span style={{ color: '#0369a1', fontWeight: 500 }}>{note.newValue}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                    /* ── Manual Comment ── */
+                    ) : note.type === 'manual' ? (
+                      <div>
+                        <span style={{
+                          display: 'inline-block',
+                          background: '#fff7ed',
+                          color: '#c2410c',
+                          borderRadius: '4px',
+                          padding: '1px 7px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.3px',
+                          marginBottom: '6px'
+                        }}>💬 Comment</span>
+                        <div style={{
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          padding: '7px 10px',
+                          fontSize: '12px',
+                          color: '#334155',
+                          lineHeight: '1.5'
+                        }}>
+                          {renderTextWithMentions(note.description)}
+                        </div>
+                        {renderAttachments(note.attachments)}
+                      </div>
+
+                    /* ── Legacy / other auto entries ── */
                     ) : (
                       <div>
-                        <span style={{ fontWeight: '500' }}>
-                          {note.action}
-                        </span>
+                        <span style={{
+                          display: 'inline-block',
+                          background: '#f1f5f9',
+                          color: '#475569',
+                          borderRadius: '4px',
+                          padding: '1px 7px',
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          letterSpacing: '0.3px',
+                          marginBottom: '6px'
+                        }}>🔧 {note.action.replace('Section Updated: ', '')}</span>
                         {note.description && (
-                          <div style={{
-                            marginTop: '3px',
-                            color: '#64748b',
-                            fontSize: '11px'
-                          }}>
+                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px', whiteSpace: 'pre-line' }}>
                             {renderTextWithMentions(note.description)}
                           </div>
                         )}
-                      {renderAttachments(note.attachments)}
+                        {renderAttachments(note.attachments)}
                       </div>
                     )}
                   </div>
