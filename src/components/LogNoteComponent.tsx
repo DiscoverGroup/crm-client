@@ -74,8 +74,8 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   };
 
   // Decode HTML entities that may have been encoded by old sanitizer
-  const decodeHtml = (text: string): string => {
-    if (!text) return text;
+  const decodeHtml = (text: string | undefined): string => {
+    if (!text) return text ?? '';
     return text
       .replace(/&amp;/g, '&')
       .replace(/&quot;/g, '"')
