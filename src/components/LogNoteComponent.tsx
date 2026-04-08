@@ -1370,18 +1370,38 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
           </div>
         ))}
 
-        {/* Manual Logs */}
-        {logNotes.filter(n => !n.parentActivityLogId).length === 0 && activityLogs.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '24px 16px',
-            color: '#64748b',
-            fontSize: '13px'
-          }}>
-            No activity yet. Changes to this client will appear here automatically.
-          </div>
-        ) : (
-          logNotes.filter(n => !n.parentActivityLogId).map((note) => (
+        {/* Manual Logs - grouped by type */}
+        {(() => {
+          type GroupItem = { kind: 'header'; label: string; count: number } | { kind: 'note'; note: LogNote };
+          const allNotes = logNotes.filter(n => !n.parentActivityLogId);
+          if (allNotes.length === 0 && activityLogs.length === 0) {
+            return (
+              <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748b', fontSize: '13px' }}>
+                No activity yet. Changes to this client will appear here automatically.
+              </div>
+            );
+          }
+          const items: GroupItem[] = [];
+          const addGroup = (label: string, notes: LogNote[]) => {
+            if (notes.length === 0) return;
+            items.push({ kind: 'header', label, count: notes.length });
+            notes.forEach(n => items.push({ kind: 'note', note: n }));
+          };
+          addGroup('💬 Comments', allNotes.filter(n => n.type === 'manual'));
+          addGroup('📎 File Uploads', allNotes.filter(n => n.type === 'auto' && n.action === 'File Uploaded'));
+          addGroup('✏️ Field Changes', allNotes.filter(n => n.type === 'auto' && n.action === 'Field Updated'));
+          addGroup('🔧 Other', allNotes.filter(n => n.type !== 'manual' && !(n.type === 'auto' && (n.action === 'File Uploaded' || n.action === 'Field Updated'))));
+          return items.map((item, idx) => {
+            if (item.kind === 'header') {
+              return (
+                <div key={`hdr-${idx}`} style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b', padding: '10px 0 6px', borderBottom: '2px solid #e2e8f0', marginBottom: '8px', marginTop: idx > 0 ? '16px' : 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {item.label}
+                  <span style={{ background: '#e2e8f0', color: '#475569', borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 500 }}>{item.count}</span>
+                </div>
+              );
+            }
+            const note = item.note;
+            return (
             <div 
               key={note.id} 
               onClick={() => setSelectedNote(note)}
@@ -1859,8 +1879,9 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                 </div>
               )}
             </div>
-          ))
-        )}
+            );
+          });
+        })()}
         </>
         )}
       </div>
