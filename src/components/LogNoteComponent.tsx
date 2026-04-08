@@ -73,8 +73,23 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Decode HTML entities that may have been encoded by old sanitizer
+  const decodeHtml = (text: string): string => {
+    if (!text) return text;
+    return text
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#x27;/g, "'")
+      .replace(/&#x2F;/g, '/')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/→/g, '→')
+      .replace(/•/g, '•');
+  };
+
   // Helper function to render text with highlighted mentions
   const renderTextWithMentions = (text: string) => {
+    text = decodeHtml(text);
     const mentionRegex = /@([\w-]+)/g;
     const parts = text.split(mentionRegex);
     
@@ -1459,7 +1474,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           fontSize: '11px'
                         }}>
                           <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '5px' }}>
-                            {note.fieldChanged}
+                            {decodeHtml(note.fieldChanged)}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             <span style={{
@@ -1467,7 +1482,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                               padding: '2px 8px', borderRadius: '4px',
                               textDecoration: 'line-through', fontSize: '11px'
                             }}>
-                              {note.oldValue || '(empty)'}
+                              {decodeHtml(note.oldValue) || '(empty)'}
                             </span>
                             <span style={{ color: '#94a3b8', fontWeight: 700 }}>→</span>
                             <span style={{
@@ -1475,7 +1490,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                               padding: '2px 8px', borderRadius: '4px',
                               fontWeight: 600, fontSize: '11px'
                             }}>
-                              {note.newValue || '(empty)'}
+                              {decodeHtml(note.newValue) || '(empty)'}
                             </span>
                           </div>
                         </div>
@@ -1502,10 +1517,11 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           padding: '7px 10px',
                           fontSize: '11px'
                         }}>
+                          <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '3px', fontWeight: 500 }}>Field</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{note.fieldChanged}</span>
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{decodeHtml(note.fieldChanged)}</span>
                             <span style={{ color: '#94a3b8', fontWeight: 700 }}>→</span>
-                            <span style={{ color: '#0369a1', fontWeight: 500 }}>{note.newValue}</span>
+                            <span style={{ color: '#0369a1', fontWeight: 500 }}>{decodeHtml(note.newValue)}</span>
                           </div>
                         </div>
                       </div>
@@ -1538,7 +1554,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                         {renderAttachments(note.attachments)}
                       </div>
 
-                    /* ── Legacy / other auto entries ── */
+                    /* ── Legacy / other auto entries (Section Updated, etc.) ── */
                     ) : (
                       <div>
                         <span style={{
@@ -1551,9 +1567,18 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                           fontWeight: 600,
                           letterSpacing: '0.3px',
                           marginBottom: '6px'
-                        }}>🔧 {note.action.replace('Section Updated: ', '')}</span>
+                        }}>🔧 {decodeHtml(note.action.replace('Section Updated: ', ''))}</span>
                         {note.description && (
-                          <div style={{ color: '#64748b', fontSize: '11px', marginTop: '2px', whiteSpace: 'pre-line' }}>
+                          <div style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '6px',
+                            padding: '7px 10px',
+                            fontSize: '11px',
+                            color: '#475569',
+                            whiteSpace: 'pre-line',
+                            lineHeight: '1.6'
+                          }}>
                             {renderTextWithMentions(note.description)}
                           </div>
                         )}
