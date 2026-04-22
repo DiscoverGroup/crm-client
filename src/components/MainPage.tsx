@@ -169,7 +169,8 @@ const ClientRecords: React.FC<{
   const [email, setEmail] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [packageName, setPackageName] = useState("");
-  const [travelDate, setTravelDate] = useState("");
+  const [travelStartDate, setTravelStartDate] = useState("");
+  const [travelEndDate, setTravelEndDate] = useState("");
   const [numberOfPax, setNumberOfPax] = useState<number>(0);
   const [bookingConfirmations, setBookingConfirmations] = useState<string[]>([""]);
   
@@ -262,7 +263,8 @@ const ClientRecords: React.FC<{
           setEmail(existingClient.email || '');
           setDateOfBirth(existingClient.dateOfBirth || '');
           setPackageName(existingClient.packageName || '');
-          setTravelDate(existingClient.travelDate || '');
+          setTravelStartDate(existingClient.travelStartDate || existingClient.travelDate || '');
+          setTravelEndDate(existingClient.travelEndDate || '');
           setNumberOfPax(existingClient.numberOfPax || 0);
           setBookingConfirmations(
             Array.isArray(existingClient.bookingConfirmations)
@@ -408,9 +410,14 @@ const ClientRecords: React.FC<{
     setPackageName(value);
   };
   
-  const setTravelDateTracked = (value: string) => {
-    trackSectionField('package-information', 'travelDate', value, 'Travel Date');
-    setTravelDate(value);
+  const setTravelStartDateTracked = (value: string) => {
+    trackSectionField('package-information', 'travelStartDate', value, 'Travel Start Date');
+    setTravelStartDate(value);
+  };
+
+  const setTravelEndDateTracked = (value: string) => {
+    trackSectionField('package-information', 'travelEndDate', value, 'Travel End Date');
+    setTravelEndDate(value);
   };
   
   const setNumberOfPaxTracked = (value: number) => {
@@ -1052,12 +1059,19 @@ const ClientRecords: React.FC<{
       }
 
       // Validation: Travel Date (warn if in the past, but allow saving historical records)
-      if (travelDate) {
-        const travel = new Date(travelDate);
+      if (travelStartDate) {
+        const travel = new Date(travelStartDate);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (travel < today) {
-          showWarningToast('Note: Travel Date is in the past');
+          showWarningToast('Note: Travel Start Date is in the past');
+        }
+      }
+      if (travelStartDate && travelEndDate) {
+        if (new Date(travelEndDate) < new Date(travelStartDate)) {
+          showWarningToast('Travel End Date cannot be before Start Date');
+          setIsSavingClient(false);
+          return;
         }
       }
 
@@ -1116,7 +1130,9 @@ const ClientRecords: React.FC<{
         email: cleanEmail,
         dateOfBirth,
         packageName: cleanPackageName,
-        travelDate,
+        travelDate: travelStartDate, // keep legacy field in sync
+        travelStartDate,
+        travelEndDate,
         numberOfPax,
         bookingConfirmations: bookingConfirmations.filter(b => b.trim()),
         packageLink: cleanPackageLink,
@@ -1297,7 +1313,9 @@ const ClientRecords: React.FC<{
       const clientData = {
         ...existingClient,
         packageName: cleanPackageName,
-        travelDate,
+        travelDate: travelStartDate, // keep legacy field in sync
+        travelStartDate,
+        travelEndDate,
         numberOfPax,
         bookingConfirmations: cleanBookingConfirmations,
         packageLink: cleanPackageLink,
@@ -1312,7 +1330,8 @@ const ClientRecords: React.FC<{
       // Build field-level change record for package fields
       const PKG_FIELD_LABELS: Record<string, string> = {
         packageName: 'Package Name',
-        travelDate: 'Travel Date',
+        travelStartDate: 'Travel Start Date',
+        travelEndDate: 'Travel End Date',
         numberOfPax: 'Number of Pax',
         bookingConfirmations: 'Booking Confirmation',
         packageLink: 'Package Link',
@@ -2115,13 +2134,28 @@ const ClientRecords: React.FC<{
                 />
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
-                <label style={label}>Travel Date</label>
+                <label style={label}>Start Date</label>
                 <input 
                   style={modernInput} 
                   type="date"
-                  min={new Date().toISOString().split('T')[0]}
-                  value={travelDate}
-                  onChange={e => setTravelDateTracked(e.target.value)}
+                  value={travelStartDate}
+                  onChange={e => {
+                    setTravelStartDateTracked(e.target.value);
+                    // Auto-clear end date if it's before the new start date
+                    if (travelEndDate && e.target.value && travelEndDate < e.target.value) {
+                      setTravelEndDateTracked('');
+                    }
+                  }}
+                />
+              </div>
+              <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
+                <label style={label}>End Date</label>
+                <input 
+                  style={modernInput} 
+                  type="date"
+                  min={travelStartDate || undefined}
+                  value={travelEndDate}
+                  onChange={e => setTravelEndDateTracked(e.target.value)}
                 />
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>

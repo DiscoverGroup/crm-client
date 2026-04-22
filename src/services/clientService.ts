@@ -13,7 +13,9 @@ export interface ClientData {
   email?: string;
   dateOfBirth?: string;
   packageName?: string;
-  travelDate?: string;
+  travelDate?: string; // legacy — kept for backward compat
+  travelStartDate?: string;
+  travelEndDate?: string;
   numberOfPax?: number;
   bookingConfirmation?: string;
   bookingConfirmations?: string[];

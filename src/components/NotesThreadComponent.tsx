@@ -31,7 +31,9 @@ export interface NoteThread {
   id: string;
   department: string;
   request: string;
-  date: string;
+  date: string; // legacy — kept for backward compat
+  startDate?: string;
+  endDate?: string;
   authorId: string;
   authorName: string;
   timestamp: string;
@@ -613,7 +615,7 @@ const ThreadCard: React.FC<ThreadCardProps> = ({
               {thread.department}
             </span>
           )}
-          {thread.date && (
+          {(thread.startDate || thread.date) && (
             <span
               style={{
                 background: '#f3f4f6',
@@ -623,7 +625,8 @@ const ThreadCard: React.FC<ThreadCardProps> = ({
                 color: '#6b7280',
               }}
             >
-              📅 {thread.date}
+              📅 {thread.startDate || thread.date}
+              {thread.endDate ? ` → ${thread.endDate}` : ''}
             </span>
           )}
           <span style={{ marginLeft: 'auto', fontSize: 11, color: '#b45309' }}>
@@ -818,6 +821,10 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
   const [noteDate, setNoteDate] = useState(
     () => new Date().toISOString().split('T')[0]
   );
+  const [noteStartDate, setNoteStartDate] = useState(
+    () => new Date().toISOString().split('T')[0]
+  );
+  const [noteEndDate, setNoteEndDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // ── Persistence helpers ────────────────────────────────────────────────────
@@ -899,7 +906,9 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
         id: generateId(),
         department: cleanDept,
         request: cleanReq,
-        date: noteDate,
+        date: noteStartDate, // legacy field kept in sync with startDate
+        startDate: noteStartDate,
+        endDate: noteEndDate || undefined,
         authorId: currentUserId,
         authorName: currentUserName,
         timestamp: new Date().toISOString(),
@@ -910,7 +919,10 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
       await persistThreads(updated);
       setDepartment('');
       setRequest('');
-      setNoteDate(new Date().toISOString().split('T')[0]);
+      const today = new Date().toISOString().split('T')[0];
+      setNoteDate(today);
+      setNoteStartDate(today);
+      setNoteEndDate('');
     } finally {
       setSubmitting(false);
     }
@@ -1005,12 +1017,48 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
                 marginBottom: 3,
               }}
             >
-              Date
+              Start Date
             </label>
             <input
               type="date"
-              value={noteDate}
-              onChange={(e) => setNoteDate(e.target.value)}
+              value={noteStartDate}
+              onChange={(e) => {
+                setNoteStartDate(e.target.value);
+                setNoteDate(e.target.value);
+                // Auto-clear end date if it's before the new start date
+                if (noteEndDate && e.target.value && noteEndDate < e.target.value) {
+                  setNoteEndDate('');
+                }
+              }}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '7px 10px',
+                border: '1px solid #fde68a',
+                borderRadius: 8,
+                fontSize: 12,
+                outline: 'none',
+                background: '#fffbeb',
+              }}
+            />
+          </div>
+          <div style={{ flex: '0 1 130px', minWidth: 0 }}>
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#92400e',
+                display: 'block',
+                marginBottom: 3,
+              }}
+            >
+              End Date
+            </label>
+            <input
+              type="date"
+              value={noteEndDate}
+              min={noteStartDate || undefined}
+              onChange={(e) => setNoteEndDate(e.target.value)}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
