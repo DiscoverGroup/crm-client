@@ -818,9 +818,6 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
   // Compose state
   const [department, setDepartment] = useState('');
   const [request, setRequest] = useState('');
-  const [noteDate, setNoteDate] = useState(
-    () => new Date().toISOString().split('T')[0]
-  );
   const [noteStartDate, setNoteStartDate] = useState(
     () => new Date().toISOString().split('T')[0]
   );
@@ -920,7 +917,6 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
       setDepartment('');
       setRequest('');
       const today = new Date().toISOString().split('T')[0];
-      setNoteDate(today);
       setNoteStartDate(today);
       setNoteEndDate('');
     } finally {
@@ -1024,7 +1020,6 @@ const NotesThreadComponent: React.FC<NotesThreadComponentProps> = ({
               value={noteStartDate}
               onChange={(e) => {
                 setNoteStartDate(e.target.value);
-                setNoteDate(e.target.value);
                 // Auto-clear end date if it's before the new start date
                 if (noteEndDate && e.target.value && noteEndDate < e.target.value) {
                   setNoteEndDate('');
