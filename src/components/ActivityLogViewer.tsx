@@ -22,6 +22,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
   const [startTime, setStartTime] = useState('00:00');
   const [endTime, setEndTime] = useState('23:59');
   const [profileImages, setProfileImages] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadLogs();
@@ -136,6 +137,16 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
 
   // Apply all filters
   const filteredLogs = logs.filter(log => {
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchesClient = log.clientName?.toLowerCase().includes(q);
+      const matchesUser = log.performedByUser?.toLowerCase().includes(q) || log.performedBy?.toLowerCase().includes(q);
+      const matchesAction = log.action?.toLowerCase().includes(q);
+      const matchesChanges = JSON.stringify(log.changes || {}).toLowerCase().includes(q);
+      if (!matchesClient && !matchesUser && !matchesAction && !matchesChanges) return false;
+    }
+
     // Action filter
     if (filterAction !== 'all' && log.action !== filterAction) {
       return false;
@@ -300,7 +311,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             📅 Date Filter
           </button>
 
-          {(specificDate || startDate || endDate) && (
+          {(specificDate || startDate || endDate || searchQuery) && (
             <button
               onClick={() => {
                 setSpecificDate('');
@@ -308,6 +319,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
                 setEndDate('');
                 setStartTime('00:00');
                 setEndTime('23:59');
+                setSearchQuery('');
               }}
               style={{
                 padding: '8px 16px',
@@ -324,6 +336,50 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
             </button>
           )}
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+        padding: windowWidth < 640 ? '12px 16px' : '14px 20px',
+        marginBottom: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px'
+      }}>
+        <span style={{ fontSize: '16px' }}>🔍</span>
+        <input
+          type="text"
+          placeholder="Search by client name, edited by, action, or changes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            fontSize: '14px',
+            color: '#374151',
+            backgroundColor: 'transparent'
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#9ca3af',
+              fontSize: '18px',
+              lineHeight: 1,
+              padding: '0 4px'
+            }}
+          >
+            ×
+          </button>
+        )}
       </div>
 
       {/* Date Filter Panel */}
