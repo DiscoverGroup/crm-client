@@ -36,6 +36,8 @@
     Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=()"
     # Force HTTPS for 1 year
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
+    # Allow Auth0 popup to communicate back to opener window
+    Cross-Origin-Opener-Policy = "unsafe-none"
     # Content Security Policy
     # http: in connect-src and img-src is required for local MinIO storage (LAN, HTTP only).
     # If ever deployed to HTTPS hosting, MinIO would also need HTTPS — this does not weaken
