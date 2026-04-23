@@ -4391,6 +4391,7 @@ const MainPage: React.FC<MainPageProps> = ({
   const [clients, setClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [loading, setLoading] = useState(false);
   
   // Navigation state for form view - restore from sessionStorage on page load
@@ -5085,7 +5086,7 @@ const MainPage: React.FC<MainPageProps> = ({
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '2fr 1fr',
+            gridTemplateColumns: '2fr 1fr 1fr',
             gap: '16px',
             alignItems: 'end'
           }}>
@@ -5163,6 +5164,36 @@ const MainPage: React.FC<MainPageProps> = ({
                 <option value="Rebook">Rebook</option>
                 <option value="Cancelled">Cancelled</option>
                 <option value="Archived">Archived</option>
+              </select>
+            </div>
+            <div>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
+                fontSize: '12px',
+                color: '#0A2D74',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Sort by Date
+              </label>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                style={{
+                  width: '100%',
+                  padding: '11px 14px',
+                  border: '1.5px solid #d1dbe8',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  background: '#f8fafc',
+                  color: '#1e293b',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
               </select>
             </div>
           </div>
@@ -5350,7 +5381,11 @@ const MainPage: React.FC<MainPageProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {clients.map((client, index) => (
+                  {[...clients].sort((a, b) => {
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+                  }).map((client, index) => (
                     <tr
                       key={client.id}
                       style={{
