@@ -19,7 +19,7 @@ import { getAuthToken, setAuthToken, clearAuthToken, authHeaders } from "./utils
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
-  const { loginWithPopup, getAccessTokenSilently } = useAuth0();
+  const { loginWithRedirect, getAccessTokenSilently, isAuthenticated, isLoading: auth0Loading } = useAuth0();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string; email: string } | null>(null);
@@ -497,73 +497,85 @@ const App: React.FC = () => {
     }
   };
 
-  // ── Auth0 (login OR signup) ────────────────────────────────────────────────
-  const handleAuth0 = async (mode: 'login' | 'signup' = 'signup') => {
-    try {
-      // Open Auth0 Universal Login
-      await loginWithPopup({
-        authorizationParams: {
-          ...(mode === 'signup' ? { screen_hint: 'signup' } : {}),
-          scope: 'openid profile email',
-        },
-      });
+  // ── Auth0 redirect callback handler ─────────────────────────────────────
+  useEffect(() => {
+    if (auth0Loading) return;
+    if (!isAuthenticated) return;
+    if (isLoggedIn) return; // already logged in via CRM JWT
 
-      // Get access token to call our sync function
-      const accessToken = await getAccessTokenSilently({
-        authorizationParams: { scope: 'openid profile email' },
-      });
+    const pending = sessionStorage.getItem('auth0_redirect_pending');
+    if (!pending) return;
+    sessionStorage.removeItem('auth0_redirect_pending');
 
-      const response = await fetch('/.netlify/functions/auth0-sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken }),
-      });
+    const completeAuth0Login = async () => {
+      try {
+        const accessToken = await getAccessTokenSilently({
+          authorizationParams: { scope: 'openid profile email' },
+        });
 
-      const result = await response.json();
+        const response = await fetch('/.netlify/functions/auth0-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken }),
+        });
 
-      if (result.success && result.user) {
-        if (result.token) setAuthToken(result.token);
+        const result = await response.json();
 
-        const userData = {
-          fullName: result.user.fullName || result.user.username,
-          username: result.user.username,
-          id: result.user.id,
-          email: result.user.email,
-        };
+        if (result.success && result.user) {
+          if (result.token) setAuthToken(result.token);
 
-        // If the user has no department/position yet → show the profile-completion modal
-        if (!result.user.department || !result.user.position) {
-          setPendingAuth0Profile({
-            userId: result.user.id,
-            token: result.token,
-            userData,
-            allUserData: result.user,
+          const userData = {
+            fullName: result.user.fullName || result.user.username,
+            username: result.user.username,
+            id: result.user.id,
+            email: result.user.email,
+          };
+
+          if (!result.user.department || !result.user.position) {
+            setPendingAuth0Profile({
+              userId: result.user.id,
+              token: result.token,
+              userData,
+              allUserData: result.user,
+            });
+            return;
+          }
+
+          setCurrentUser(userData);
+          setIsLoggedIn(true);
+          saveAuthState(true, userData);
+          syncUserToLocalStorage(result.user);
+        } else {
+          setModalConfig({
+            isOpen: true,
+            title: 'Auth0 Sync Failed',
+            message: result.error || 'Could not complete authentication. Please try again.',
+            type: 'error',
           });
-          return; // don't log-in yet
         }
-
-        // Existing user with complete profile — log straight in
-        setCurrentUser(userData);
-        setIsLoggedIn(true);
-        saveAuthState(true, userData);
-        syncUserToLocalStorage(result.user);
-      } else {
+      } catch (err: any) {
         setModalConfig({
           isOpen: true,
-          title: 'Auth0 Sync Failed',
-          message: result.error || 'Could not complete authentication. Please try again.',
+          title: 'Auth0 Error',
+          message: err?.message || 'Authentication failed. Please try again.',
           type: 'error',
         });
       }
-    } catch (err: any) {
-      if (err?.error === 'popup_closed_by_user') return;
-      setModalConfig({
-        isOpen: true,
-        title: 'Auth0 Error',
-        message: err?.message || 'Authentication failed. Please try again.',
-        type: 'error',
-      });
-    }
+    };
+
+    completeAuth0Login();
+  }, [isAuthenticated, auth0Loading]);
+
+  // ── Auth0 (login OR signup) ────────────────────────────────────────────────
+  const handleAuth0 = (mode: 'login' | 'signup' = 'signup') => {
+    sessionStorage.setItem('auth0_redirect_pending', mode);
+    loginWithRedirect({
+      authorizationParams: {
+        ...(mode === 'signup' ? { screen_hint: 'signup' } : {}),
+        scope: 'openid profile email',
+        redirect_uri: window.location.origin,
+      },
+    });
   };
 
   const handleAuth0Register = () => handleAuth0('signup');
