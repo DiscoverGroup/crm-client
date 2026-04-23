@@ -15,7 +15,7 @@ import { MessagingService } from "./services/messagingService";
 import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
-import { setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
+import { getAuthToken, setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
@@ -201,29 +201,31 @@ const App: React.FC = () => {
       // console.log('🚀 Running on Netlify - Production Mode');
       // console.log('─────────────────────────────────────');
 
-      // Check MongoDB Atlas connection
-      try {
-        const response = await fetch('/.netlify/functions/database', {
-          method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
-        });
-        
-        if (!response.ok) {
-          await response.text();
-          // console.log('❌ MongoDB Atlas: Function error');
-          // console.log(`   • Status: ${response.status}`);
-          // console.log(`   • Response: ${errorText.substring(0, 200)}`);
-        } else {
-          const result = await response.json();
-          if (result.success) {
-            // console.log('✅ MongoDB Atlas: Connected');
+      // Check MongoDB Atlas connection (only if a token is present)
+      if (getAuthToken()) {
+        try {
+          const response = await fetch('/.netlify/functions/database', {
+            method: 'POST',
+            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
+          });
+          
+          if (!response.ok) {
+            await response.text();
+            // console.log('❌ MongoDB Atlas: Function error');
+            // console.log(`   • Status: ${response.status}`);
+            // console.log(`   • Response: ${errorText.substring(0, 200)}`);
           } else {
-            // console.log('❌ MongoDB Atlas: Connection issue -', result.error);
+            const result = await response.json();
+            if (result.success) {
+              // console.log('✅ MongoDB Atlas: Connected');
+            } else {
+              // console.log('❌ MongoDB Atlas: Connection issue -', result.error);
+            }
           }
+        } catch (error) {
+          // console.error('❌ MongoDB Atlas: Connection failed -', error);
         }
-      } catch (error) {
-        // console.error('❌ MongoDB Atlas: Connection failed -', error);
       }
 
       // Check Cloudflare R2 configuration
@@ -253,7 +255,10 @@ const App: React.FC = () => {
 
   // Sync all localStorage users to MongoDB
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const syncUsersToMongoDB = async () => {
+      if (!getAuthToken()) return;
       const usersData = localStorage.getItem('crm_users');
       if (!usersData) return;
 
@@ -292,19 +297,20 @@ const App: React.FC = () => {
       }
     };
 
-    // Only run sync once on mount, after a short delay to let other initialization complete
+    // Only run sync once per login, after a short delay to let other initialization complete
     const timer = setTimeout(() => {
       syncUsersToMongoDB();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLoggedIn]);
 
   // Sync all data from MongoDB — runs when user becomes authenticated and every 60s
   useEffect(() => {
     if (!isLoggedIn) return;
 
     const syncAllFromMongoDB = async () => {
+      if (!getAuthToken()) return;
       try {
         const { ClientService } = await import('./services/clientService');
         await ClientService.syncFromMongoDB();
@@ -350,13 +356,14 @@ const App: React.FC = () => {
         const now = Date.now();
         const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
         
-        // Check if session is still valid (within 24 hours)
-        if (authData.isLoggedIn && authData.currentUser && authData.timestamp && (now - authData.timestamp < sessionDuration)) {
+        // Check if session is still valid (within 24 hours) and JWT token is present
+        if (authData.isLoggedIn && authData.currentUser && authData.timestamp && (now - authData.timestamp < sessionDuration) && getAuthToken()) {
           setIsLoggedIn(true);
           setCurrentUser(authData.currentUser);
         } else {
-          // Session expired, clear stored data
+          // Session expired or JWT missing/expired — clear stored data
           localStorage.removeItem('crm_auth');
+          clearAuthToken();
         }
       } catch (error) {
         // console.error('Error parsing saved auth data:', error);
