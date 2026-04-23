@@ -112,7 +112,7 @@ export interface ClientSearchFilters {
 export class ClientService {
   private static STORAGE_KEY = 'crm_clients_data';
   private static LAST_SYNC_KEY = 'crm_clients_last_sync';
-  private static SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  private static SYNC_INTERVAL = 60 * 1000; // 1 minute
   private static syncInProgress = false;
 
   // Load clients from MongoDB and sync to localStorage
