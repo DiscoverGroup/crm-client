@@ -41,7 +41,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota' | 'backup-restore'>('users');
+  const [backupStatus, setBackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
+  const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
@@ -719,6 +723,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           💾 Storage &amp; Quota
+        </button>
+        <button
+          onClick={() => setActiveTab('backup-restore')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'backup-restore' ? 'white' : 'transparent',
+            color: activeTab === 'backup-restore' ? '#059669' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'backup-restore' ? '3px solid #059669' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          🗄️ Backup &amp; Restore
         </button>
       </div>
 
@@ -2385,6 +2407,330 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {users.filter(u => u.role !== 'admin' && u.email !== 'admin@discovergrp.com').length === 0 && (
                 <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No employees found.</p>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Backup & Restore Tab */}
+      {activeTab === 'backup-restore' && (() => {
+        const DB_API = '/.netlify/functions/database';
+
+        // Keys to include in localStorage backup (auth tokens excluded intentionally)
+        const LS_BACKUP_KEYS = [
+          'crm_clients_data',
+          'crm_users',
+          'crm_activity_logs',
+          'crm_log_notes',
+          'crm_payment_data',
+          'crm_calendar_events',
+          'crm_notifications',
+          'crm_quota_settings',
+          'crm_package_options',
+          'crm_company_logo',
+          'crm_file_attachments',
+          'crm_branding',
+        ];
+
+        // MongoDB collections to back up (must match database.ts allowlist)
+        const MONGO_COLLECTIONS = [
+          'clients',
+          'users',
+          'activity_logs',
+          'file_attachments',
+          'log_notes',
+          'calendar_events',
+          'notifications',
+        ];
+
+        const handleBackup = async () => {
+          setBackupStatus({ type: 'loading', message: 'Fetching data from MongoDB…' });
+          try {
+            // 1. Gather localStorage
+            const localStorageData: Record<string, any> = {};
+            for (const key of LS_BACKUP_KEYS) {
+              const raw = localStorage.getItem(key);
+              if (raw !== null) {
+                try { localStorageData[key] = JSON.parse(raw); } catch { localStorageData[key] = raw; }
+              }
+            }
+
+            // 2. Fetch MongoDB collections
+            const mongoData: Record<string, any[]> = {};
+            for (const col of MONGO_COLLECTIONS) {
+              try {
+                const res = await fetch(DB_API, {
+                  method: 'POST',
+                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ collection: col, operation: 'find', filter: {} }),
+                });
+                const json = await res.json();
+                mongoData[col] = json.success && Array.isArray(json.data) ? json.data : [];
+              } catch {
+                mongoData[col] = [];
+              }
+            }
+
+            // 3. Build backup object
+            const backup = {
+              _crmBackup: true,
+              version: '1.0',
+              createdAt: new Date().toISOString(),
+              createdBy: getCurrentAdmin(),
+              localStorage: localStorageData,
+              mongodb: mongoData,
+            };
+
+            // 4. Trigger download
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dg-crm-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            setBackupStatus({ type: 'success', message: `Backup downloaded successfully. Includes ${Object.keys(localStorageData).length} localStorage keys and ${MONGO_COLLECTIONS.length} MongoDB collections.` });
+          } catch (err: any) {
+            setBackupStatus({ type: 'error', message: `Backup failed: ${err.message || err}` });
+          }
+        };
+
+        const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setRestoreStatus({ type: 'loading', message: 'Reading backup file…' });
+          setRestorePreview(null);
+          setPendingRestoreData(null);
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(reader.result as string);
+              if (!parsed._crmBackup) {
+                setRestoreStatus({ type: 'error', message: 'This does not appear to be a valid DG-CRM backup file.' });
+                return;
+              }
+              const colNames = Object.keys(parsed.mongodb || {});
+              const lsKeys = Object.keys(parsed.localStorage || {});
+              setRestorePreview({
+                createdAt: parsed.createdAt || 'Unknown',
+                createdBy: parsed.createdBy || 'Unknown',
+                collections: colNames,
+                localKeys: lsKeys,
+              });
+              setPendingRestoreData(parsed);
+              setRestoreStatus({ type: 'idle', message: '' });
+            } catch {
+              setRestoreStatus({ type: 'error', message: 'Failed to parse backup file. Make sure it is a valid JSON file.' });
+            }
+          };
+          reader.readAsText(file);
+          e.target.value = ''; // allow re-selecting same file
+        };
+
+        const handleRestore = async () => {
+          if (!pendingRestoreData) return;
+          const confirmed = await showConfirmDialog(
+            'Restore Backup',
+            'This will overwrite all current CRM data (clients, users, logs, etc.) with the backup. This cannot be undone.\n\nAre you sure you want to proceed?',
+            'warning'
+          );
+          if (!confirmed) return;
+
+          setRestoreStatus({ type: 'loading', message: 'Restoring localStorage…' });
+          try {
+            // 1. Restore localStorage
+            const lsData = pendingRestoreData.localStorage || {};
+            for (const [key, value] of Object.entries(lsData)) {
+              try {
+                localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+              } catch { /* ignore quota issues for individual keys */ }
+            }
+
+            // 2. Restore MongoDB collections
+            const mongoData = pendingRestoreData.mongodb || {};
+            let mongoErrors = 0;
+            for (const [col, docs] of Object.entries(mongoData) as [string, any[]][]) {
+              if (!Array.isArray(docs) || docs.length === 0) continue;
+              setRestoreStatus({ type: 'loading', message: `Restoring MongoDB: ${col} (${docs.length} records)…` });
+              // Delete existing + re-insert in batches of 50
+              try {
+                await fetch(DB_API, {
+                  method: 'POST',
+                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ collection: col, operation: 'deleteMany', filter: {} }),
+                });
+                const BATCH = 50;
+                for (let i = 0; i < docs.length; i += BATCH) {
+                  const batch = docs.slice(i, i + BATCH);
+                  await fetch(DB_API, {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ collection: col, operation: 'insertMany', data: batch }),
+                  });
+                }
+              } catch {
+                mongoErrors++;
+              }
+            }
+
+            const errNote = mongoErrors > 0 ? ` (${mongoErrors} collection(s) had errors — localStorage was restored successfully)` : '';
+            setRestoreStatus({ type: 'success', message: `Restore complete!${errNote} Reload the page to see the restored data.` });
+            setRestorePreview(null);
+            setPendingRestoreData(null);
+          } catch (err: any) {
+            setRestoreStatus({ type: 'error', message: `Restore failed: ${err.message || err}` });
+          }
+        };
+
+        const statusBg = (type: string) => ({ idle: '#f8fafc', loading: '#eff6ff', success: '#f0fdf4', error: '#fef2f2' }[type] || '#f8fafc');
+        const statusColor = (type: string) => ({ idle: '#64748b', loading: '#1d4ed8', success: '#15803d', error: '#dc2626' }[type] || '#64748b');
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Backup Section */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📤 Create Backup</h2>
+              <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
+                Downloads a full snapshot of all CRM data — clients, users, logs, file metadata, and settings — as a <code>.json</code> file. Store it somewhere safe (Google Drive, email, etc.).
+              </p>
+
+              <div style={{ padding: '14px 18px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0', marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#166534', fontWeight: '500' }}>
+                  ✅ What is included in the backup:
+                </p>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#166534', lineHeight: '1.7' }}>
+                  <li>All <strong>client records</strong> (from MongoDB + localStorage cache)</li>
+                  <li>All <strong>user accounts</strong></li>
+                  <li>Activity logs, log notes, payment data, calendar events, notifications</li>
+                  <li>File attachment metadata (R2 paths — not the file binaries)</li>
+                  <li>App settings: quota limits, package options, company logo, branding</li>
+                </ul>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#4d7c0f' }}>
+                  ⚠️ Login tokens are <strong>not</strong> included for security.
+                </p>
+              </div>
+
+              <button
+                onClick={handleBackup}
+                disabled={backupStatus.type === 'loading'}
+                style={{
+                  padding: '12px 28px',
+                  background: backupStatus.type === 'loading' ? '#d1fae5' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  color: backupStatus.type === 'loading' ? '#065f46' : 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: backupStatus.type === 'loading' ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(5,150,105,0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {backupStatus.type === 'loading' ? '⏳ Creating backup…' : '⬇️ Download Backup Now'}
+              </button>
+
+              {backupStatus.message && (
+                <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(backupStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(backupStatus.type), border: `1px solid ${backupStatus.type === 'success' ? '#bbf7d0' : backupStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
+                  {backupStatus.message}
+                </div>
+              )}
+            </div>
+
+            {/* Restore Section */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📥 Restore from Backup</h2>
+              <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
+                Select a <code>.json</code> backup file created by this system to restore all data. You will see a preview before anything is written.
+              </p>
+
+              <div style={{ padding: '14px 18px', background: '#fef2f2', borderRadius: '10px', border: '1px solid #fecaca', marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#dc2626', fontWeight: '600' }}>
+                  ⚠️ Warning: Restore will overwrite all existing data
+                </p>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#991b1b' }}>
+                  All current clients, logs, and settings will be replaced by the backup. Create a new backup first if you want to preserve the current state.
+                </p>
+              </div>
+
+              {/* File picker */}
+              <label style={{
+                display: 'inline-block',
+                padding: '10px 24px',
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                color: 'white',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '700',
+                boxShadow: '0 2px 8px rgba(29,78,216,0.3)',
+              }}>
+                📂 Select Backup File
+                <input type="file" accept=".json,application/json" onChange={handleFileSelect} style={{ display: 'none' }} />
+              </label>
+
+              {/* Preview card */}
+              {restorePreview && (
+                <div style={{ marginTop: '20px', padding: '18px 20px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: '10px' }}>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '700', color: '#92400e' }}>📋 Backup Preview</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '13px', color: '#78350f' }}>
+                    <div><strong>Created:</strong> {new Date(restorePreview.createdAt).toLocaleString()}</div>
+                    <div><strong>By:</strong> {restorePreview.createdBy}</div>
+                    <div><strong>MongoDB collections:</strong> {restorePreview.collections.join(', ')}</div>
+                    <div><strong>localStorage keys:</strong> {restorePreview.localKeys.length}</div>
+                  </div>
+                  <div style={{ marginTop: '14px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={handleRestore}
+                      disabled={restoreStatus.type === 'loading'}
+                      style={{
+                        padding: '10px 24px',
+                        background: restoreStatus.type === 'loading' ? '#fde68a' : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                        color: restoreStatus.type === 'loading' ? '#92400e' : 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        cursor: restoreStatus.type === 'loading' ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 2px 6px rgba(220,38,38,0.3)',
+                      }}
+                    >
+                      {restoreStatus.type === 'loading' ? '⏳ Restoring…' : '⚡ Confirm & Restore'}
+                    </button>
+                    <button
+                      onClick={() => { setRestorePreview(null); setPendingRestoreData(null); setRestoreStatus({ type: 'idle', message: '' }); }}
+                      style={{ padding: '10px 18px', background: 'white', color: '#64748b', border: '1.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {restoreStatus.message && (
+                <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(restoreStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(restoreStatus.type), border: `1px solid ${restoreStatus.type === 'success' ? '#bbf7d0' : restoreStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
+                  {restoreStatus.message}
+                  {restoreStatus.type === 'success' && (
+                    <button
+                      onClick={() => window.location.reload()}
+                      style={{ marginLeft: '16px', padding: '4px 14px', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      Reload Page
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Backup Schedule Info */}
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '20px 24px', border: '1px solid #e2e8f0' }}>
+              <p style={{ margin: '0 0 6px 0', fontSize: '13px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>💡 Best Practices</p>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: '#64748b', lineHeight: '1.8' }}>
+                <li>Create a backup <strong>before major changes</strong> (adding many clients, role changes, etc.)</li>
+                <li>Store backups in a <strong>secure location</strong> (Google Drive, company email, encrypted storage)</li>
+                <li>Label backup files with the date — the filename already includes it</li>
+                <li>Backups do <strong>not</strong> include file binaries (PDFs, images) — those are safe in Cloudflare R2</li>
+              </ul>
             </div>
           </div>
         );
