@@ -480,7 +480,8 @@ export class ClientService {
           (client.email?.toLowerCase().includes(searchLower)) ||
           (client.clientNo?.toLowerCase().includes(searchLower)) ||
           (client.contactNo?.toLowerCase().includes(searchLower)) ||
-          (client.agent?.toLowerCase().includes(searchLower));
+          (client.agent?.toLowerCase().includes(searchLower)) ||
+          (client.packageName?.toLowerCase().includes(searchLower));
         
         if (!matchesSearch) {
           return false;

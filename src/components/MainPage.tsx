@@ -4748,7 +4748,8 @@ const MainPage: React.FC<MainPageProps> = ({
         if (!q) return true;
         return (c.contactName || '').toLowerCase().includes(q) ||
                (c.clientNo || '').toLowerCase().includes(q) ||
-               (c.email || '').toLowerCase().includes(q);
+               (c.email || '').toLowerCase().includes(q) ||
+               (c.packageName || '').toLowerCase().includes(q);
       });
       setTestClients(allTestRecords);
     } catch (error) {
@@ -5322,7 +5323,7 @@ const MainPage: React.FC<MainPageProps> = ({
               </label>
               <input
                 type="text"
-                placeholder="Search by name, email, client number, or phone..."
+                placeholder="Search by name, email, client number, phone, or package..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 style={{
