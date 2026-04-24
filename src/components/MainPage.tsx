@@ -1238,39 +1238,56 @@ const ClientRecords: React.FC<{
         }
       }
 
-      // Log activity
-      if (isNewClient) {
-        ActivityLogService.addLog({
-          clientId: savedClientId,
-          clientName: contactName || 'Unknown',
-          action: 'created',
-          performedBy: currentUserName,
-          performedByUser: currentUserName,
-          profileImageR2Path: getCurrentUserProfileImagePath(),
-          details: `New client created`,
-        });
-      } else {
-        const changedFields = Object.keys(clientChanges);
-        ActivityLogService.addLog({
-          clientId: savedClientId,
-          clientName: contactName || 'Unknown',
-          action: 'edited',
-          performedBy: currentUserName,
-          performedByUser: currentUserName,
-          profileImageR2Path: getCurrentUserProfileImagePath(),
-          details: changedFields.length > 0
-            ? `Updated: ${changedFields.join(', ')}`
-            : 'Client information updated',
-          changes: changedFields.length > 0 ? clientChanges : undefined,
-        });
-      }
-      
+      // ── State updates first — these must not be blocked by log failures ──────
       // Update resolved client ID and refresh activity log panel
       setResolvedClientId(savedClientId);
       setLogRefreshKey(prev => prev + 1);
 
+      // Reset dirty state after successful save
+      setIsDirtyClientInfo(false);
+      isDirtyClientInfoRef.current = false;
+      if (silent) {
+        setAutoSaveStatus('saved');
+        setLastAutoSaveTime(new Date());
+      } else {
+        setAutoSaveStatus('idle');
+      }
+
+      if (!silent) showSuccessToast('Client information saved successfully!');
+
+      // ── Activity log (non-critical — wrapped so storage errors don't fail save) ──
+      try {
+        if (isNewClient) {
+          ActivityLogService.addLog({
+            clientId: savedClientId,
+            clientName: contactName || 'Unknown',
+            action: 'created',
+            performedBy: currentUserName,
+            performedByUser: currentUserName,
+            profileImageR2Path: getCurrentUserProfileImagePath(),
+            details: `New client created`,
+          });
+        } else {
+          const changedFields = Object.keys(clientChanges);
+          ActivityLogService.addLog({
+            clientId: savedClientId,
+            clientName: contactName || 'Unknown',
+            action: 'edited',
+            performedBy: currentUserName,
+            performedByUser: currentUserName,
+            profileImageR2Path: getCurrentUserProfileImagePath(),
+            details: changedFields.length > 0
+              ? `Updated: ${changedFields.join(', ')}`
+              : 'Client information updated',
+            changes: changedFields.length > 0 ? clientChanges : undefined,
+          });
+        }
+      } catch {
+        // Activity log write failed (e.g. localStorage quota) — non-critical, save already succeeded
+      }
+
       // Save section changes to log
-      saveSection('client-information', 'Client Information');
+      try { saveSection('client-information', 'Client Information'); } catch { /* non-critical */ }
       
       // If this is a brand-new client, migrate temp file/payment associations to the real id
       if (isNewClient && savedClientId && tempClientId !== savedClientId) {
@@ -1296,17 +1313,6 @@ const ClientRecords: React.FC<{
         setAttachments(clientAttachments);
         // Notify parent so viewingForm gets the real client ID
         onClientIdResolved?.(savedClientId);
-      }
-      
-      if (!silent) showSuccessToast('Client information saved successfully!');
-      // Reset dirty state after successful save
-      setIsDirtyClientInfo(false);
-      isDirtyClientInfoRef.current = false;
-      if (silent) {
-        setAutoSaveStatus('saved');
-        setLastAutoSaveTime(new Date());
-      } else {
-        setAutoSaveStatus('idle');
       }
       
       // Trigger client list refresh

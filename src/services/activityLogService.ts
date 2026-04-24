@@ -35,7 +35,17 @@ export class ActivityLogService {
     // Save to localStorage immediately for instant UI
     const logs = this.getLocalLogs();
     logs.unshift(newLog);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(logs));
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(logs));
+    } catch {
+      // localStorage quota exceeded — trim oldest logs and retry once
+      try {
+        const trimmed = logs.slice(0, Math.floor(logs.length / 2));
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(trimmed));
+      } catch {
+        // If still failing, skip persisting the log — MongoDB sync will handle it
+      }
+    }
 
     // Fire-and-forget sync to MongoDB
     this.saveToMongoDB(newLog).then(() => {
