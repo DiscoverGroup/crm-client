@@ -17,7 +17,7 @@ export function savePackageOptions(options: string[]): void {
 }
 
 /** Collects unique non-empty packageName values from all client records in localStorage. */
-function getClientPackages(): string[] {
+export function getClientPackages(): string[] {
   try {
     const raw = localStorage.getItem(CLIENTS_STORAGE_KEY);
     const clients: any[] = raw ? JSON.parse(raw) : [];

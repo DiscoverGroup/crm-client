@@ -7,7 +7,7 @@ import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/to
 import { authHeaders } from '../utils/authToken';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 import { FileService } from '../services/fileService';
-import { getPackageOptions, savePackageOptions } from './PackageSelect';
+import { getPackageOptions, savePackageOptions, getClientPackages } from './PackageSelect';
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
@@ -2899,6 +2899,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             <p style={{ marginTop: '16px', fontSize: '12px', color: '#94a3b8' }}>
               {packageOptions.length} package{packageOptions.length !== 1 ? 's' : ''} configured. Changes apply immediately to the dropdown on all client forms.
             </p>
+
+            {/* Packages found in existing client records */}
+            {(() => {
+              const adminLower = new Set(packageOptions.map((o: string) => o.toLowerCase()));
+              const clientPkgs = getClientPackages().filter((p: string) => !adminLower.has(p.toLowerCase()));
+              if (clientPkgs.length === 0) return null;
+              return (
+                <div style={{ marginTop: 28 }}>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '700', color: '#475569' }}>📋 Found in Existing Clients</h3>
+                  <p style={{ margin: '0 0 12px 0', fontSize: '12px', color: '#94a3b8' }}>
+                    These package names are already used by clients but are not yet in your configured list. Click <strong>+ Add</strong> to promote them.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {clientPkgs.map((pkg: string) => (
+                      <div key={pkg} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#f0f9ff', borderRadius: '8px', border: '1px dashed #bae6fd' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: '#0c4a6e' }}>{pkg}</span>
+                        <button
+                          onClick={() => {
+                            if (packageOptions.some((o: string) => o.toLowerCase() === pkg.toLowerCase())) return;
+                            persistOptions([...packageOptions, pkg]);
+                            showSuccessToast(`"${pkg}" added to configured packages.`);
+                          }}
+                          style={{ padding: '5px 14px', background: '#0891b2', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          + Add
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
