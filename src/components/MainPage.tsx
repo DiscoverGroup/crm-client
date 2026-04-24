@@ -1149,15 +1149,27 @@ const ClientRecords: React.FC<{
         try {
           const quotaRaw = localStorage.getItem('crm_quota_settings');
           const quotaConfig = quotaRaw ? JSON.parse(quotaRaw) : { defaultLimit: 100, perUser: {} };
-          const currentUserEmail = (() => {
-            try { return JSON.parse(localStorage.getItem('crm_current_user') || '{}').email || ''; } catch { return ''; }
+          const currentUserData = (() => {
+            try { return JSON.parse(localStorage.getItem('crm_current_user') || '{}'); } catch { return {}; }
           })();
-          const limit: number = quotaConfig.perUser?.[currentUserEmail] ?? quotaConfig.defaultLimit ?? 100;
-          const agentName = (agent || currentUserName || '').trim().toLowerCase();
+          const currentUserEmail = (currentUserData.email || '').trim().toLowerCase();
+          const limit: number = quotaConfig.perUser?.[currentUserData.email] ?? quotaConfig.defaultLimit ?? 100;
+
+          // Build identifiers for the current user (same logic as AdminPanel)
+          const ids = new Set<string>();
+          if (currentUserData.fullName) ids.add(currentUserData.fullName.trim().toLowerCase());
+          if (currentUserData.username) ids.add(currentUserData.username.trim().toLowerCase());
+          if (currentUserEmail) { ids.add(currentUserEmail); ids.add(currentUserEmail.split('@')[0]); }
+          if (agent) ids.add(agent.trim().toLowerCase());
+
           const allClients: import('../services/clientService').ClientData[] = (() => {
             try { return JSON.parse(localStorage.getItem('crm_clients_data') || '[]'); } catch { return []; }
           })();
-          const usedCount = allClients.filter(c => !c.isDeleted && !c.isTestRecord && (c.agent || '').trim().toLowerCase() === agentName).length;
+          const usedCount = allClients.filter(c => {
+            if (c.isDeleted || c.isTestRecord) return false;
+            const a = (c.agent || '').trim().toLowerCase();
+            return a && ids.has(a);
+          }).length;
           if (usedCount >= limit) {
             if (!silent) showWarningToast(`Client quota reached (${usedCount}/${limit}). Contact admin to increase your limit.`);
             setIsSavingClient(false);

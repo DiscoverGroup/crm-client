@@ -86,20 +86,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
-  // Count clients per agent from localStorage
-  const getClientCountsByAgent = () => {
+  // Count active (non-deleted, non-test) clients per user.
+  // The `agent` field is free-text entered by employees so we try multiple
+  // identifiers: fullName, username, email local-part, and first name.
+  const getClientCountForUser = (user: User): number => {
     try {
       const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
-      const counts: Record<string, number> = {};
-      all.forEach(c => {
-        if (c.isDeleted) return;
-        const agent = (c.agent || '').trim().toLowerCase();
-        if (!agent) return;
-        counts[agent] = (counts[agent] || 0) + 1;
-      });
-      return counts;
-    } catch { return {}; }
+
+      // Build a set of lower-case identifiers for this user
+      const ids = new Set<string>();
+      if (user.fullName) ids.add(user.fullName.trim().toLowerCase());
+      if (user.username) ids.add(user.username.trim().toLowerCase());
+      if (user.email) {
+        ids.add(user.email.trim().toLowerCase());
+        // email local-part (before @)
+        const localPart = user.email.split('@')[0].trim().toLowerCase();
+        if (localPart) ids.add(localPart);
+      }
+      // first name only (first word of fullName)
+      if (user.fullName) {
+        const firstName = user.fullName.trim().split(/\s+/)[0].toLowerCase();
+        if (firstName.length > 2) ids.add(firstName);
+      }
+
+      return all.filter(c => {
+        if (c.isDeleted || c.isTestRecord) return false;
+        const agentVal = (c.agent || '').trim().toLowerCase();
+        if (!agentVal) return false;
+        // exact match on any identifier
+        if (ids.has(agentVal)) return true;
+        // partial: agent field contains fullName or vice-versa
+        if (user.fullName && agentVal.includes(user.fullName.trim().toLowerCase())) return true;
+        if (user.fullName && user.fullName.trim().toLowerCase().includes(agentVal)) return true;
+        return false;
+      }).length;
+    } catch { return 0; }
+  };
+
+  // Count clients with no agent assigned (unassigned)
+  const getUnassignedClientCount = (): number => {
+    try {
+      const raw = localStorage.getItem('crm_clients_data');
+      const all: any[] = raw ? JSON.parse(raw) : [];
+      return all.filter(c => !c.isDeleted && !c.isTestRecord && !(c.agent || '').trim()).length;
+    } catch { return 0; }
   };
 
   // Get current admin user from localStorage
@@ -2134,9 +2165,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       {/* Storage & Quota Tab */}
       {activeTab === 'storage-quota' && (() => {
         const usage = getStorageUsage();
-        const clientCounts = getClientCountsByAgent();
         const usedPct = Math.min(100, (usage.total / usage.maxBytes) * 100);
         const barColor = usedPct > 85 ? '#ef4444' : usedPct > 60 ? '#f59e0b' : '#10b981';
+        const unassignedCount = getUnassignedClientCount();
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -2251,8 +2282,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 </thead>
                 <tbody>
                   {users.filter(u => u.role !== 'admin' && u.email !== 'admin@discovergrp.com').map((user, idx) => {
-                    const agentKey = (user.fullName || user.username || '').trim().toLowerCase();
-                    const used = clientCounts[agentKey] || 0;
+                    const used = getClientCountForUser(user);
                     const limit = quotaSettings.perUser[user.email] ?? quotaSettings.defaultLimit;
                     const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
                     const barC = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#10b981';
@@ -2320,6 +2350,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   })}
                 </tbody>
               </table>
+              {/* Unassigned clients notice */}
+              {unassignedCount > 0 && (
+                <div style={{ marginTop: '12px', padding: '10px 16px', background: '#fefce8', border: '1px solid #fde047', borderRadius: '8px', fontSize: '13px', color: '#854d0e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚠️</span>
+                  <span><strong>{unassignedCount}</strong> client{unassignedCount !== 1 ? 's' : ''} have no Sales Agent assigned — they are not counted in any employee's quota above.</span>
+                </div>
+              )}
               {users.filter(u => u.role !== 'admin' && u.email !== 'admin@discovergrp.com').length === 0 && (
                 <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No employees found.</p>
               )}
