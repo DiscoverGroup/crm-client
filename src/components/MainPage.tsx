@@ -5587,6 +5587,18 @@ const MainPage: React.FC<MainPageProps> = ({
                     </th>
                     <th style={{
                       padding: '13px 16px',
+                      textAlign: 'left',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      color: 'rgba(255,255,255,0.85)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Package
+                    </th>
+                    <th style={{
+                      padding: '13px 16px',
                       textAlign: 'center',
                       fontSize: '12px',
                       fontWeight: '700',
@@ -5668,6 +5680,14 @@ const MainPage: React.FC<MainPageProps> = ({
                         fontSize: '13px'
                       }}>
                         {client.agent || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>Unassigned</span>}
+                      </td>
+                      <td style={{
+                        padding: '15px 16px',
+                        fontSize: '13px'
+                      }}>
+                        {client.packageName
+                          ? <span style={{ padding: '3px 10px', background: '#e0f2fe', color: '#0369a1', borderRadius: '20px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{client.packageName}</span>
+                          : <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>—</span>}
                       </td>
                       <td style={{
                         padding: '15px 16px',
@@ -5864,7 +5884,7 @@ const MainPage: React.FC<MainPageProps> = ({
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '650px' }}>
                     <thead>
                       <tr style={{ background: 'linear-gradient(135deg, #b45309 0%, #d97706 100%)' }}>
-                        {['Client No.', 'Client Name', 'Status', 'Email', 'Phone', 'Sales Agent', 'Actions'].map(h => (
+                        {['Client No.', 'Client Name', 'Status', 'Email', 'Phone', 'Sales Agent', 'Package', 'Actions'].map(h => (
                           <th key={h} style={{
                             padding: '11px 16px',
                             textAlign: h === 'Actions' ? 'center' : 'left',
@@ -5922,6 +5942,11 @@ const MainPage: React.FC<MainPageProps> = ({
                           </td>
                           <td style={{ padding: '14px 16px', color: '#78716c', fontSize: '13px' }}>
                             {client.agent || <span style={{ color: '#d4c4b0', fontStyle: 'italic' }}>Unassigned</span>}
+                          </td>
+                          <td style={{ padding: '14px 16px', fontSize: '13px' }}>
+                            {client.packageName
+                              ? <span style={{ padding: '3px 10px', background: '#fef3c7', color: '#92400e', borderRadius: '20px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{client.packageName}</span>
+                              : <span style={{ color: '#d4c4b0', fontStyle: 'italic' }}>—</span>}
                           </td>
                           <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
