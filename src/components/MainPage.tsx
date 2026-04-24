@@ -370,6 +370,7 @@ const ClientRecords: React.FC<{
   const setClientNoTracked = (value: string) => {
     trackSectionField('client-information', 'clientNo', value, 'Client Number');
     setClientNo(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setStatusTracked = (value: string) => {
@@ -378,46 +379,55 @@ const ClientRecords: React.FC<{
     if (value === "Rebook" && bookingConfirmations.length < 2) {
       setBookingConfirmations(prev => [...prev, ""]);
     }
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setAgentTracked = (value: string) => {
     trackSectionField('client-information', 'agent', value, 'Agent');
     setAgent(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setContactNoTracked = (value: string) => {
     trackSectionField('client-information', 'contactNo', value, 'Contact Number');
     setContactNo(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setContactNameTracked = (value: string) => {
     trackSectionField('client-information', 'contactName', value, 'Contact Name');
     setContactName(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setEmailTracked = (value: string) => {
     trackSectionField('client-information', 'email', value, 'Email');
     setEmail(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setDateOfBirthTracked = (value: string) => {
     trackSectionField('client-information', 'dateOfBirth', value, 'Date of Birth');
     setDateOfBirth(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setPackageNameTracked = (value: string) => {
     trackSectionField('package-information', 'packageName', value, 'Package Name');
     setPackageName(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setTravelStartDateTracked = (value: string) => {
     trackSectionField('package-information', 'travelStartDate', value, 'Travel Start Date');
     setTravelStartDate(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
 
   const setTravelEndDateTracked = (value: string) => {
     trackSectionField('package-information', 'travelEndDate', value, 'Travel End Date');
     setTravelEndDate(value);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const setNumberOfPaxTracked = (value: number) => {
@@ -444,6 +454,7 @@ const ClientRecords: React.FC<{
       }
       return prev.slice(0, value);
     });
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
   const [bcTooltipVisible, setBcTooltipVisible] = useState(false);
@@ -463,15 +474,18 @@ const ClientRecords: React.FC<{
     updated[index] = file.name;
     trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
     setBookingConfirmations(updated);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
 
   const handleAddBookingConfirmation = () => {
     setBookingConfirmations(prev => [...prev, ""]);
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
 
   const handleRemoveBookingConfirmation = (index: number) => {
     if (bookingConfirmations.length <= 1) return;
     setBookingConfirmations(prev => prev.filter((_, i) => i !== index));
+    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
 
   // Payment state
@@ -515,6 +529,28 @@ const ClientRecords: React.FC<{
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingClient, setIsSavingClient] = useState(false);
   const [isSavingPackage, setIsSavingPackage] = useState(false);
+
+  // Auto-save state
+  const [isDirtyClientInfo, setIsDirtyClientInfo] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<Date | null>(null);
+  // Refs to avoid stale closures in the interval callback
+  const isDirtyClientInfoRef = React.useRef(false);
+  const resolvedClientIdRef = React.useRef<string | undefined>(resolvedClientId);
+  const handleSaveClientInfoRef = React.useRef<((silent?: boolean) => Promise<void>) | null>(null);
+  // Keep resolvedClientId ref in sync
+  React.useEffect(() => { resolvedClientIdRef.current = resolvedClientId; }, [resolvedClientId]);
+
+  // Auto-save interval: fires every 10 seconds, saves only when form is dirty
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isDirtyClientInfoRef.current) return;
+      const ownId = resolvedClientIdRef.current || clientId;
+      if (!ownId || ownId.startsWith('temp_')) return;
+      handleSaveClientInfoRef.current?.(true);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [clientId]); // clientId is a stable prop — runs once per component mount
 
 
 
@@ -1016,13 +1052,15 @@ const ClientRecords: React.FC<{
     }
   };
 
-  const handleSaveClientInfo = async () => {
+  const handleSaveClientInfo = async (silent = false) => {
+    if (silent) setAutoSaveStatus('saving');
     setIsSavingClient(true);
     try {
       // Validation: Required fields
       if (!contactName || contactName.trim().length < 2) {
-        showWarningToast('Contact Name is required (minimum 2 characters)');
+        if (!silent) showWarningToast('Contact Name is required (minimum 2 characters)');
         setIsSavingClient(false);
+        if (silent) setAutoSaveStatus('idle');
         return;
       }
 
@@ -1030,8 +1068,9 @@ const ClientRecords: React.FC<{
       if (email && email.trim()) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email.trim())) {
-          showWarningToast('Please enter a valid email address');
+          if (!silent) showWarningToast('Please enter a valid email address');
           setIsSavingClient(false);
+          if (silent) setAutoSaveStatus('idle');
           return;
         }
       }
@@ -1040,8 +1079,9 @@ const ClientRecords: React.FC<{
       if (contactNo && contactNo.trim()) {
         const phoneRegex = /^[0-9\s\-\(\)\+]+$/;
         if (!phoneRegex.test(contactNo.trim()) || contactNo.replace(/[^0-9]/g, '').length < 7) {
-          showWarningToast('Please enter a valid contact number (minimum 7 digits)');
+          if (!silent) showWarningToast('Please enter a valid contact number (minimum 7 digits)');
           setIsSavingClient(false);
+          if (silent) setAutoSaveStatus('idle');
           return;
         }
       }
@@ -1052,8 +1092,9 @@ const ClientRecords: React.FC<{
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (dob > today) {
-          showWarningToast('Date of Birth cannot be in the future');
+          if (!silent) showWarningToast('Date of Birth cannot be in the future');
           setIsSavingClient(false);
+          if (silent) setAutoSaveStatus('idle');
           return;
         }
       }
@@ -1064,21 +1105,23 @@ const ClientRecords: React.FC<{
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (travel < today) {
-          showWarningToast('Note: Travel Start Date is in the past');
+          if (!silent) showWarningToast('Note: Travel Start Date is in the past');
         }
       }
       if (travelStartDate && travelEndDate) {
         if (new Date(travelEndDate) < new Date(travelStartDate)) {
-          showWarningToast('Travel End Date cannot be before Start Date');
+          if (!silent) showWarningToast('Travel End Date cannot be before Start Date');
           setIsSavingClient(false);
+          if (silent) setAutoSaveStatus('idle');
           return;
         }
       }
 
       // Validation: Number of Pax (must be positive)
       if (numberOfPax < 1) {
-        showWarningToast('Number of Passengers must be at least 1');
+        if (!silent) showWarningToast('Number of Passengers must be at least 1');
         setIsSavingClient(false);
+        if (silent) setAutoSaveStatus('idle');
         return;
       }
 
@@ -1092,8 +1135,9 @@ const ClientRecords: React.FC<{
           c.clientNo === clientNo.trim() && c.id !== ownId
         );
         if (duplicate) {
-          showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number.`);
+          if (!silent) showWarningToast(`Client number "${clientNo.trim()}" is already in use. Please use a different number.`);
           setIsSavingClient(false);
+          if (silent) setAutoSaveStatus('idle');
           return;
         }
       }
@@ -1109,15 +1153,17 @@ const ClientRecords: React.FC<{
       // Reject attack patterns in any string field
       const textFields = [cleanContactName, cleanEmail, cleanContactNo, cleanPackageName, cleanAgent];
       if (textFields.some(v => v && containsAttackPatterns(v))) {
-        showWarningToast('Invalid characters detected in your input. Please review and try again.');
+        if (!silent) showWarningToast('Invalid characters detected in your input. Please review and try again.');
         setIsSavingClient(false);
+        if (silent) setAutoSaveStatus('idle');
         return;
       }
 
       // Client number is now required - no auto-generation
       if (!clientNo || !clientNo.trim()) {
-        showWarningToast('Client Number is required. Please enter a client number.');
+        if (!silent) showWarningToast('Client Number is required. Please enter a client number.');
         setIsSavingClient(false);
+        if (silent) setAutoSaveStatus('idle');
         return;
       }
       const generatedClientNo = clientNo.trim();
@@ -1252,7 +1298,16 @@ const ClientRecords: React.FC<{
         onClientIdResolved?.(savedClientId);
       }
       
-      showSuccessToast('Client information saved successfully!');
+      if (!silent) showSuccessToast('Client information saved successfully!');
+      // Reset dirty state after successful save
+      setIsDirtyClientInfo(false);
+      isDirtyClientInfoRef.current = false;
+      if (silent) {
+        setAutoSaveStatus('saved');
+        setLastAutoSaveTime(new Date());
+      } else {
+        setAutoSaveStatus('idle');
+      }
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
@@ -1264,11 +1319,14 @@ const ClientRecords: React.FC<{
         'Failed to save client information',
         'pending'
       );
-      showErrorToast('An error occurred while saving client information.');
+      if (!silent) showErrorToast('An error occurred while saving client information.');
+      if (silent) setAutoSaveStatus('error');
     } finally {
       setIsSavingClient(false);
     }
   };
+  // Keep ref pointing at latest version of save handler (for auto-save interval)
+  handleSaveClientInfoRef.current = handleSaveClientInfo;
 
   const handleSavePackageInfo = async () => {
     setIsSavingPackage(true);
@@ -2092,12 +2150,36 @@ const ClientRecords: React.FC<{
             )}
             {/* Save Button */}
             <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
-              <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
-                Remember to save changes before leaving!
-              </span>
+              {/* Auto-save status indicator */}
+              {autoSaveStatus === 'saving' && (
+                <span style={{ fontSize: '12px', color: '#6366f1', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#6366f1', animation: 'pulse 1s infinite' }} />
+                  Auto-saving...
+                </span>
+              )}
+              {autoSaveStatus === 'saved' && lastAutoSaveTime && (
+                <span style={{ fontSize: '12px', color: '#059669', fontWeight: 500 }}>
+                  ✓ Auto-saved at {lastAutoSaveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+              {autoSaveStatus === 'error' && (
+                <span style={{ fontSize: '12px', color: '#dc2626', fontWeight: 500 }}>
+                  ⚠ Auto-save failed
+                </span>
+              )}
+              {autoSaveStatus === 'idle' && isDirtyClientInfo && (
+                <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
+                  Unsaved changes — auto-saving in 10s
+                </span>
+              )}
+              {!isDirtyClientInfo && autoSaveStatus === 'idle' && (
+                <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
+                  Remember to save changes before leaving!
+                </span>
+              )}
               <button
                 type="button"
-                onClick={handleSaveClientInfo}
+                onClick={() => handleSaveClientInfo(false)}
                 disabled={isSavingClient}
                 style={{ ...saveButtonStyle(isSavingClient), width: windowWidth < 640 ? '100%' : 'auto' }}
               >
@@ -2274,6 +2356,7 @@ const ClientRecords: React.FC<{
                                 const updated = [...bookingConfirmations];
                                 updated[idx] = '';
                                 setBookingConfirmations(updated);
+                                setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
                               }}
                               style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               title="Remove file"
@@ -2351,7 +2434,7 @@ const ClientRecords: React.FC<{
                   placeholder="Enter package URL (e.g., https://...)"
                   maxLength={500}
                   value={packageLink}
-                  onChange={e => { trackSectionField('package-information', 'packageLink', packageLink, 'Package Link'); setPackageLink(e.target.value); trackSectionField('package-information', 'packageLink', e.target.value, 'Package Link'); }}
+                  onChange={e => { trackSectionField('package-information', 'packageLink', packageLink, 'Package Link'); setPackageLink(e.target.value); trackSectionField('package-information', 'packageLink', e.target.value, 'Package Link'); setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true; }}
                 />
               </div>
             </div>
@@ -2365,7 +2448,7 @@ const ClientRecords: React.FC<{
                   placeholder="Enter any special requests or notes from the client..."
                   maxLength={2000}
                   value={clientRequest}
-                  onChange={e => { trackSectionField('package-information', 'clientRequest', clientRequest, 'Client Request'); setClientRequest(e.target.value); trackSectionField('package-information', 'clientRequest', e.target.value, 'Client Request'); }}
+                  onChange={e => { trackSectionField('package-information', 'clientRequest', clientRequest, 'Client Request'); setClientRequest(e.target.value); trackSectionField('package-information', 'clientRequest', e.target.value, 'Client Request'); setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true; }}
                 />
               </div>
             </div>
