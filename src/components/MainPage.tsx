@@ -2596,7 +2596,9 @@ const ClientRecords: React.FC<{
                           gap: 6,
                         }}
                       >
-                        Companion {idx + 1}
+                        {comp.firstName || comp.lastName
+                          ? [comp.firstName, comp.lastName].filter(Boolean).join(' ')
+                          : `Companion ${idx + 1}`}
                         {!filled && (
                           <span style={{
                             position: "absolute" as const, top: -4, right: -4,
@@ -2636,7 +2638,9 @@ const ClientRecords: React.FC<{
                     }}
                   >✕</button>
                   <h3 style={{ margin: "0 0 24px", fontSize: 18, fontWeight: 700, color: "#1e293b" }}>
-                    Companion {companionModalIdx + 1}
+                    {companionModalIdx !== null && (companions[companionModalIdx]?.firstName || companions[companionModalIdx]?.lastName)
+                      ? [companions[companionModalIdx]?.firstName, companions[companionModalIdx]?.lastName].filter(Boolean).join(' ')
+                      : `Companion ${(companionModalIdx ?? 0) + 1}`}
                   </h3>
                   <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
                     <div style={{ flex: 1 }}>
