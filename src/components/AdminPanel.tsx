@@ -6,6 +6,7 @@ import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/c
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
 import { authHeaders } from '../utils/authToken';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
+import { FileService } from '../services/fileService';
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
@@ -2236,6 +2237,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               >
                 🧹 Free Up Space (Trim Logs)
               </button>
+
+              {/* Remove embedded base64 file data */}
+              {(() => {
+                const b64Count = FileService.getBase64AttachmentCount();
+                if (b64Count === 0) return null;
+                return (
+                  <button
+                    onClick={async () => {
+                      const ok = await showConfirmDialog(
+                        'Remove Embedded File Data',
+                        `${b64Count} file attachment(s) have their binary data embedded directly in localStorage instead of Cloudflare R2. This is leftover from upload failures.\n\nRemoving the embedded data will free significant space. The file metadata (name, date, client) is kept so the record is not lost, but the file itself will no longer be downloadable from this device.\n\nProceed?`,
+                        'warning'
+                      );
+                      if (!ok) return;
+                      const { freed, base64Count } = FileService.pruneBase64DataFromStorage();
+                      showSuccessToast(`Removed embedded data from ${base64Count} file(s) — freed ~${Math.round(freed / 1024)} KB`);
+                      setQuotaSettings({ ...quotaSettings }); // trigger re-render
+                    }}
+                    style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
+                  >
+                    🗜️ Remove Embedded File Data ({b64Count} file{b64Count !== 1 ? 's' : ''})
+                  </button>
+                );
+              })()}
             </div>
 
             {/* ── Per-Employee Client Quota ─────────────────────────── */}

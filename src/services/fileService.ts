@@ -502,4 +502,54 @@ export class FileService {
       })
     });
   }
+
+  /**
+   * Strips base64 file data from attachments that have already been uploaded to R2.
+   * R2 files only need the URL stored in `data`, not raw base64. Old fallback entries
+   * may still contain multi-MB base64 strings that bloat localStorage unnecessarily.
+   *
+   * Returns { freed, base64Count } where `freed` is the approximate bytes reclaimed.
+   */
+  static pruneBase64DataFromStorage(): { freed: number; base64Count: number } {
+    try {
+      const attachments = this.getAllFileAttachments();
+      let freed = 0;
+      let base64Count = 0;
+
+      const cleaned = attachments.map(att => {
+        const data = att.file?.data ?? '';
+        // Base64 data URLs start with "data:" — R2 URLs start with "https://"
+        if (!att.file.isR2 && data.startsWith('data:')) {
+          // Non-R2 file stored as base64 fallback — strip the binary data
+          // but keep all metadata so the entry remains in the list.
+          freed += data.length;
+          base64Count++;
+          return {
+            ...att,
+            file: { ...att.file, data: '', isR2: false }
+          };
+        }
+        return att;
+      });
+
+      if (base64Count > 0) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleaned));
+      }
+
+      return { freed, base64Count };
+    } catch {
+      return { freed: 0, base64Count: 0 };
+    }
+  }
+
+  /** Returns the number of non-R2 (base64) attachment entries still in localStorage. */
+  static getBase64AttachmentCount(): number {
+    try {
+      return this.getAllFileAttachments().filter(
+        att => !att.file.isR2 && (att.file?.data ?? '').startsWith('data:')
+      ).length;
+    } catch {
+      return 0;
+    }
+  }
 }
