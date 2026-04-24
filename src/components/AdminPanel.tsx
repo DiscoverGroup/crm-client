@@ -40,13 +40,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
   const [filterClientRecoveryStatus, setFilterClientRecoveryStatus] = useState<string>('pending');
   const [showWorkflowBuilder, setShowWorkflowBuilder] = useState(false);
   const [showSystemMonitoring, setShowSystemMonitoring] = useState(false);
+  const [companyLogo, setCompanyLogo] = useState<string>(localStorage.getItem('crm_company_logo') || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Get current admin user from localStorage
   const getCurrentAdmin = (): string => {
@@ -191,6 +193,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const handleDeleteUser = async (email: string) => {
     const updatedUsers = users.filter(user => user.email !== email);
     saveUsers(updatedUsers);
+    // Invalidate client cache so next load reflects any reassignments
+    localStorage.removeItem('crm_clients_last_sync');
     // Delete from MongoDB via dedicated admin endpoint
     try {
       const res = await fetch('/.netlify/functions/delete-user', {
@@ -281,6 +285,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showErrorToast('Please upload an image file.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showErrorToast('Logo must be under 2 MB.');
+      return;
+    }
+    setIsUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      localStorage.setItem('crm_company_logo', dataUrl);
+      setCompanyLogo(dataUrl);
+      setIsUploadingLogo(false);
+      showSuccessToast('Company logo updated! It will appear in the navbar and sidebar.');
+    };
+    reader.onerror = () => {
+      setIsUploadingLogo(false);
+      showErrorToast('Failed to read the image file.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    localStorage.removeItem('crm_company_logo');
+    setCompanyLogo('');
+    showSuccessToast('Company logo removed. Default logo will be used.');
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -311,7 +348,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   return (
     <div style={{
       padding: '24px',
-      backgroundColor: 'transparent',
+      backgroundColor: '#f8fafc',
       minHeight: '100vh'
     }}>
       {/* Header */}
@@ -323,11 +360,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       }}>
         <div>
           <h1 style={{
-            fontSize: '26px',
-            fontWeight: '800',
-            color: '#0A2D74',
-            margin: '0 0 8px 0',
-            fontFamily: "'Poppins', sans-serif",
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1e293b',
+            margin: '0 0 8px 0'
           }}>
             {activeTab === 'users' ? '👥 User Management' : activeTab === 'file-recovery' ? '📁 File Recovery Requests' : activeTab === 'client-recovery' ? '👤 Client Recovery Requests' : 'ℹ️ Version & System Info'}
           </h1>
@@ -352,7 +388,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             }}
             style={{
               padding: '10px 20px',
-              background: 'linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)',
+              background: '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -388,19 +424,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
       {/* Tab Navigation */}
       <div style={{
         display: 'flex',
-        gap: '4px',
+        gap: '8px',
         marginBottom: '24px',
-        borderBottom: '2px solid rgba(10,45,116,0.12)',
-        overflowX: 'auto'
+        borderBottom: '2px solid #e2e8f0'
       }}>
         <button
           onClick={() => setActiveTab('users')}
           style={{
             padding: '12px 24px',
             background: activeTab === 'users' ? 'white' : 'transparent',
-            color: activeTab === 'users' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'users' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'users' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'users' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -415,9 +450,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'client-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'client-recovery' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'client-recovery' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'client-recovery' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'client-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -450,9 +485,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'file-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'file-recovery' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'file-recovery' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'file-recovery' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'file-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -485,9 +520,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'version' ? 'white' : 'transparent',
-            color: activeTab === 'version' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'version' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'version' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'version' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -502,9 +537,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'workflows' ? 'white' : 'transparent',
-            color: activeTab === 'workflows' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'workflows' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'workflows' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'workflows' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -519,9 +554,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'monitoring' ? 'white' : 'transparent',
-            color: activeTab === 'monitoring' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'monitoring' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'monitoring' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'monitoring' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -536,9 +571,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'territory' ? 'white' : 'transparent',
-            color: activeTab === 'territory' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'territory' ? '#3b82f6' : '#64748b',
             border: 'none',
-            borderBottom: activeTab === 'territory' ? '3px solid #28A2DC' : '3px solid transparent',
+            borderBottom: activeTab === 'territory' ? '3px solid #3b82f6' : '3px solid transparent',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '600',
@@ -553,7 +588,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           style={{
             padding: '12px 24px',
             background: activeTab === 'stress-test' ? 'white' : 'transparent',
-            color: activeTab === 'stress-test' ? '#0A2D74' : '#64748b',
+            color: activeTab === 'stress-test' ? '#3b82f6' : '#64748b',
             border: 'none',
             borderBottom: activeTab === 'stress-test' ? '3px solid #28A2DC' : '3px solid transparent',
             cursor: 'pointer',
@@ -565,7 +600,178 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         >
           🧪 Stress Test
         </button>
+        <button
+          onClick={() => setActiveTab('branding')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'branding' ? 'white' : 'transparent',
+            color: activeTab === 'branding' ? '#0A2D74' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'branding' ? '3px solid #28A2DC' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          🎨 Branding
+        </button>
       </div>
+
+      {/* Branding Tab */}
+      {activeTab === 'branding' && (
+        <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#0A2D74' }}>Company Branding</h2>
+          <p style={{ margin: '0 0 28px 0', color: '#64748b', fontSize: '14px' }}>
+            Customize your company logo. It will appear in the navigation bar and sidebar throughout the app.
+          </p>
+
+          {/* Current Logo Preview */}
+          <div style={{ marginBottom: '28px' }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#0A2D74', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Current Logo
+            </p>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '20px',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 60%, #28A2DC 100%)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 16px rgba(10,45,116,0.25)'
+            }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '12px',
+                border: '2px solid rgba(40,162,220,0.6)',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                padding: '3px'
+              }}>
+                <img
+                  src={companyLogo || '/DG.jpg'}
+                  alt="Company Logo Preview"
+                  onError={(e) => { e.currentTarget.src = '/DG.jpg'; }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff', letterSpacing: '0.08em', fontFamily: "'LemonMilk', 'Inter', sans-serif" }}>
+                  DG-CRM
+                </div>
+                <div style={{ fontSize: '10px', color: '#28A2DC', fontWeight: '500', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Discover Group
+                </div>
+              </div>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+              Preview of how the logo appears in the navbar
+            </p>
+          </div>
+
+          {/* Upload Section */}
+          <div style={{
+            border: '2px dashed rgba(40,162,220,0.4)',
+            borderRadius: '12px',
+            padding: '32px',
+            textAlign: 'center',
+            background: 'rgba(40,162,220,0.03)',
+            marginBottom: '20px'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '12px' }}>🖼️</div>
+            <p style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#0A2D74' }}>
+              Upload Company Logo
+            </p>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#64748b' }}>
+              PNG, JPG, SVG or WebP · Maximum 2 MB · Recommended: 200×200px or square format
+            </p>
+            <label style={{
+              display: 'inline-block',
+              padding: '10px 28px',
+              background: 'linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)',
+              color: 'white',
+              borderRadius: '8px',
+              cursor: isUploadingLogo ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(10,45,116,0.3)',
+              opacity: isUploadingLogo ? 0.7 : 1,
+              transition: 'all 0.2s ease'
+            }}>
+              {isUploadingLogo ? '⏳ Uploading...' : '📁 Choose Logo File'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                onChange={handleLogoUpload}
+                disabled={isUploadingLogo}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+
+          {/* Remove Logo Button */}
+          {companyLogo && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: '#fff7ed', borderRadius: '8px', border: '1px solid #fed7aa' }}>
+              <span style={{ fontSize: '20px' }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#c2410c' }}>Custom logo is active</p>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9a3412' }}>Remove it to revert to the default Discover Group logo.</p>
+              </div>
+              <button
+                onClick={handleRemoveLogo}
+                style={{
+                  padding: '8px 16px',
+                  background: 'transparent',
+                  color: '#dc2626',
+                  border: '1.5px solid #dc2626',
+                  borderRadius: '7px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Remove Logo
+              </button>
+            </div>
+          )}
+
+          {/* Brand Color Reference */}
+          <div style={{ marginTop: '32px', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', fontWeight: '600', color: '#0A2D74', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Brand Color Palette
+            </p>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              {[
+                { color: '#0A2D74', name: 'Primary Navy', hex: '#0A2D74' },
+                { color: '#28A2DC', name: 'Sky Blue', hex: '#28A2DC' },
+                { color: '#ffffff', name: 'White', hex: '#FFFFFF', border: '#e2e8f0' }
+              ].map(({ color, name, hex, border }) => (
+                <div key={hex} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    background: color,
+                    border: `2px solid ${border || color}`,
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+                  }} />
+                  <div>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{name}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#64748b', fontFamily: 'monospace' }}>{hex}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stress Test Tab */}
       {activeTab === 'stress-test' && (
@@ -584,7 +790,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>VERSION</p>
-                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#0A2D74' }}>{getFullVersion()}</p>
+                  <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>{getFullVersion()}</p>
                 </div>
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>BUILD INFO</p>
@@ -732,7 +938,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
           <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '14px' }}>Admins</p>
-          <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#0A2D74' }}>
+          <p style={{ margin: 0, fontSize: '32px', fontWeight: '700', color: '#3b82f6' }}>
             {users.filter(u => u.role === 'admin').length}
           </p>
         </div>

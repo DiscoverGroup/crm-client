@@ -100,6 +100,7 @@ export const handler: Handler = async (event) => {
       profileImage: u.profileImage || '',
       isVerified: u.isVerified ?? false,
       role: u.role ?? 'user',
+      approvalStatus: u.approvalStatus || 'pending',
       // Distinguish Auth0 vs manual — only expose boolean flag, not the raw sub
       registrationMethod: u.auth0Sub ? 'auth0' : 'manual',
       createdAt: u.createdAt || u.registeredAt || null,
