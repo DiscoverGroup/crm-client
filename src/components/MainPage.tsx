@@ -541,6 +541,8 @@ const ClientRecords: React.FC<{
   const isDirtyClientInfoRef = React.useRef(false);
   const resolvedClientIdRef = React.useRef<string | undefined>(resolvedClientId);
   const handleSaveClientInfoRef = React.useRef<((silent?: boolean) => Promise<void>) | null>(null);
+  // Mutex ref: prevents auto-save and manual save from running concurrently
+  const isSavingClientRef = React.useRef(false);
   // Keep resolvedClientId ref in sync
   React.useEffect(() => { resolvedClientIdRef.current = resolvedClientId; }, [resolvedClientId]);
 
@@ -1056,6 +1058,12 @@ const ClientRecords: React.FC<{
   };
 
   const handleSaveClientInfo = async (silent = false) => {
+    // Mutex guard: if a save is already in progress (auto or manual), skip
+    if (isSavingClientRef.current) {
+      if (!silent) showWarningToast('Save already in progress — please wait a moment.');
+      return;
+    }
+    isSavingClientRef.current = true;
     if (silent) setAutoSaveStatus('saving');
     setIsSavingClient(true);
     try {
@@ -1289,6 +1297,8 @@ const ClientRecords: React.FC<{
       if (silent) {
         setAutoSaveStatus('saved');
         setLastAutoSaveTime(new Date());
+        // Reset badge back to idle after 3 seconds so it doesn't stay permanently
+        setTimeout(() => setAutoSaveStatus(prev => prev === 'saved' ? 'idle' : prev), 3000);
       } else {
         setAutoSaveStatus('idle');
       }
@@ -1368,6 +1378,7 @@ const ClientRecords: React.FC<{
       if (!silent) showErrorToast('An error occurred while saving client information.');
       if (silent) setAutoSaveStatus('error');
     } finally {
+      isSavingClientRef.current = false;
       setIsSavingClient(false);
     }
   };
