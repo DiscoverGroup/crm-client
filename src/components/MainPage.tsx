@@ -16,6 +16,7 @@ import ArchivedClients from './ArchivedClients';
 import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import TeamCalendar from './TeamCalendar';
+import PackageSelect from './PackageSelect';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
@@ -2301,13 +2302,9 @@ const ClientRecords: React.FC<{
             <div className="form-row" style={{ display: "flex", gap: windowWidth < 640 ? 16 : 32, flexWrap: "wrap" }}>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>
                 <label style={label}>Package</label>
-                <input 
-                  style={modernInput} 
-                  type="text" 
-                  placeholder="Enter tour/package name"
-                  maxLength={150}
+                <PackageSelect
                   value={packageName}
-                  onChange={e => setPackageNameTracked(e.target.value)}
+                  onChange={v => setPackageNameTracked(v)}
                 />
               </div>
               <div className="form-field" style={{ flex: 1, minWidth: windowWidth < 640 ? "100%" : "200px" }}>

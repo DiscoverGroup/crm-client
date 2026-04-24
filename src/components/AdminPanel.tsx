@@ -7,6 +7,7 @@ import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/to
 import { authHeaders } from '../utils/authToken';
 import { VERSION_INFO, getFullVersion, getSecurityVersion, getBuildInfo } from '../config/version';
 import { FileService } from '../services/fileService';
+import { getPackageOptions, savePackageOptions } from './PackageSelect';
 import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
@@ -41,7 +42,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota' | 'backup-restore'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota' | 'backup-restore' | 'packages'>('users');
+  const [packageOptions, setPackageOptions] = useState<string[]>(() => getPackageOptions());
+  const [newPackageInput, setNewPackageInput] = useState('');
+  const [packageEditIdx, setPackageEditIdx] = useState<number | null>(null);
+  const [packageEditValue, setPackageEditValue] = useState('');
   const [backupStatus, setBackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
@@ -741,6 +746,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           🗄️ Backup &amp; Restore
+        </button>
+        <button
+          onClick={() => setActiveTab('packages')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'packages' ? 'white' : 'transparent',
+            color: activeTab === 'packages' ? '#0891b2' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'packages' ? '3px solid #0891b2' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          📦 Packages
         </button>
       </div>
 
@@ -2732,6 +2755,150 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <li>Backups do <strong>not</strong> include file binaries (PDFs, images) — those are safe in Cloudflare R2</li>
               </ul>
             </div>
+          </div>
+        );
+      })()}
+
+      {/* Packages Tab */}
+      {activeTab === 'packages' && (() => {
+        const persistOptions = (opts: string[]) => {
+          setPackageOptions(opts);
+          savePackageOptions(opts);
+        };
+
+        const addPackage = () => {
+          const trimmed = newPackageInput.trim();
+          if (!trimmed) return;
+          if (packageOptions.some(o => o.toLowerCase() === trimmed.toLowerCase())) {
+            showErrorToast('A package with that name already exists.');
+            return;
+          }
+          persistOptions([...packageOptions, trimmed]);
+          setNewPackageInput('');
+          showSuccessToast(`Package "${trimmed}" added.`);
+        };
+
+        const deletePackage = async (idx: number) => {
+          const name = packageOptions[idx];
+          const ok = await showConfirmDialog('Remove Package', `Remove "${name}" from the dropdown list? Existing clients that already have this package name are not affected.`, 'warning');
+          if (!ok) return;
+          persistOptions(packageOptions.filter((_, i) => i !== idx));
+          showSuccessToast(`"${name}" removed.`);
+        };
+
+        const saveEdit = (idx: number) => {
+          const trimmed = packageEditValue.trim();
+          if (!trimmed) return;
+          if (packageOptions.some((o, i) => i !== idx && o.toLowerCase() === trimmed.toLowerCase())) {
+            showErrorToast('A package with that name already exists.');
+            return;
+          }
+          const updated = [...packageOptions];
+          updated[idx] = trimmed;
+          persistOptions(updated);
+          setPackageEditIdx(null);
+          setPackageEditValue('');
+          showSuccessToast('Package updated.');
+        };
+
+        const moveUp = (idx: number) => {
+          if (idx === 0) return;
+          const arr = [...packageOptions];
+          [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+          persistOptions(arr);
+        };
+
+        const moveDown = (idx: number) => {
+          if (idx === packageOptions.length - 1) return;
+          const arr = [...packageOptions];
+          [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+          persistOptions(arr);
+        };
+
+        return (
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📦 Package Options</h2>
+            <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
+              Manage the list of tour/package names available in the Package dropdown on client forms. Existing client records are never changed — their package name is preserved as-is.
+            </p>
+
+            {/* Add new */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+              <input
+                value={newPackageInput}
+                onChange={e => setNewPackageInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPackage()}
+                placeholder="e.g. ROUTE N ADVANCE"
+                maxLength={150}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  border: '1.5px solid #d1dbe8',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  fontFamily: "'Poppins', sans-serif",
+                }}
+              />
+              <button
+                onClick={addPackage}
+                style={{ padding: '10px 22px', background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                + Add Package
+              </button>
+            </div>
+
+            {/* List */}
+            {packageOptions.length === 0 ? (
+              <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e2e8f0' }}>
+                No packages added yet. Type a name above and click "+ Add Package".
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {packageOptions.map((opt, idx) => (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    {/* Reorder */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <button onClick={() => moveUp(idx)} disabled={idx === 0} style={{ padding: '1px 5px', background: 'none', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? '#cbd5e1' : '#64748b', fontSize: 10, lineHeight: 1 }}>▲</button>
+                      <button onClick={() => moveDown(idx)} disabled={idx === packageOptions.length - 1} style={{ padding: '1px 5px', background: 'none', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: idx === packageOptions.length - 1 ? 'default' : 'pointer', color: idx === packageOptions.length - 1 ? '#cbd5e1' : '#64748b', fontSize: 10, lineHeight: 1 }}>▼</button>
+                    </div>
+
+                    {/* Name or edit input */}
+                    {packageEditIdx === idx ? (
+                      <input
+                        autoFocus
+                        value={packageEditValue}
+                        onChange={e => setPackageEditValue(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') saveEdit(idx); if (e.key === 'Escape') { setPackageEditIdx(null); setPackageEditValue(''); } }}
+                        maxLength={150}
+                        style={{ padding: '6px 10px', border: '1.5px solid #0891b2', borderRadius: '6px', fontSize: '14px', outline: 'none', fontFamily: "'Poppins', sans-serif" }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#1e293b' }}>{opt}</span>
+                    )}
+
+                    {/* Actions */}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {packageEditIdx === idx ? (
+                        <>
+                          <button onClick={() => saveEdit(idx)} style={{ padding: '5px 12px', background: '#0891b2', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Save</button>
+                          <button onClick={() => { setPackageEditIdx(null); setPackageEditValue(''); }} style={{ padding: '5px 10px', background: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => { setPackageEditIdx(idx); setPackageEditValue(opt); }} style={{ padding: '5px 10px', background: 'white', color: '#0891b2', border: '1px solid #0891b2', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => deletePackage(idx)} style={{ padding: '5px 10px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Remove</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <p style={{ marginTop: '16px', fontSize: '12px', color: '#94a3b8' }}>
+              {packageOptions.length} package{packageOptions.length !== 1 ? 's' : ''} configured. Changes apply immediately to the dropdown on all client forms.
+            </p>
           </div>
         );
       })()}
