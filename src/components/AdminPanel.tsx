@@ -40,7 +40,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota'>('users');
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
   const [clientRecoveryRequests, setClientRecoveryRequests] = useState<ClientRecoveryRequest[]>([]);
   const [filterRecoveryStatus, setFilterRecoveryStatus] = useState<string>('pending');
@@ -49,6 +49,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [showSystemMonitoring, setShowSystemMonitoring] = useState(false);
   const [companyLogo, setCompanyLogo] = useState<string>(localStorage.getItem('crm_company_logo') || '');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  // Quota settings: { defaultLimit: number, perUser: { [email]: number } }
+  const [quotaSettings, setQuotaSettings] = useState<{ defaultLimit: number; perUser: Record<string, number> }>(() => {
+    try {
+      const raw = localStorage.getItem('crm_quota_settings');
+      return raw ? JSON.parse(raw) : { defaultLimit: 100, perUser: {} };
+    } catch { return { defaultLimit: 100, perUser: {} }; }
+  });
+  const [quotaEditValues, setQuotaEditValues] = useState<Record<string, string>>({});
+
+  const saveQuotaSettings = (updated: typeof quotaSettings) => {
+    setQuotaSettings(updated);
+    localStorage.setItem('crm_quota_settings', JSON.stringify(updated));
+  };
+
+  // localStorage usage helpers
+  const getStorageUsage = () => {
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB browser limit
+    const keys: { key: string; label: string; bytes: number }[] = [];
+    let total = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i) || '';
+      const val = localStorage.getItem(key) || '';
+      const bytes = new Blob([val]).size;
+      total += bytes;
+      keys.push({ key, label: key, bytes });
+    }
+    keys.sort((a, b) => b.bytes - a.bytes);
+    return { keys, total, maxBytes: MAX_BYTES };
+  };
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  // Count clients per agent from localStorage
+  const getClientCountsByAgent = () => {
+    try {
+      const raw = localStorage.getItem('crm_clients_data');
+      const all: any[] = raw ? JSON.parse(raw) : [];
+      const counts: Record<string, number> = {};
+      all.forEach(c => {
+        if (c.isDeleted) return;
+        const agent = (c.agent || '').trim().toLowerCase();
+        if (!agent) return;
+        counts[agent] = (counts[agent] || 0) + 1;
+      });
+      return counts;
+    } catch { return {}; }
+  };
 
   // Get current admin user from localStorage
   const getCurrentAdmin = (): string => {
@@ -617,6 +669,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           🎨 Branding
+        </button>
+        <button
+          onClick={() => setActiveTab('storage-quota')}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'storage-quota' ? 'white' : 'transparent',
+            color: activeTab === 'storage-quota' ? '#7c3aed' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'storage-quota' ? '3px solid #7c3aed' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          💾 Storage &amp; Quota
         </button>
       </div>
 
@@ -2060,6 +2130,203 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           <TerritoryManager onClose={() => setActiveTab('users')} />
         </div>
       )}
+
+      {/* Storage & Quota Tab */}
+      {activeTab === 'storage-quota' && (() => {
+        const usage = getStorageUsage();
+        const clientCounts = getClientCountsByAgent();
+        const usedPct = Math.min(100, (usage.total / usage.maxBytes) * 100);
+        const barColor = usedPct > 85 ? '#ef4444' : usedPct > 60 ? '#f59e0b' : '#10b981';
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* ── LocalStorage Usage Overview ─────────────────────── */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>💾 LocalStorage Usage (This Device)</h2>
+              <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
+                Each employee's browser has a shared 5 MB limit for this app. Data below reflects the currently logged-in device.
+              </p>
+
+              {/* Total bar */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>Total Used</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700', color: barColor }}>
+                    {formatBytes(usage.total)} / {formatBytes(usage.maxBytes)} ({usedPct.toFixed(1)}%)
+                  </span>
+                </div>
+                <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${usedPct}%`, background: barColor, borderRadius: '8px', transition: 'width 0.3s' }} />
+                </div>
+              </div>
+
+              {/* Per-key breakdown */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {usage.keys.map(({ key, bytes }) => {
+                  const pct = usage.total > 0 ? (bytes / usage.maxBytes) * 100 : 0;
+                  const isCritical = key === 'crm_monitoring_data' || key === 'crm_activity_logs';
+                  return (
+                    <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px', alignItems: 'center', padding: '8px 12px', background: isCritical ? '#fff7ed' : '#f8fafc', borderRadius: '8px', border: `1px solid ${isCritical ? '#fed7aa' : '#e2e8f0'}` }}>
+                      <div>
+                        <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#1e293b', fontWeight: '600' }}>{key}</span>
+                        {isCritical && <span style={{ marginLeft: '8px', fontSize: '10px', background: '#f59e0b', color: 'white', borderRadius: '4px', padding: '1px 6px', fontWeight: '600' }}>HEAVY</span>}
+                        <div style={{ marginTop: '4px', height: '4px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(100, pct * (usage.maxBytes / bytes) * 0.01)}%`, maxWidth: `${Math.min(100, pct * 5)}%`, background: isCritical ? '#f59e0b' : '#3b82f6', borderRadius: '4px' }} />
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: '#475569', whiteSpace: 'nowrap' }}>{formatBytes(bytes)}</span>
+                      <button
+                        onClick={async () => {
+                          const ok = await showConfirmDialog('Clear Key', `Remove "${key}" from localStorage? This may affect app data.`, 'warning');
+                          if (ok) { localStorage.removeItem(key); showSuccessToast(`Cleared ${key}`); setQuotaSettings({ ...quotaSettings }); /* trigger re-render */ }
+                        }}
+                        style={{ padding: '3px 10px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: '600' }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick cleanup button */}
+              <button
+                onClick={async () => {
+                  const ok = await showConfirmDialog('Free Up Space', 'This will trim monitoring logs and activity logs to their minimum size to free up localStorage space. Client data will NOT be affected.', 'info');
+                  if (!ok) return;
+                  const monRaw = localStorage.getItem('crm_monitoring_data');
+                  if (monRaw) { try { const d = JSON.parse(monRaw); localStorage.setItem('crm_monitoring_data', JSON.stringify({ errorLogs: (d.errorLogs||[]).slice(0,10), performanceMetrics: (d.performanceMetrics||[]).slice(0,10), anomalies: (d.anomalies||[]).slice(0,5), validationIssues: (d.validationIssues||[]).slice(0,5), consistencyChecks: (d.consistencyChecks||[]).slice(0,5) })); } catch { localStorage.removeItem('crm_monitoring_data'); } }
+                  const logRaw = localStorage.getItem('crm_activity_logs');
+                  if (logRaw) { try { const logs = JSON.parse(logRaw); localStorage.setItem('crm_activity_logs', JSON.stringify(Array.isArray(logs) ? logs.slice(0, 50) : [])); } catch { localStorage.removeItem('crm_activity_logs'); } }
+                  showSuccessToast('Storage freed up successfully.');
+                  setQuotaSettings({ ...quotaSettings }); // trigger re-render
+                }}
+                style={{ marginTop: '16px', padding: '10px 20px', background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(124,58,237,0.3)' }}
+              >
+                🧹 Free Up Space (Trim Logs)
+              </button>
+            </div>
+
+            {/* ── Per-Employee Client Quota ─────────────────────────── */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>👤 Per-Employee Client Quota</h2>
+              <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '13px' }}>
+                Set the maximum number of active clients each employee can manage. A warning is shown when they hit the limit. Default applies to all employees without a custom limit.
+              </p>
+
+              {/* Default limit */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', padding: '14px 18px', background: '#f8f4ff', borderRadius: '10px', border: '1px solid #e9d5ff' }}>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#7c3aed', flex: 1 }}>🔒 Default Limit (all employees)</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={9999}
+                  value={quotaEditValues['__default__'] ?? quotaSettings.defaultLimit}
+                  onChange={e => setQuotaEditValues(v => ({ ...v, '__default__': e.target.value }))}
+                  style={{ width: '80px', padding: '6px 10px', border: '1.5px solid #c4b5fd', borderRadius: '8px', fontSize: '14px', fontWeight: '700', color: '#7c3aed', textAlign: 'center' }}
+                />
+                <button
+                  onClick={() => {
+                    const val = parseInt(quotaEditValues['__default__'] || String(quotaSettings.defaultLimit));
+                    if (!isNaN(val) && val > 0) {
+                      saveQuotaSettings({ ...quotaSettings, defaultLimit: val });
+                      setQuotaEditValues(v => { const n = { ...v }; delete n['__default__']; return n; });
+                      showSuccessToast(`Default quota set to ${val} clients`);
+                    }
+                  }}
+                  style={{ padding: '6px 16px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Save
+                </button>
+              </div>
+
+              {/* Per-user rows */}
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 100%)' }}>
+                    {['Employee', 'Email', 'Clients Used', 'Quota Limit', 'Usage', 'Action'].map(h => (
+                      <th key={h} style={{ padding: '11px 14px', textAlign: 'left', fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.filter(u => u.role !== 'admin' && u.email !== 'admin@discovergrp.com').map((user, idx) => {
+                    const agentKey = (user.fullName || user.username || '').trim().toLowerCase();
+                    const used = clientCounts[agentKey] || 0;
+                    const limit = quotaSettings.perUser[user.email] ?? quotaSettings.defaultLimit;
+                    const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                    const barC = pct >= 100 ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#10b981';
+                    const editKey = `user_${user.email}`;
+                    return (
+                      <tr key={user.email} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8faff', borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '12px 14px', fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{user.fullName || user.username}</td>
+                        <td style={{ padding: '12px 14px', fontSize: '12px', color: '#64748b' }}>{user.email}</td>
+                        <td style={{ padding: '12px 14px', fontSize: '14px', fontWeight: '700', color: barC }}>{used}</td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={9999}
+                              value={quotaEditValues[editKey] ?? limit}
+                              onChange={e => setQuotaEditValues(v => ({ ...v, [editKey]: e.target.value }))}
+                              style={{ width: '70px', padding: '5px 8px', border: `1.5px solid ${quotaSettings.perUser[user.email] ? '#7c3aed' : '#d1d5db'}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', color: '#1e293b', textAlign: 'center' }}
+                            />
+                            {quotaSettings.perUser[user.email] && (
+                              <span style={{ fontSize: '10px', background: '#7c3aed', color: 'white', borderRadius: '4px', padding: '1px 6px' }}>custom</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px', minWidth: '120px' }}>
+                          <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: barC, borderRadius: '6px', transition: 'width 0.3s' }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: barC, fontWeight: '600' }}>{pct.toFixed(0)}%</span>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => {
+                                const val = parseInt(quotaEditValues[editKey] || String(limit));
+                                if (!isNaN(val) && val > 0) {
+                                  const updated = { ...quotaSettings, perUser: { ...quotaSettings.perUser, [user.email]: val } };
+                                  saveQuotaSettings(updated);
+                                  setQuotaEditValues(v => { const n = { ...v }; delete n[editKey]; return n; });
+                                  showSuccessToast(`Quota for ${user.fullName || user.email} set to ${val}`);
+                                }
+                              }}
+                              style={{ padding: '5px 12px', background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                              Save
+                            </button>
+                            {quotaSettings.perUser[user.email] && (
+                              <button
+                                onClick={() => {
+                                  const updated = { ...quotaSettings, perUser: { ...quotaSettings.perUser } };
+                                  delete updated.perUser[user.email];
+                                  saveQuotaSettings(updated);
+                                  setQuotaEditValues(v => { const n = { ...v }; delete n[editKey]; return n; });
+                                  showSuccessToast(`Reset to default quota for ${user.fullName || user.email}`);
+                                }}
+                                style={{ padding: '5px 10px', background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {users.filter(u => u.role !== 'admin' && u.email !== 'admin@discovergrp.com').length === 0 && (
+                <p style={{ textAlign: 'center', color: '#94a3b8', padding: '20px' }}>No employees found.</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Workflow Builder Modal */}
       {showWorkflowBuilder && (

@@ -1143,6 +1143,30 @@ const ClientRecords: React.FC<{
         }
       }
 
+      // Quota check: enforce per-employee client limit on NEW records only
+      const ownIdForQuota = resolvedClientId || clientId;
+      if (!ownIdForQuota && !isTestRecord) {
+        try {
+          const quotaRaw = localStorage.getItem('crm_quota_settings');
+          const quotaConfig = quotaRaw ? JSON.parse(quotaRaw) : { defaultLimit: 100, perUser: {} };
+          const currentUserEmail = (() => {
+            try { return JSON.parse(localStorage.getItem('crm_current_user') || '{}').email || ''; } catch { return ''; }
+          })();
+          const limit: number = quotaConfig.perUser?.[currentUserEmail] ?? quotaConfig.defaultLimit ?? 100;
+          const agentName = (agent || currentUserName || '').trim().toLowerCase();
+          const allClients: import('../services/clientService').ClientData[] = (() => {
+            try { return JSON.parse(localStorage.getItem('crm_clients_data') || '[]'); } catch { return []; }
+          })();
+          const usedCount = allClients.filter(c => !c.isDeleted && !c.isTestRecord && (c.agent || '').trim().toLowerCase() === agentName).length;
+          if (usedCount >= limit) {
+            if (!silent) showWarningToast(`Client quota reached (${usedCount}/${limit}). Contact admin to increase your limit.`);
+            setIsSavingClient(false);
+            if (silent) setAutoSaveStatus('idle');
+            return;
+          }
+        } catch { /* quota check is non-critical — skip on error */ }
+      }
+
       // Sanitise inputs before building clientData
       const cleanContactName = sanitizeName(contactName, 200);
       const cleanEmail = sanitizeEmail(email || '');
