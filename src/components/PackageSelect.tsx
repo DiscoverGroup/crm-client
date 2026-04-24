@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 export const PACKAGE_OPTIONS_KEY = 'crm_package_options';
+const CLIENTS_STORAGE_KEY = 'crm_clients_data';
 
 export function getPackageOptions(): string[] {
   try {
@@ -15,6 +16,38 @@ export function savePackageOptions(options: string[]): void {
   localStorage.setItem(PACKAGE_OPTIONS_KEY, JSON.stringify(options));
 }
 
+/** Collects unique non-empty packageName values from all client records in localStorage. */
+function getClientPackages(): string[] {
+  try {
+    const raw = localStorage.getItem(CLIENTS_STORAGE_KEY);
+    const clients: any[] = raw ? JSON.parse(raw) : [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const c of clients) {
+      const name = (c.packageName || '').trim();
+      if (name && !seen.has(name.toLowerCase())) {
+        seen.add(name.toLowerCase());
+        result.push(name);
+      }
+    }
+    return result.sort((a, b) => a.localeCompare(b));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Builds the merged option list:
+ *  1. Admin-configured packages (in their defined order)
+ *  2. Packages found in existing client records that aren't already in the admin list
+ * Returns { adminOpts, clientOpts } separately so we can render section headers.
+ */
+function buildOptions(adminOptions: string[]): { adminOpts: string[]; clientOpts: string[] } {
+  const adminLower = new Set(adminOptions.map(o => o.toLowerCase()));
+  const clientPkgs = getClientPackages().filter(p => !adminLower.has(p.toLowerCase()));
+  return { adminOpts: adminOptions, clientOpts: clientPkgs };
+}
+
 interface Props {
   value: string;
   onChange: (value: string) => void;
@@ -25,34 +58,42 @@ export default function PackageSelect({ value, onChange, placeholder = 'Select o
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [adminOptions, setAdminOptions] = useState<string[]>([]);
+  const [clientOptions, setClientOptions] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Load options on mount and whenever dropdown opens (picks up admin changes)
-  useEffect(() => {
-    setAdminOptions(getPackageOptions());
-  }, []);
+  const reload = () => {
+    const opts = getPackageOptions();
+    setAdminOptions(opts);
+    const { clientOpts } = buildOptions(opts);
+    setClientOptions(clientOpts);
+  };
+
+  // Load options on mount and whenever dropdown opens
+  useEffect(() => { reload(); }, []);
 
   useEffect(() => {
     if (open) {
-      setAdminOptions(getPackageOptions());
+      reload();
       setSearch('');
       setTimeout(() => searchRef.current?.focus(), 30);
     }
   }, [open]);
 
-  // If current value is not in admin list, show it at top so it is never lost
-  const baseOptions: string[] = (() => {
-    const opts = adminOptions;
-    if (value && !opts.some(o => o.toLowerCase() === value.toLowerCase())) {
-      return [value, ...opts];
-    }
-    return opts;
-  })();
+  // If current value is not in either list, pin it at the top so it is never lost
+  const currentValueOrphaned =
+    value &&
+    !adminOptions.some(o => o.toLowerCase() === value.toLowerCase()) &&
+    !clientOptions.some(o => o.toLowerCase() === value.toLowerCase());
 
-  const filtered = search.trim()
-    ? baseOptions.filter(o => o.toLowerCase().includes(search.trim().toLowerCase()))
-    : baseOptions;
+  const filterOpts = (arr: string[]) =>
+    search.trim() ? arr.filter(o => o.toLowerCase().includes(search.trim().toLowerCase())) : arr;
+
+  const filteredAdmin = filterOpts(adminOptions);
+  const filteredClient = filterOpts(clientOptions);
+  const filteredOrphan = currentValueOrphaned && (!search.trim() || value.toLowerCase().includes(search.trim().toLowerCase())) ? [value] : [];
+
+  const anyResults = filteredOrphan.length + filteredAdmin.length + filteredClient.length > 0;
 
   // Close on outside click
   useEffect(() => {
@@ -147,37 +188,51 @@ export default function PackageSelect({ value, onChange, placeholder = 'Select o
           </div>
 
           {/* Options list */}
-          <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-            {filtered.length === 0 ? (
+          <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+            {/* Current value pinned at top if orphaned */}
+            {filteredOrphan.map(opt => (
+              <PackageOption key={`orphan-${opt}`} opt={opt} selected={opt === value} onSelect={select} />
+            ))}
+
+            {/* Admin-configured packages */}
+            {filteredAdmin.length > 0 && (
+              <>
+                {filteredClient.length > 0 && (
+                  <SectionHeader label="Configured Packages" />
+                )}
+                {filteredAdmin.map(opt => (
+                  <PackageOption key={`admin-${opt}`} opt={opt} selected={opt === value} onSelect={select} />
+                ))}
+              </>
+            )}
+
+            {/* Packages from existing client records */}
+            {filteredClient.length > 0 && (
+              <>
+                <SectionHeader label="Used by Existing Clients" />
+                {filteredClient.map(opt => (
+                  <PackageOption key={`client-${opt}`} opt={opt} selected={opt === value} onSelect={select} />
+                ))}
+              </>
+            )}
+
+            {/* Empty state */}
+            {!anyResults && (
               <div style={{ padding: '12px 14px', fontSize: '13px', textAlign: 'center' }}>
                 {search.trim()
                   ? <span onClick={() => select(search.trim())} style={{ cursor: 'pointer', color: '#3b82f6', fontWeight: 600 }}>+ Use "{search.trim()}"</span>
-                  : <span style={{ color: '#94a3b8' }}>No packages configured yet. Add them in Admin → Packages.</span>}
+                  : <span style={{ color: '#94a3b8' }}>No packages yet. Add them in Admin → Packages.</span>}
               </div>
-            ) : (
-              <>
-                {filtered.map(opt => (
-                  <PackageOption key={opt} opt={opt} selected={opt === value} onSelect={select} />
-                ))}
-                {/* Allow typing a brand-new value not in the list */}
-                {search.trim() && !filtered.some(o => o.toLowerCase() === search.trim().toLowerCase()) && (
-                  <div
-                    onClick={() => select(search.trim())}
-                    style={{
-                      padding: '9px 14px',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      color: '#3b82f6',
-                      fontWeight: 600,
-                      borderTop: '1px solid #f1f5f9',
-                      background: '#f8fafc',
-                      fontFamily: "'Poppins', sans-serif",
-                    }}
-                  >
-                    + Use "{search.trim()}"
-                  </div>
-                )}
-              </>
+            )}
+
+            {/* Allow typing a brand-new value not in any list */}
+            {search.trim() && !filterOpts([...adminOptions, ...clientOptions, ...(currentValueOrphaned ? [value] : [])]).some(o => o.toLowerCase() === search.trim().toLowerCase()) && (
+              <div
+                onClick={() => select(search.trim())}
+                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, borderTop: '1px solid #f1f5f9', background: '#f8fafc', fontFamily: "'Poppins', sans-serif" }}
+              >
+                + Use "{search.trim()}"
+              </div>
             )}
           </div>
 
@@ -194,6 +249,14 @@ export default function PackageSelect({ value, onChange, placeholder = 'Select o
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <div style={{ padding: '5px 14px 3px', fontSize: '10px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', background: '#f8fafc', borderTop: '1px solid #f1f5f9', fontFamily: "'Poppins', sans-serif" }}>
+      {label}
     </div>
   );
 }
