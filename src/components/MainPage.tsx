@@ -5517,7 +5517,7 @@ const MainPage: React.FC<MainPageProps> = ({
                   onClick={() => setViewMode('package-group')}
                   title="Group by package"
                   style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', background: viewMode === 'package-group' ? '#0A2D74' : '#e2e8f0', color: viewMode === 'package-group' ? '#fff' : '#475569' }}
-                >📦 By Package</button>
+                >By Package</button>
               </div>
             </div>
             {viewMode === 'package-group' ? (
