@@ -181,6 +181,40 @@ export class ClientService {
     return (now - lastSyncTime) > this.SYNC_INTERVAL;
   }
 
+  /** Free localStorage space by trimming non-critical monitoring/log data */
+  private static freeStorageSpace() {
+    const keysToTrim = ['crm_monitoring_data', 'crm_activity_logs', 'crm_performance_metrics'];
+    for (const key of keysToTrim) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length > 0) {
+          localStorage.setItem(key, JSON.stringify(arr.slice(0, Math.max(1, Math.floor(arr.length / 4)))));
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  /** Safe localStorage.setItem — on QuotaExceededError frees space and retries once */
+  private static safeSetClients(payload: string) {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, payload);
+    } catch (e: any) {
+      if (e && e.name === 'QuotaExceededError') {
+        this.freeStorageSpace();
+        try {
+          localStorage.setItem(this.STORAGE_KEY, payload);
+        } catch {
+          // Local cache write failed even after trimming — MongoDB save will still proceed
+        }
+      }
+      // Any other error is also silently skipped; MongoDB is the source of truth
+    }
+  }
+
   static async saveClient(clientData: Omit<ClientData, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ clientId: string; isNewClient: boolean }> {
     try {
       const clients = this.getAllClientsIncludingDeleted();
@@ -201,7 +235,7 @@ export class ClientService {
           ...clientData,
           updatedAt: new Date().toISOString()
         };
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+        this.safeSetClients(JSON.stringify(clients));
         
         // Update in MongoDB
         try {
@@ -234,7 +268,7 @@ export class ClientService {
         };
 
         clients.push(newClient);
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+        this.safeSetClients(JSON.stringify(clients));
         
         // Save to MongoDB
         try {
@@ -275,7 +309,7 @@ export class ClientService {
         updatedAt: new Date().toISOString()
       };
 
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(clients));
+      this.safeSetClients(JSON.stringify(clients));
       
       // Update in MongoDB
       try {

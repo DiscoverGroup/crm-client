@@ -15,7 +15,7 @@ class MonitoringService {
   private validationIssues: ValidationIssue[] = [];
   private consistencyChecks: ConsistencyCheck[] = [];
   private readonly STORAGE_KEY = 'crm_monitoring_data';
-  private readonly MAX_LOGS = 1000;
+  private readonly MAX_LOGS = 100;
   // Capture original console.error BEFORE patching it so internal
   // logging helpers (saveToStorage / loadFromStorage) can report
   // failures without re-entering the patched version and looping.
@@ -494,10 +494,29 @@ class MonitoringService {
         consistencyChecks: this.consistencyChecks
       };
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
+    } catch (error: any) {
+      if (error && error.name === 'QuotaExceededError') {
+        // Trim all arrays to 10 entries and retry once
+        this.errorLogs = this.errorLogs.slice(0, 10);
+        this.performanceMetrics = this.performanceMetrics.slice(0, 10);
+        this.anomalies = this.anomalies.slice(0, 10);
+        this.validationIssues = this.validationIssues.slice(0, 10);
+        this.consistencyChecks = this.consistencyChecks.slice(0, 10);
+        try {
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+            errorLogs: this.errorLogs,
+            performanceMetrics: this.performanceMetrics,
+            anomalies: this.anomalies,
+            validationIssues: this.validationIssues,
+            consistencyChecks: this.consistencyChecks
+          }));
+        } catch {
+          // Still failing — clear the key entirely so other services aren't blocked
+          try { localStorage.removeItem(this.STORAGE_KEY); } catch { /* ignore */ }
+        }
+      }
       // Use originalConsoleError to avoid triggering the patched console.error
       // which would call logError → saveToStorage again → infinite loop.
-      this.originalConsoleError('Failed to save monitoring data:', error);
     }
   }
 
