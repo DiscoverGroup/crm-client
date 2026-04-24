@@ -2148,12 +2148,62 @@ const ClientRecords: React.FC<{
                 )}
               </div>
             )}
+            {/* Floating Auto-save Badge */}
+            {(autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || autoSaveStatus === 'error' || (autoSaveStatus === 'idle' && isDirtyClientInfo)) && (
+              <div style={{
+                position: 'fixed',
+                bottom: 28,
+                right: 28,
+                zIndex: 9999,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 16px',
+                borderRadius: 12,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+                fontSize: 13,
+                fontWeight: 600,
+                animation: 'autosave-fadein 0.25s ease',
+                ...(autoSaveStatus === 'saving'
+                  ? { background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe' }
+                  : autoSaveStatus === 'saved'
+                  ? { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' }
+                  : autoSaveStatus === 'error'
+                  ? { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }
+                  : { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }),
+              }}>
+                {autoSaveStatus === 'saving' && (
+                  <>
+                    <span style={{ width: 14, height: 14, border: '2px solid #c7d2fe', borderTopColor: '#4f46e5', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                    Auto-saving...
+                  </>
+                )}
+                {autoSaveStatus === 'saved' && lastAutoSaveTime && (
+                  <>
+                    <span style={{ fontSize: 15 }}>✓</span>
+                    Auto-saved at {lastAutoSaveTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </>
+                )}
+                {autoSaveStatus === 'error' && (
+                  <>
+                    <span style={{ fontSize: 15 }}>⚠</span>
+                    Auto-save failed — save manually
+                  </>
+                )}
+                {autoSaveStatus === 'idle' && isDirtyClientInfo && (
+                  <>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#b45309', display: 'inline-block', animation: 'pulse-dot 1.2s ease-in-out infinite', flexShrink: 0 }} />
+                    Unsaved — auto-saves in 10s
+                  </>
+                )}
+              </div>
+            )}
             {/* Save Button */}
             <div style={{ display: "flex", flexDirection: windowWidth < 640 ? 'column' : 'row', justifyContent: "flex-end", marginTop: 16, gap: '12px', alignItems: windowWidth < 640 ? 'stretch' : 'center' }}>
               {/* Auto-save status indicator */}
               {autoSaveStatus === 'saving' && (
-                <span style={{ fontSize: '12px', color: '#6366f1', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#6366f1', animation: 'pulse 1s infinite' }} />
+                <span style={{ fontSize: '12px', color: '#4f46e5', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 10, height: 10, border: '2px solid #c7d2fe', borderTopColor: '#4f46e5', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
                   Auto-saving...
                 </span>
               )}
@@ -2168,8 +2218,9 @@ const ClientRecords: React.FC<{
                 </span>
               )}
               {autoSaveStatus === 'idle' && isDirtyClientInfo && (
-                <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#dc2626', fontWeight: '500', order: windowWidth < 640 ? 2 : 0 }}>
-                  Unsaved changes — auto-saving in 10s
+                <span style={{ fontSize: windowWidth < 640 ? '12px' : '13px', color: '#b45309', fontWeight: '500', order: windowWidth < 640 ? 2 : 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#b45309', display: 'inline-block', animation: 'pulse-dot 1.2s ease-in-out infinite' }} />
+                  Unsaved changes — auto-saves in 10s
                 </span>
               )}
               {!isDirtyClientInfo && autoSaveStatus === 'idle' && (
