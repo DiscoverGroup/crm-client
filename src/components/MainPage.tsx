@@ -158,7 +158,8 @@ const ClientRecords: React.FC<{
   clientId?: string;
   currentUser?: { fullName: string; username: string; id?: string; email?: string };
   onClientIdResolved?: (realClientId: string) => void;
-}> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser, onClientIdResolved }) => {
+  isTestRecord?: boolean;
+}> = ({ onNavigateBack, clientId, currentUser: propsCurrentUser, onClientIdResolved, isTestRecord }) => {
   const windowWidth = useWindowWidth();
   // Client form state
   const [clientNo, setClientNo] = useState("");
@@ -1189,6 +1190,7 @@ const ClientRecords: React.FC<{
         travelFundReleasedAmount: travelFundReleasedAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundTotalAmount: travelFundTotalAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundPayments: travelFundPayments.map(p => ({ date: p.date, amount: p.amount.replace(/[^0-9.,]/g, '').slice(0, 50) })),
+        ...(isTestRecord ? { isTestRecord: true } : {}),
       };
 
       // Prefer the resolved (post-first-save) ID over the prop so that editing
@@ -4529,13 +4531,14 @@ const MainPage: React.FC<MainPageProps> = ({
   onCloseSidebar
 }) => {
   const [clients, setClients] = useState<ClientData[]>([]);
+  const [testClients, setTestClients] = useState<ClientData[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [loading, setLoading] = useState(false);
   
   // Navigation state for form view - restore from sessionStorage on page load
-  const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string} | null>(() => {
+  const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string, isTestRecord?: boolean} | null>(() => {
     const saved = sessionStorage.getItem('crm_current_view');
     if (saved) {
       try {
@@ -4706,6 +4709,15 @@ const MainPage: React.FC<MainPageProps> = ({
         status: statusFilter || undefined
       });
       setClients(allClients);
+      // Also load test records (filtered separately)
+      const allTestRecords = ClientService.getTestRecords().filter(c => {
+        const q = searchQuery.toLowerCase();
+        if (!q) return true;
+        return (c.contactName || '').toLowerCase().includes(q) ||
+               (c.clientNo || '').toLowerCase().includes(q) ||
+               (c.email || '').toLowerCase().includes(q);
+      });
+      setTestClients(allTestRecords);
     } catch (error) {
       // console.error('Error loading clients:', error);
     } finally {
@@ -4739,11 +4751,15 @@ const MainPage: React.FC<MainPageProps> = ({
   };
 
   const handleClientEdit = (client: ClientData) => {
-    setViewingForm({clientId: client.id, clientName: client.contactName});
+    setViewingForm({clientId: client.id, clientName: client.contactName, isTestRecord: client.isTestRecord});
   };
 
   const handleAddNewClient = () => {
     setViewingForm({});
+  };
+
+  const handleAddTestRecord = () => {
+    setViewingForm({ isTestRecord: true });
   };
 
   const getStatusColor = (status: string) => {
@@ -4819,7 +4835,8 @@ const MainPage: React.FC<MainPageProps> = ({
               onNavigateBack={() => setViewingForm(null)}
               clientId={viewingForm.clientId}
               currentUser={currentUser}
-              onClientIdResolved={(realId) => setViewingForm({ clientId: realId })}
+              isTestRecord={viewingForm.isTestRecord}
+              onClientIdResolved={(realId) => setViewingForm({ clientId: realId, isTestRecord: viewingForm.isTestRecord })}
             />
           </div>
         </div>
@@ -5213,6 +5230,34 @@ const MainPage: React.FC<MainPageProps> = ({
           >
             + Add New Client
           </button>
+          {isAdmin() && (
+            <button
+              onClick={handleAddTestRecord}
+              style={{
+                padding: '11px 22px',
+                background: 'rgba(245, 158, 11, 0.25)',
+                color: '#fde68a',
+                border: '1.5px solid rgba(245, 158, 11, 0.6)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease',
+                backdropFilter: 'blur(10px)',
+                whiteSpace: 'nowrap'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.4)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              🧪 Add Test Record
+            </button>
+          )}
         </div>
 
         {/* Search and Filter Section */}
@@ -5728,6 +5773,174 @@ const MainPage: React.FC<MainPageProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Test Records Section (admin only) ──────────────────────────── */}
+        {isAdmin() && (
+          <div style={{ marginTop: '32px' }}>
+            <div style={{
+              background: '#ffffff',
+              borderRadius: '14px',
+              boxShadow: '0 2px 12px rgba(180, 83, 9, 0.1)',
+              border: '1.5px solid rgba(245, 158, 11, 0.3)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{
+                padding: '16px 24px',
+                borderBottom: '2px solid rgba(245, 158, 11, 0.25)',
+                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '16px' }}>🧪</span>
+                <h3 style={{ margin: 0, color: '#92400e', fontWeight: '700', fontSize: '15px' }}>
+                  Test Records
+                </h3>
+                <span style={{
+                  marginLeft: '4px',
+                  background: '#d97706',
+                  color: '#fff',
+                  borderRadius: '20px',
+                  padding: '2px 10px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {testClients.length} {testClients.length === 1 ? 'record' : 'records'}
+                </span>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: '12px',
+                  color: '#b45309',
+                  fontStyle: 'italic'
+                }}>
+                  Visible to admins only — not counted in Client List
+                </span>
+              </div>
+              {testClients.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: '#b45309', opacity: 0.6 }}>
+                  No test records yet. Click "🧪 Add Test Record" to create one.
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '650px' }}>
+                    <thead>
+                      <tr style={{ background: 'linear-gradient(135deg, #b45309 0%, #d97706 100%)' }}>
+                        {['Client No.', 'Client Name', 'Status', 'Email', 'Phone', 'Sales Agent', 'Actions'].map(h => (
+                          <th key={h} style={{
+                            padding: '11px 16px',
+                            textAlign: h === 'Actions' ? 'center' : 'left',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            color: 'rgba(255,255,255,0.9)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            whiteSpace: 'nowrap'
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...testClients].sort((a, b) => {
+                        const dateA = new Date(a.createdAt).getTime();
+                        const dateB = new Date(b.createdAt).getTime();
+                        return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+                      }).map((client, index) => (
+                        <tr
+                          key={client.id}
+                          style={{
+                            borderBottom: '1px solid rgba(245, 158, 11, 0.12)',
+                            background: index % 2 === 0 ? '#ffffff' : '#fffdf5',
+                            cursor: 'pointer'
+                          }}
+                          onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.08)')}
+                          onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#fffdf5')}
+                          onClick={() => handleClientEdit(client)}
+                        >
+                          <td style={{ padding: '14px 16px', color: '#92400e', fontSize: '13px', fontFamily: 'monospace' }}>
+                            {client.clientNo || '—'}
+                          </td>
+                          <td style={{ padding: '14px 16px', color: '#b45309', fontSize: '14px', fontWeight: '600' }}>
+                            {client.contactName}
+                          </td>
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{
+                              padding: '4px 12px',
+                              backgroundColor: getStatusColor(client.status || 'unknown'),
+                              color: 'white',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'inline-block'
+                            }}>
+                              {client.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 16px', color: '#78716c', fontSize: '13px' }}>
+                            {client.email || <span style={{ color: '#d4c4b0', fontStyle: 'italic' }}>No email</span>}
+                          </td>
+                          <td style={{ padding: '14px 16px', color: '#78716c', fontSize: '13px' }}>
+                            {client.contactNo || <span style={{ color: '#d4c4b0', fontStyle: 'italic' }}>No phone</span>}
+                          </td>
+                          <td style={{ padding: '14px 16px', color: '#78716c', fontSize: '13px' }}>
+                            {client.agent || <span style={{ color: '#d4c4b0', fontStyle: 'italic' }}>Unassigned</span>}
+                          </td>
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleClientEdit(client); }}
+                                style={{
+                                  padding: '5px 12px',
+                                  background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const confirmed = await showConfirmDialog(
+                                    'Delete Test Record',
+                                    `Delete test record "${client.contactName}"? This can be recovered from Deleted Clients.`,
+                                    'error'
+                                  );
+                                  if (confirmed) {
+                                    ClientService.deleteClient(client.id, currentUser.fullName);
+                                    showSuccessToast('Test record moved to trash.');
+                                    loadClients();
+                                  }
+                                }}
+                                style={{
+                                  padding: '5px 12px',
+                                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '8px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -99,6 +99,7 @@ export interface ClientData {
   deletedBy?: string;
   isDeleted?: boolean;
   isArchived?: boolean;
+  isTestRecord?: boolean;
   archivedAt?: string;
   archivedBy?: string;
 }
@@ -312,8 +313,8 @@ export class ClientService {
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       const allClients = data ? JSON.parse(data) : [];
-      // Filter out deleted and archived clients by default
-      return allClients.filter((client: ClientData) => !client.isDeleted && !client.isArchived);
+      // Filter out deleted, archived, and test records by default
+      return allClients.filter((client: ClientData) => !client.isDeleted && !client.isArchived && !client.isTestRecord);
     } catch (error) {
       // console.error('Error loading clients:', error);
       return [];
@@ -346,6 +347,16 @@ export class ClientService {
       return allClients.filter((client: ClientData) => client.isDeleted);
     } catch (error) {
       // console.error('Error loading deleted clients:', error);
+      return [];
+    }
+  }
+
+  static getTestRecords(): ClientData[] {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      const allClients = data ? JSON.parse(data) : [];
+      return allClients.filter((client: ClientData) => client.isTestRecord && !client.isDeleted);
+    } catch (error) {
       return [];
     }
   }
