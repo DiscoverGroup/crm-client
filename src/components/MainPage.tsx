@@ -17,6 +17,7 @@ import ActivityLogViewer from './ActivityLogViewer';
 import AdminPanel from './AdminPanel';
 import TeamCalendar from './TeamCalendar';
 import PackageSelect from './PackageSelect';
+import PackageGroupView from './PackageGroupView';
 import { ActivityLogService } from '../services/activityLogService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
@@ -4568,6 +4569,7 @@ const MainPage: React.FC<MainPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [viewMode, setViewMode] = useState<'table' | 'package-group'>('table');
   const [loading, setLoading] = useState(false);
   
   // Navigation state for form view - restore from sessionStorage on page load
@@ -5504,7 +5506,32 @@ const MainPage: React.FC<MainPageProps> = ({
               }}>
                 {clients.length} {clients.length === 1 ? 'client' : 'clients'}
               </span>
+              {/* View toggle */}
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => setViewMode('table')}
+                  title="Table view"
+                  style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', background: viewMode === 'table' ? '#0A2D74' : '#e2e8f0', color: viewMode === 'table' ? '#fff' : '#475569' }}
+                >☰ Table</button>
+                <button
+                  onClick={() => setViewMode('package-group')}
+                  title="Group by package"
+                  style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', background: viewMode === 'package-group' ? '#0A2D74' : '#e2e8f0', color: viewMode === 'package-group' ? '#fff' : '#475569' }}
+                >📦 By Package</button>
+              </div>
             </div>
+            {viewMode === 'package-group' ? (
+              <div style={{ padding: '16px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                <PackageGroupView
+                  clients={[...clients].sort((a, b) => {
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+                  })}
+                  onClientClick={handleClientEdit}
+                />
+              </div>
+            ) : (
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
               <table style={{
                 width: '100%',
@@ -5828,6 +5855,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 </tbody>
               </table>
             </div>
+            )} {/* end table/package-group conditional */}
           </div>
         )}
 
