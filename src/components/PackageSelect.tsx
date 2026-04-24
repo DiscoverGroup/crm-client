@@ -180,7 +180,8 @@ export default function PackageSelect({ value, onChange, placeholder = 'Select o
               onKeyDown={e => {
                 if (e.key === 'Escape') { setOpen(false); setSearch(''); }
                 if (e.key === 'Enter' && search.trim()) {
-                  const exact = filtered.find(o => o.toLowerCase() === search.trim().toLowerCase());
+                  const allOpts = [...filteredAdmin, ...filteredClient, ...filteredOrphan];
+                  const exact = allOpts.find((o: string) => o.toLowerCase() === search.trim().toLowerCase());
                   select(exact ?? search.trim());
                 }
               }}
