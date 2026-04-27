@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import TurnstileGate from "./components/TurnstileGate";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AuthContainer from "./components/AuthContainer";
@@ -21,6 +22,7 @@ import { realtimeSync } from './services/realtimeSyncService';
 const App: React.FC = () => {
   const { loginWithRedirect, getAccessTokenSilently, isAuthenticated, isLoading: auth0Loading } = useAuth0();
 
+  const [gateToken, setGateToken] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ fullName: string; username: string; id: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -393,7 +395,7 @@ const App: React.FC = () => {
   };
 
   // Handle user login with validation
-  const handleLogin = async (username: string, password: string, turnstileToken?: string) => {
+  const handleLogin = async (username: string, password: string) => {
     
     // Validate input fields
     if (!username.trim() || !password.trim()) {
@@ -416,7 +418,7 @@ const App: React.FC = () => {
         body: JSON.stringify({
           email: username.trim(),
           password: password.trim(),
-          turnstileToken,
+          turnstileToken: gateToken,
         })
       });
 
@@ -964,6 +966,11 @@ const App: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // Show full-page Turnstile gate before anything else
+  if (!gateToken) {
+    return <TurnstileGate onVerified={(token) => setGateToken(token)} />;
   }
 
   return (

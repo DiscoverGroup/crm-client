@@ -4,7 +4,7 @@ import RegisterForm from './RegisterForm';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface AuthContainerProps {
-  onLogin: (username: string, password: string, turnstileToken?: string) => void;
+  onLogin: (username: string, password: string) => void;
   onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => Promise<void> | void;
   onAuth0Register?: () => void;
   onAuth0Login?: () => void;
@@ -14,8 +14,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ onLogin, onRegister, onAu
   const windowWidth = useWindowWidth();
   const [showRegister, setShowRegister] = useState(false);
 
-  const handleLogin = (email: string, password: string, turnstileToken?: string) => {
-    onLogin(email, password, turnstileToken);
+  const handleLogin = (email: string, password: string) => {
+    onLogin(email, password);
   };
 
   const handleRegister = async (userData: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => {

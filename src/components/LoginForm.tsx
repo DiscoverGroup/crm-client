@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import Turnstile from 'react-turnstile';
 import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../utils/toast';
 import {
   validateLoginForm,
@@ -13,7 +12,7 @@ import {
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface LoginFormProps {
-  onLogin: (username: string, password: string, turnstileToken: string) => void;
+  onLogin: (username: string, password: string) => void;
   onSignUp?: () => void;
   onAuth0Login?: () => void;
 }
@@ -32,8 +31,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
   const [resetToken, setResetToken] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileKey, setTurnstileKey] = useState(0); // used to reset widget
 
   // Check if URL has reset token or verification token
   React.useEffect(() => {
@@ -141,15 +138,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       return;
     }
 
-    if (!turnstileToken) {
-      showWarningToast('Please complete the security check before signing in.');
-      return;
-    }
-
-    onLogin(cleanEmail, cleanPassword, turnstileToken);
-    // Reset Turnstile widget after submission
-    setTurnstileToken(null);
-    setTurnstileKey(k => k + 1);
+    onLogin(cleanEmail, cleanPassword);
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -381,21 +370,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
           >
             Forgot password?
           </button>
-        </div>
-
-        {/* Cloudflare Turnstile bot protection */}
-        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
-          <Turnstile
-            key={turnstileKey}
-            sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
-            onVerify={(token) => setTurnstileToken(token)}
-            onExpire={() => setTurnstileToken(null)}
-            onError={() => {
-              setTurnstileToken(null);
-              showErrorToast('Security check failed. Please refresh and try again.');
-            }}
-            theme="light"
-          />
         </div>
 
         <button 
