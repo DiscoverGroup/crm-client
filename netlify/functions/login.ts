@@ -8,6 +8,19 @@ import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/ra
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET_KEY || '';
+
+async function verifyTurnstile(token: string, remoteip?: string): Promise<boolean> {
+  if (!TURNSTILE_SECRET) return true; // skip in dev if secret not set
+  const body = new URLSearchParams({ secret: TURNSTILE_SECRET, response: token });
+  if (remoteip) body.append('remoteip', remoteip);
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body,
+  });
+  const data = await res.json() as { success: boolean };
+  return data.success === true;
+}
 
 export const handler: Handler = async (event) => {
   // Restricted CORS + security headers
@@ -63,6 +76,24 @@ export const handler: Handler = async (event) => {
       };
     }
     const { email, password } = validation.data;
+
+    // ── Cloudflare Turnstile bot verification ─────────────────────────────────
+    const turnstileToken = parsed.data?.turnstileToken as string | undefined;
+    if (!turnstileToken) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Security check token missing.' }),
+      };
+    }
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileOk) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ success: false, error: 'Security check failed. Please try again.' }),
+      };
+    }
 
     const client = await MongoClient.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,

@@ -393,7 +393,7 @@ const App: React.FC = () => {
   };
 
   // Handle user login with validation
-  const handleLogin = async (username: string, password: string) => {
+  const handleLogin = async (username: string, password: string, turnstileToken?: string) => {
     
     // Validate input fields
     if (!username.trim() || !password.trim()) {
@@ -415,7 +415,8 @@ const App: React.FC = () => {
         },
         body: JSON.stringify({
           email: username.trim(),
-          password: password.trim()
+          password: password.trim(),
+          turnstileToken,
         })
       });
 
