@@ -5,9 +5,12 @@
 [functions]
   directory = "netlify/functions"
 
-# Daily backup at 2:00 AM UTC — exports all MongoDB collections to Cloudflare R2
-[functions."daily-backup"]
+# Daily backup at 2:00 AM UTC — background function, runs up to 15 min, no timeout on free tier
+[functions."daily-backup-background"]
   schedule = "0 2 * * *"
+
+# Keep old daily-backup for reference but it is no longer scheduled
+[functions."daily-backup"]
   timeout = 26
 
 [dev]

@@ -2675,33 +2675,65 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {/* Manual R2 cloud backup trigger */}
               <button
                 onClick={async () => {
-                  setR2BackupStatus({ type: 'loading', message: 'Uploading backup to Cloudflare R2…' });
-                  setR2BackupProgress(0);
-                  let prog = 0;
-                  const progressInterval = setInterval(() => {
-                    prog = Math.min(prog + Math.random() * 4 + 1, 85);
-                    setR2BackupProgress(Math.round(prog));
-                  }, 700);
+                  setR2BackupStatus({ type: 'loading', message: 'Starting backup…' });
+                  setR2BackupProgress(5);
                   try {
-                    const res = await fetch('/.netlify/functions/daily-backup', {
+                    // Trigger background function — returns 202 immediately (no timeout)
+                    const triggerRes = await fetch('/.netlify/functions/daily-backup-background', {
                       method: 'POST',
                       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                       body: JSON.stringify({}),
                     });
-                    const json = await res.json();
-                    clearInterval(progressInterval);
-                    if (res.ok && json.success) {
-                      setR2BackupProgress(100);
-                      const cols = Object.entries(json.backup?.collections || {}) as [string, any][];
-                      const summary = cols.map(([c, v]) => `${c}: ${v.count ?? '?'} docs`).join(', ');
-                      setR2BackupStatus({ type: 'success', message: `✅ Saved to R2 → backups/${json.backup?.date}/  (${summary})` });
-                      setTimeout(() => setR2BackupProgress(null), 2000);
-                    } else {
+
+                    if (!triggerRes.ok && triggerRes.status !== 202) {
+                      // Config error returned before async work started (missing env vars, bad JWT, etc.)
+                      let errMsg = 'Failed to start backup';
+                      try { const j = await triggerRes.json(); errMsg = j.error || errMsg; } catch {}
                       setR2BackupProgress(null);
-                      setR2BackupStatus({ type: 'error', message: json.error || 'Backup failed. Make sure you are logged in as admin.' });
+                      setR2BackupStatus({ type: 'error', message: errMsg });
+                      return;
                     }
+
+                    // Backup is now running in the background.
+                    // Poll list-backups every 6s until today's manifest.json appears (up to 3 min).
+                    setR2BackupStatus({ type: 'loading', message: 'Backup running… (checking for completion every 6s)' });
+                    const todayDate = new Date().toISOString().slice(0, 10);
+                    let prog = 10;
+                    let attempts = 0;
+                    const maxAttempts = 30; // 30 × 6s = 3 min
+
+                    const poll = async (): Promise<void> => {
+                      attempts++;
+                      prog = Math.min(prog + (90 - prog) * 0.18, 88);
+                      setR2BackupProgress(Math.round(prog));
+
+                      try {
+                        const listRes = await fetch('/.netlify/functions/list-backups', { headers: authHeaders() });
+                        const listJson = await listRes.json();
+                        if (listRes.ok && listJson.success) {
+                          const todayEntry = (listJson.backups || []).find((b: any) => b.date === todayDate);
+                          const hasManifest = todayEntry?.files?.some((f: any) => f.name === 'manifest.json');
+                          if (hasManifest) {
+                            setR2BackupProgress(100);
+                            const collCount = (todayEntry.files.length - 2); // subtract manifest + status
+                            setR2BackupStatus({ type: 'success', message: `✅ Backup complete → backups/${todayDate}/  (${Math.max(collCount, 0)} collections + manifest)` });
+                            setTimeout(() => setR2BackupProgress(null), 2000);
+                            return;
+                          }
+                        }
+                      } catch { /* network blip — keep polling */ }
+
+                      if (attempts >= maxAttempts) {
+                        setR2BackupProgress(null);
+                        setR2BackupStatus({ type: 'error', message: `Backup timed out after 3 minutes. Check the R2 Backup Files section below to see if it completed.` });
+                        return;
+                      }
+
+                      setTimeout(poll, 6000);
+                    };
+
+                    setTimeout(poll, 8000); // first poll after 8s (give the function time to start)
                   } catch (err: any) {
-                    clearInterval(progressInterval);
                     setR2BackupProgress(null);
                     setR2BackupStatus({ type: 'error', message: `Request failed: ${err.message}` });
                   }
@@ -2747,7 +2779,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {r2BackupProgress !== null && (
                 <div style={{ marginTop: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
-                    <span>☁️ Uploading to Cloudflare R2…</span>
+                    <span>☁️ Backup running in background…</span>
                     <span>{r2BackupProgress}%</span>
                   </div>
                   <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
