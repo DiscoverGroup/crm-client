@@ -1,7 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
-import { verifyAuthToken, unauthorizedResponse } from '../middleware/authMiddleware';
-import { getSecurityHeaders } from '../utils/securityUtils';
+import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { getSecurityHeaders } from './utils/securityUtils';
 import archiver from 'archiver';
 import { Readable } from 'stream';
 
