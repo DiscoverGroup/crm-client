@@ -2659,11 +2659,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 onClick={async () => {
                   setR2BackupStatus({ type: 'loading', message: 'Uploading backup to Cloudflare R2…' });
                   try {
-                    const secret = import.meta.env.VITE_BACKUP_SECRET || '';
                     const res = await fetch('/.netlify/functions/daily-backup', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ secret }),
+                      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                      body: JSON.stringify({}),
                     });
                     const json = await res.json();
                     if (res.ok && json.success) {
@@ -2671,7 +2670,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       const summary = cols.map(([c, v]) => `${c}: ${v.count ?? '?'} docs`).join(', ');
                       setR2BackupStatus({ type: 'success', message: `✅ Saved to R2 → backups/${json.backup?.date}/  (${summary})` });
                     } else {
-                      setR2BackupStatus({ type: 'error', message: json.error || 'Backup failed — check that BACKUP_SECRET is set in Netlify env vars.' });
+                      setR2BackupStatus({ type: 'error', message: json.error || 'Backup failed. Make sure you are logged in as admin.' });
                     }
                   } catch (err: any) {
                     setR2BackupStatus({ type: 'error', message: `Request failed: ${err.message}` });

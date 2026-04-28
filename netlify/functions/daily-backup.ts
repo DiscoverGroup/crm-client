@@ -19,6 +19,7 @@
 import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { verifyAuthToken } from './middleware/authMiddleware';
 
 const MONGODB_URI   = process.env.MONGODB_URI   || '';
 const DB_NAME       = 'dg_crm';
@@ -26,28 +27,23 @@ const R2_ENDPOINT   = process.env.R2_ENDPOINT   || '';
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID     || '';
 const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
 const R2_BUCKET     = process.env.R2_BUCKET_NAME       || '';
-const BACKUP_SECRET = process.env.BACKUP_SECRET || '';
 
 // Collections to back up
 const COLLECTIONS = ['clients', 'users', 'log_notes', 'activity_logs', 'file_attachments', 'calendar_events'];
 
 export const handler: Handler = async (event) => {
-  // Allow both scheduled invocations (no body) and manual HTTP trigger
-  // (POST with { secret: BACKUP_SECRET })
+  // Allow both scheduled invocations (no body) and manual HTTP trigger.
+  // Manual trigger requires a valid admin JWT — same token used for all other functions.
   const isScheduled = !event.body;
 
   if (!isScheduled) {
-    // Manual trigger — validate secret to prevent unauthorized backups
     if (event.httpMethod !== 'POST') {
       return { statusCode: 405, body: 'Method not allowed' };
     }
-    try {
-      const body = JSON.parse(event.body || '{}');
-      if (!BACKUP_SECRET || body.secret !== BACKUP_SECRET) {
-        return { statusCode: 403, body: JSON.stringify({ error: 'Unauthorized' }) };
-      }
-    } catch {
-      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request body' }) };
+    // Validate JWT — admin must be logged in to trigger a manual backup
+    const auth = verifyAuthToken(event.headers['authorization']);
+    if (!auth.valid) {
+      return { statusCode: 403, body: JSON.stringify({ error: 'Unauthorized — valid admin JWT required' }) };
     }
   }
 
