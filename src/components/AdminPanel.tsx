@@ -2922,36 +2922,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
             {/* Download All R2 Files Section */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
-              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📦 Download All Files from R2</h2>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📦 Create ZIP of All R2 Files</h2>
               <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
-                Download all actual uploaded files (PDFs, images, documents) from R2 cloud storage as a single ZIP archive to your Mac.
+                Creates a ZIP archive of all uploaded files (PDFs, images, documents) and saves it to R2. You can then download the ZIP to your Mac from the R2 Backup Files section below.
               </p>
 
               <div style={{ padding: '14px 18px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '20px' }}>
                 <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', fontWeight: '500' }}>
-                  💡 What's included:
+                  💡 How it works:
                 </p>
                 <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#1e40af', lineHeight: '1.7' }}>
-                  <li>All <strong>uploaded files</strong> (booking confirmations, receipts, documents, images)</li>
-                  <li>Files are organized in the ZIP with their original folder structure</li>
-                  <li>Excludes JSON backup files (use "R2 Backup Files" section below for those)</li>
+                  <li>Creates ZIP with all <strong>uploaded files</strong> (booking confirmations, receipts, documents, images)</li>
+                  <li>Files organized with their original folder structure</li>
+                  <li>Saves to R2 as "all-files.zip" under today's date</li>
+                  <li>Download the ZIP from "R2 Backup Files" section below (look for today's date)</li>
                 </ul>
                 <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#1e40af' }}>
-                  ⚠️ Download size depends on how many files you've uploaded. May take a few minutes for large archives.
+                  ⚠️ Large file collections may take 1-2 minutes. Refresh the R2 Backup Files list below to see when it's ready.
                 </p>
               </div>
 
               <button
                 onClick={async () => {
-                  setR2FilesDownloadStatus({ type: 'loading', message: 'Preparing files from R2…' });
+                  setR2FilesDownloadStatus({ type: 'loading', message: 'Starting ZIP creation in background…' });
                   try {
                     const response = await fetch('/.netlify/functions/download-all-r2-files', {
-                      method: 'GET',
-                      headers: authHeaders(),
+                      method: 'POST',
+                      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                      body: JSON.stringify({}),
                     });
 
-                    if (!response.ok) {
-                      let errorMsg = 'Failed to download files';
+                    if (!response.ok && response.status !== 202) {
+                      let errorMsg = 'Failed to start ZIP creation';
                       try {
                         const errorData = await response.json();
                         errorMsg = errorData.error || errorMsg;
@@ -2960,35 +2962,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       return;
                     }
 
-                    // Check if response has data (could be empty if no files)
-                    const contentType = response.headers.get('Content-Type');
-                    if (contentType?.includes('application/json')) {
-                      const data = await response.json();
-                      if (data.fileCount === 0) {
-                        setR2FilesDownloadStatus({ type: 'success', message: 'No files found in R2 storage.' });
-                        setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 3000);
-                        return;
-                      }
-                    }
-
-                    // Download the ZIP file
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `r2-files-backup-${new Date().toISOString().slice(0, 10)}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-
-                    setR2FilesDownloadStatus({ type: 'success', message: '✅ ZIP file downloaded successfully!' });
-                    setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 4000);
+                    const data = await response.json();
+                    setR2FilesDownloadStatus({ 
+                      type: 'success', 
+                      message: `✅ ${data.message || 'ZIP creation started! The file "all-files.zip" will appear in the R2 Backup Files section below (under today\'s date) when ready. Refresh the list in 1-2 minutes.'}` 
+                    });
+                    
+                    // Auto-clear message after 8 seconds
+                    setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 8000);
                   } catch (error) {
-                    console.error('Download all R2 files error:', error);
+                    console.error('Start ZIP creation error:', error);
                     setR2FilesDownloadStatus({ 
                       type: 'error', 
-                      message: error instanceof Error ? error.message : 'Failed to download files' 
+                      message: error instanceof Error ? error.message : 'Failed to start ZIP creation' 
                     });
                   }
                 }}
@@ -3006,7 +2992,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   transition: 'all 0.2s',
                 }}
               >
-                {r2FilesDownloadStatus.type === 'loading' ? '⏳ Creating ZIP archive…' : '📦 Download All Files as ZIP'}
+                {r2FilesDownloadStatus.type === 'loading' ? '⏳ Creating ZIP…' : '📦 Create ZIP of All Files'}
               </button>
 
               {r2FilesDownloadStatus.message && (
