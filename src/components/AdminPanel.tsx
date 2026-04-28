@@ -3032,9 +3032,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         {/* Date header */}
                         <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>📅 {group.date}</span>
-                          <span style={{ fontSize: '12px', color: '#64748b' }}>
-                            {group.files.length} file{group.files.length !== 1 ? 's' : ''} · {(group.totalSize / 1024).toFixed(1)} KB total
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              {group.files.length} file{group.files.length !== 1 ? 's' : ''} · {(group.totalSize / 1024).toFixed(1)} KB total
+                            </span>
+                            <button
+                              onClick={async () => {
+                                const ok = await showConfirmDialog(
+                                  'Delete Entire Backup',
+                                  `Delete ALL ${group.files.length} file(s) for ${group.date}? This cannot be undone.`,
+                                  'warning'
+                                );
+                                if (!ok) return;
+                                try {
+                                  const res = await fetch(
+                                    `/.netlify/functions/delete-backup-file?key=${encodeURIComponent(`backups/${group.date}/`)}`,
+                                    { method: 'DELETE', headers: authHeaders() }
+                                  );
+                                  const j = await res.json();
+                                  if (res.ok && j.success) {
+                                    setR2BackupList(prev => prev ? prev.filter(g => g.date !== group.date) : prev);
+                                    if (r2SelectedDate === group.date) setR2SelectedDate('');
+                                  } else {
+                                    alert(`Delete failed: ${j.error || res.status}`);
+                                  }
+                                } catch (err: any) {
+                                  alert(`Delete failed: ${err.message}`);
+                                }
+                              }}
+                              style={{ padding: '3px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              🗑️ Delete all
+                            </button>
+                          </div>
                         </div>
                         {/* Files list */}
                         <div>
@@ -3060,44 +3090,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   </div>
                                 </div>
                               </div>
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    const res = await fetch(
-                                      `/.netlify/functions/download-backup-file?key=${encodeURIComponent(file.key)}`,
-                                      { headers: authHeaders() }
-                                    );
-                                    if (!res.ok) {
-                                      const j = await res.json().catch(() => ({}));
-                                      alert(`Download failed: ${j.error || res.status}`);
-                                      return;
+                              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const res = await fetch(
+                                        `/.netlify/functions/download-backup-file?key=${encodeURIComponent(file.key)}`,
+                                        { headers: authHeaders() }
+                                      );
+                                      if (!res.ok) {
+                                        const j = await res.json().catch(() => ({}));
+                                        alert(`Download failed: ${j.error || res.status}`);
+                                        return;
+                                      }
+                                      const blob = await res.blob();
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = file.name;
+                                      a.click();
+                                      URL.revokeObjectURL(url);
+                                    } catch (err: any) {
+                                      alert(`Download failed: ${err.message}`);
                                     }
-                                    const blob = await res.blob();
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement('a');
-                                    a.href = url;
-                                    a.download = file.name;
-                                    a.click();
-                                    URL.revokeObjectURL(url);
-                                  } catch (err: any) {
-                                    alert(`Download failed: ${err.message}`);
-                                  }
-                                }}
-                                style={{
-                                  padding: '5px 14px',
-                                  background: '#f1f5f9',
-                                  color: '#0369a1',
-                                  border: '1px solid #e2e8f0',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                ⬇️ Download
-                              </button>
+                                  }}
+                                  style={{ padding: '5px 14px', background: '#f1f5f9', color: '#0369a1', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                  ⬇️ Download
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const ok = await showConfirmDialog(
+                                      'Delete Backup File',
+                                      `Delete ${file.name} from ${group.date}? This cannot be undone.`,
+                                      'warning'
+                                    );
+                                    if (!ok) return;
+                                    try {
+                                      const res = await fetch(
+                                        `/.netlify/functions/delete-backup-file?key=${encodeURIComponent(file.key)}`,
+                                        { method: 'DELETE', headers: authHeaders() }
+                                      );
+                                      const j = await res.json();
+                                      if (res.ok && j.success) {
+                                        setR2BackupList(prev => prev ? prev.map(g =>
+                                          g.date !== group.date ? g : {
+                                            ...g,
+                                            files: g.files.filter(f => f.key !== file.key),
+                                            totalSize: g.totalSize - file.size,
+                                          }
+                                        ).filter(g => g.files.length > 0) : prev);
+                                      } else {
+                                        alert(`Delete failed: ${j.error || res.status}`);
+                                      }
+                                    } catch (err: any) {
+                                      alert(`Delete failed: ${err.message}`);
+                                    }
+                                  }}
+                                  style={{ padding: '5px 10px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
