@@ -52,6 +52,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [r2BackupList, setR2BackupList] = useState<Array<{ date: string; files: Array<{ name: string; size: number; lastModified: string; url: string }>; totalSize: number }> | null>(null);
   const [r2BackupListLoading, setR2BackupListLoading] = useState(false);
   const [r2BackupListError, setR2BackupListError] = useState('');
+  const [r2SelectedDate, setR2SelectedDate] = useState<string>('');
   const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [backupProgress, setBackupProgress] = useState<number | null>(null);
   const [r2BackupProgress, setR2BackupProgress] = useState<number | null>(null);
@@ -2915,46 +2916,85 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
             {/* R2 Backup Files Browser */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              {/* Header row: title + date filter + refresh */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
                 <div>
                   <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>🗂️ R2 Backup Files</h2>
                   <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>All backups stored in Cloudflare R2 — grouped by date.</p>
                 </div>
-                <button
-                  onClick={async () => {
-                    setR2BackupListLoading(true);
-                    setR2BackupListError('');
-                    try {
-                      const res = await fetch('/.netlify/functions/list-backups', {
-                        headers: authHeaders(),
-                      });
-                      const json = await res.json();
-                      if (res.ok && json.success) {
-                        setR2BackupList(json.backups);
-                      } else {
-                        setR2BackupListError(json.error || 'Failed to load backup list');
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  {/* Date filter dropdown — only shown once data is loaded */}
+                  {r2BackupList !== null && r2BackupList.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '13px', color: '#475569', fontWeight: '600', whiteSpace: 'nowrap' }}>📅 Date:</label>
+                      <select
+                        value={r2SelectedDate}
+                        onChange={e => setR2SelectedDate(e.target.value)}
+                        style={{
+                          padding: '7px 32px 7px 10px',
+                          border: '1.5px solid #e2e8f0',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          color: '#1e293b',
+                          background: 'white',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          appearance: 'none',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'right 10px center',
+                          minWidth: '140px',
+                        }}
+                      >
+                        <option value="">All dates ({r2BackupList.length})</option>
+                        {r2BackupList.map(g => (
+                          <option key={g.date} value={g.date}>
+                            {g.date} ({g.files.length} file{g.files.length !== 1 ? 's' : ''})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setR2BackupListLoading(true);
+                      setR2BackupListError('');
+                      try {
+                        const res = await fetch('/.netlify/functions/list-backups', {
+                          headers: authHeaders(),
+                        });
+                        const json = await res.json();
+                        if (res.ok && json.success) {
+                          setR2BackupList(json.backups);
+                          // Auto-select the most recent date if nothing selected
+                          if (!r2SelectedDate && json.backups.length > 0) {
+                            setR2SelectedDate(json.backups[0].date);
+                          }
+                        } else {
+                          setR2BackupListError(json.error || 'Failed to load backup list');
+                        }
+                      } catch (err: any) {
+                        setR2BackupListError(`Request failed: ${err.message}`);
+                      } finally {
+                        setR2BackupListLoading(false);
                       }
-                    } catch (err: any) {
-                      setR2BackupListError(`Request failed: ${err.message}`);
-                    } finally {
-                      setR2BackupListLoading(false);
-                    }
-                  }}
-                  disabled={r2BackupListLoading}
-                  style={{
-                    padding: '9px 20px',
-                    background: r2BackupListLoading ? '#e0f2fe' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                    color: r2BackupListLoading ? '#0369a1' : 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    cursor: r2BackupListLoading ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {r2BackupListLoading ? '⏳ Loading…' : '🔄 Refresh'}
-                </button>
+                    }}
+                    disabled={r2BackupListLoading}
+                    style={{
+                      padding: '9px 20px',
+                      background: r2BackupListLoading ? '#e0f2fe' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                      color: r2BackupListLoading ? '#0369a1' : 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                      cursor: r2BackupListLoading ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {r2BackupListLoading ? '⏳ Loading…' : '🔄 Refresh'}
+                  </button>
+                </div>
               </div>
 
               {r2BackupListError && (
@@ -2975,71 +3015,82 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 </div>
               )}
 
-              {r2BackupList !== null && r2BackupList.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {r2BackupList.map(group => (
-                    <div key={group.date} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                      {/* Date header */}
-                      <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>📅 {group.date}</span>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>
-                          {group.files.length} file{group.files.length !== 1 ? 's' : ''} · {(group.totalSize / 1024).toFixed(1)} KB total
-                        </span>
+              {r2BackupList !== null && r2BackupList.length > 0 && (() => {
+                const filtered = r2SelectedDate
+                  ? r2BackupList.filter(g => g.date === r2SelectedDate)
+                  : r2BackupList;
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {filtered.length === 0 && (
+                      <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                        No backups for {r2SelectedDate}.
                       </div>
-                      {/* Files list */}
-                      <div>
-                        {group.files.map((file, idx) => (
-                          <div
-                            key={file.name}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '10px 16px',
-                              borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
-                              background: 'white',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                              <span style={{ fontSize: '16px' }}>{file.name === 'manifest.json' ? '📋' : '📄'}</span>
-                              <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
-                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                  {(file.size / 1024).toFixed(1)} KB
-                                  {file.lastModified ? ` · ${new Date(file.lastModified).toLocaleString()}` : ''}
+                    )}
+                    {filtered.map(group => (
+                      <div key={group.date} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                        {/* Date header */}
+                        <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>📅 {group.date}</span>
+                          <span style={{ fontSize: '12px', color: '#64748b' }}>
+                            {group.files.length} file{group.files.length !== 1 ? 's' : ''} · {(group.totalSize / 1024).toFixed(1)} KB total
+                          </span>
+                        </div>
+                        {/* Files list */}
+                        <div>
+                          {group.files.map((file, idx) => (
+                            <div
+                              key={file.name}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '10px 16px',
+                                borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
+                                background: 'white',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                <span style={{ fontSize: '16px' }}>{file.name === 'manifest.json' ? '📋' : file.name === 'status.json' ? '📊' : '📄'}</span>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                    {(file.size / 1024).toFixed(1)} KB
+                                    {file.lastModified ? ` · ${new Date(file.lastModified).toLocaleString()}` : ''}
+                                  </div>
                                 </div>
                               </div>
+                              {file.url ? (
+                                <a
+                                  href={file.url}
+                                  download={file.name}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    padding: '5px 14px',
+                                    background: '#f1f5f9',
+                                    color: '#0369a1',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    textDecoration: 'none',
+                                    whiteSpace: 'nowrap',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  ⬇️ Download
+                                </a>
+                              ) : (
+                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>No public URL</span>
+                              )}
                             </div>
-                            {file.url ? (
-                              <a
-                                href={file.url}
-                                download={file.name}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  padding: '5px 14px',
-                                  background: '#f1f5f9',
-                                  color: '#0369a1',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  textDecoration: 'none',
-                                  whiteSpace: 'nowrap',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                ⬇️ Download
-                              </a>
-                            ) : (
-                              <span style={{ fontSize: '11px', color: '#94a3b8' }}>No public URL</span>
-                            )}
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Backup Schedule Info */}
