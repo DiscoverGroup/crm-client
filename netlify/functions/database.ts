@@ -14,7 +14,7 @@ async function getMongoClient(): Promise<MongoClient> {
   if (cachedClient) {
     return cachedClient;
   }
-  cachedClient = new MongoClient(MONGODB_URI, {
+  const client = new MongoClient(MONGODB_URI, {
     serverSelectionTimeoutMS: 7000,  // Keep well below Netlify's 10s gateway timeout
     connectTimeoutMS: 7000,          // so the function returns 500 instead of letting Netlify return 504
     socketTimeoutMS: 9000,
@@ -24,7 +24,10 @@ async function getMongoClient(): Promise<MongoClient> {
     w: 'majority',
     maxPoolSize: 10,
   });
-  await cachedClient.connect();
+  // Only assign to cachedClient AFTER a successful connect.
+  // If connect() throws, cachedClient stays null so the next request retries fresh.
+  await client.connect();
+  cachedClient = client;
   return cachedClient;
 }
 
@@ -82,10 +85,8 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  // Bug fix: declare client outside try so finally can always close it
-  const mongoClient = await getMongoClient();
-
   try {
+    const mongoClient = await getMongoClient();
     const db = mongoClient.db(DB_NAME);
     const col = db.collection(collection);
 
@@ -130,8 +131,10 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
-    // If the connection is broken, clear the cache so next request gets a fresh client
-    if (error?.message?.includes('topology') || error?.message?.includes('connection')) {
+    // Clear the cached client on any connection-related error so the next
+    // request gets a fresh connection attempt instead of reusing a broken socket.
+    const msg = error?.message || '';
+    if (msg.includes('topology') || msg.includes('connection') || msg.includes('ECONNREFUSED') || msg.includes('timed out') || msg.includes('connect')) {
       cachedClient = null;
     }
     return {
