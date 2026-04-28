@@ -2944,7 +2944,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
               <button
                 onClick={async () => {
-                  setR2FilesDownloadStatus({ type: 'loading', message: 'Starting ZIP creation in background…' });
+                  setR2FilesDownloadStatus({ type: 'loading', message: 'Starting ZIP creation…' });
                   try {
                     const response = await fetch('/.netlify/functions/create-r2-files-zip-background', {
                       method: 'POST',
@@ -2953,20 +2953,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     });
 
                     if (response.status === 202) {
-                      // Accepted - background job started successfully
-                      let message = 'ZIP creation started! The file "all-files.zip" will appear in the R2 Backup Files section below (under today\'s date) when ready. Refresh the list in 1-2 minutes.';
-                      try {
-                        const data = await response.json();
-                        if (data.message) message = data.message;
-                      } catch {}
+                      // Background job started - now poll until ZIP file appears
+                      setR2FilesDownloadStatus({ type: 'loading', message: 'Creating ZIP archive of all files… This may take 1-2 minutes.' });
                       
-                      setR2FilesDownloadStatus({ 
-                        type: 'success', 
-                        message: `✅ ${message}` 
-                      });
+                      const todayDate = new Date().toISOString().slice(0, 10);
+                      let attempts = 0;
+                      const maxAttempts = 40; // 40 × 5s = 3.3 min
                       
-                      // Auto-clear message after 8 seconds
-                      setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 8000);
+                      const pollForZip = async (): Promise<void> => {
+                        attempts++;
+                        
+                        try {
+                          // Check if all-files.zip exists in today's backups
+                          const listRes = await fetch('/.netlify/functions/list-backups', { headers: authHeaders() });
+                          const listData = await listRes.json();
+                          
+                          if (listRes.ok && listData.success && listData.backups) {
+                            const todayGroup = listData.backups.find((g: any) => g.date === todayDate);
+                            if (todayGroup && todayGroup.files) {
+                              const zipFile = todayGroup.files.find((f: any) => f.name === 'all-files.zip');
+                              if (zipFile) {
+                                // ZIP is ready!
+                                setR2FilesDownloadStatus({ 
+                                  type: 'success', 
+                                  message: `✅ ZIP created successfully! "${zipFile.name}" is ready in the R2 Backup Files section below (${(zipFile.size / 1024 / 1024).toFixed(1)} MB). Scroll down to download it.` 
+                                });
+                                
+                                // Refresh the R2 backup list to show the new file
+                                setTimeout(() => {
+                                  const btn = document.querySelector('[aria-label="Refresh R2 backups"]') as HTMLButtonElement;
+                                  btn?.click();
+                                }, 500);
+                                
+                                setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 10000);
+                                return;
+                              }
+                            }
+                          }
+                        } catch (err) {
+                          console.error('Polling error:', err);
+                          // Continue polling despite error
+                        }
+                        
+                        if (attempts >= maxAttempts) {
+                          setR2FilesDownloadStatus({ 
+                            type: 'error', 
+                            message: 'ZIP creation is taking longer than expected. Refresh the R2 Backup Files list manually to check if it completed.' 
+                          });
+                          return;
+                        }
+                        
+                        // Poll again in 5 seconds
+                        setTimeout(() => pollForZip(), 5000);
+                      };
+                      
+                      // Start polling
+                      pollForZip();
                       return;
                     }
 
@@ -3063,6 +3105,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     </div>
                   )}
                   <button
+                    aria-label="Refresh R2 backups"
                     onClick={async () => {
                       setR2BackupListLoading(true);
                       setR2BackupListError('');
