@@ -48,6 +48,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [packageEditIdx, setPackageEditIdx] = useState<number | null>(null);
   const [packageEditValue, setPackageEditValue] = useState('');
   const [backupStatus, setBackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [r2BackupStatus, setR2BackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
   const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
@@ -2653,9 +2654,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 {backupStatus.type === 'loading' ? '⏳ Creating backup…' : '⬇️ Download Backup Now'}
               </button>
 
+              {/* Manual R2 cloud backup trigger */}
+              <button
+                onClick={async () => {
+                  setR2BackupStatus({ type: 'loading', message: 'Uploading backup to Cloudflare R2…' });
+                  try {
+                    const secret = import.meta.env.VITE_BACKUP_SECRET || '';
+                    const res = await fetch('/.netlify/functions/daily-backup', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ secret }),
+                    });
+                    const json = await res.json();
+                    if (res.ok && json.success) {
+                      const cols = Object.entries(json.backup?.collections || {}) as [string, any][];
+                      const summary = cols.map(([c, v]) => `${c}: ${v.count ?? '?'} docs`).join(', ');
+                      setR2BackupStatus({ type: 'success', message: `✅ Saved to R2 → backups/${json.backup?.date}/  (${summary})` });
+                    } else {
+                      setR2BackupStatus({ type: 'error', message: json.error || 'Backup failed — check that BACKUP_SECRET is set in Netlify env vars.' });
+                    }
+                  } catch (err: any) {
+                    setR2BackupStatus({ type: 'error', message: `Request failed: ${err.message}` });
+                  }
+                }}
+                disabled={r2BackupStatus.type === 'loading'}
+                style={{
+                  marginLeft: '12px',
+                  padding: '12px 28px',
+                  background: r2BackupStatus.type === 'loading' ? '#e0f2fe' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: r2BackupStatus.type === 'loading' ? '#0369a1' : 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: r2BackupStatus.type === 'loading' ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(2,132,199,0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {r2BackupStatus.type === 'loading' ? '⏳ Uploading to R2…' : '☁️ Backup to Cloudflare R2'}
+              </button>
+
               {backupStatus.message && (
                 <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(backupStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(backupStatus.type), border: `1px solid ${backupStatus.type === 'success' ? '#bbf7d0' : backupStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
                   {backupStatus.message}
+                </div>
+              )}
+
+              {r2BackupStatus.message && (
+                <div style={{ marginTop: '10px', padding: '12px 16px', background: statusBg(r2BackupStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(r2BackupStatus.type), border: `1px solid ${r2BackupStatus.type === 'success' ? '#bae6fd' : r2BackupStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
+                  {r2BackupStatus.message}
                 </div>
               )}
             </div>
