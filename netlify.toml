@@ -4,14 +4,28 @@
 
 [functions]
   directory = "netlify/functions"
-  timeout = 26  # Global timeout for all functions (seconds)
 
 # Daily backup at 2:00 AM UTC — background function, runs up to 15 min, no timeout on free tier
 [functions."daily-backup-background"]
   schedule = "0 2 * * *"
 
-# Keep old daily-backup for reference but it is no longer scheduled
+# Raise timeout to 26s for functions that hit MongoDB/R2
 [functions."daily-backup"]
+  timeout = 26
+
+[functions."database"]
+  timeout = 26
+
+[functions."get-users"]
+  timeout = 26
+
+[functions."list-backups"]
+  timeout = 26
+
+[functions."download-backup-file"]
+  timeout = 26
+
+[functions."migrate-to-mongodb"]
   timeout = 26
 
 [dev]
