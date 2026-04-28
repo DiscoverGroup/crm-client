@@ -2954,66 +2954,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     });
 
                     if (response.status === 202) {
-                      // Background job started - now poll until ZIP file appears
-                      setR2FilesDownloadStatus({ type: 'loading', message: 'Creating ZIP archive of all files…' });
+                      setR2FilesDownloadStatus({ type: 'loading', message: 'Starting ZIP creation…' });
                       setZipProgress(5);
                       
                       const todayDate = new Date().toISOString().slice(0, 10);
                       let attempts = 0;
-                      const maxAttempts = 40; // 40 × 5s = 3.3 min
+                      const maxAttempts = 120; // 120 × 5s = 10 min
                       
                       const pollForZip = async (): Promise<void> => {
                         attempts++;
-                        // Simulate progress: creep from 5% to 90% over 40 attempts
-                        setZipProgress(Math.min(90, 5 + Math.round((attempts / maxAttempts) * 85)));
                         
                         try {
-                          // Check if all-files.zip exists in today's backups
-                          const listRes = await fetch('/.netlify/functions/list-backups', { headers: authHeaders() });
-                          const listData = await listRes.json();
+                          const statusRes = await fetch(`/.netlify/functions/get-zip-status?date=${todayDate}`, { headers: authHeaders() });
+                          const statusData = await statusRes.json();
                           
-                          if (listRes.ok && listData.success && listData.backups) {
-                            const todayGroup = listData.backups.find((g: any) => g.date === todayDate);
-                            if (todayGroup && todayGroup.files) {
-                              const zipFile = todayGroup.files.find((f: any) => f.name === 'all-files.zip');
-                              if (zipFile) {
-                                // ZIP is ready!
-                                setZipProgress(100);
-                                setR2FilesDownloadStatus({ 
-                                  type: 'success', 
-                                  message: `✅ ZIP created successfully! "${zipFile.name}" is ready in the R2 Backup Files section below (${(zipFile.size / 1024 / 1024).toFixed(1)} MB). Scroll down to download it.` 
-                                });
-                                
-                                // Refresh the R2 backup list to show the new file
-                                setTimeout(() => {
-                                  const btn = document.querySelector('[aria-label="Refresh R2 backups"]') as HTMLButtonElement;
-                                  btn?.click();
-                                }, 500);
-                                
-                                setTimeout(() => { setR2FilesDownloadStatus({ type: 'idle', message: '' }); setZipProgress(null); }, 10000);
-                                return;
+                          if (statusRes.ok && statusData.found && statusData.status) {
+                            const s = statusData.status;
+                            
+                            if (s.state === 'complete') {
+                              setZipProgress(100);
+                              const sizeMB = s.sizeBytes ? ` (${(s.sizeBytes / 1024 / 1024).toFixed(1)} MB)` : '';
+                              setR2FilesDownloadStatus({ 
+                                type: 'success', 
+                                message: `✅ ZIP created! ${s.total} files archived${sizeMB}. Scroll down to "R2 Backup Files" to download it.` 
+                              });
+                              setTimeout(() => {
+                                const btn = document.querySelector('[aria-label="Refresh R2 backups"]') as HTMLButtonElement;
+                                btn?.click();
+                              }, 500);
+                              setTimeout(() => { setR2FilesDownloadStatus({ type: 'idle', message: '' }); setZipProgress(null); }, 10000);
+                              return;
+                            }
+                            
+                            if (s.state === 'error') {
+                              setZipProgress(null);
+                              setR2FilesDownloadStatus({ type: 'error', message: `ZIP failed: ${s.error || 'Unknown error'}` });
+                              return;
+                            }
+                            
+                            if (s.state === 'running') {
+                              const done = s.done ?? 0;
+                              const total = s.total ?? 1;
+                              const phase = s.phase || 'zipping';
+                              
+                              if (phase === 'listing') {
+                                setZipProgress(8);
+                                setR2FilesDownloadStatus({ type: 'loading', message: 'Listing files in R2…' });
+                              } else if (phase === 'uploading') {
+                                setZipProgress(95);
+                                setR2FilesDownloadStatus({ type: 'loading', message: 'Uploading ZIP to R2…' });
+                              } else {
+                                // zipping phase — real progress
+                                const prog = total > 0 ? Math.round(10 + (done / total) * 80) : 10;
+                                setZipProgress(prog);
+                                setR2FilesDownloadStatus({ type: 'loading', message: `Zipping files… ${done} of ${total}` });
                               }
                             }
                           }
                         } catch (err) {
                           console.error('Polling error:', err);
-                          // Continue polling despite error
+                          // Continue polling despite network blip
                         }
                         
                         if (attempts >= maxAttempts) {
                           setZipProgress(null);
                           setR2FilesDownloadStatus({ 
                             type: 'error', 
-                            message: 'ZIP creation is taking longer than expected. Refresh the R2 Backup Files list manually to check if it completed.' 
+                            message: 'ZIP creation timed out after 10 minutes. Refresh the R2 Backup Files list to check if it completed.' 
                           });
                           return;
                         }
                         
-                        // Poll again in 5 seconds
                         setTimeout(() => pollForZip(), 5000);
                       };
                       
-                      // Start polling
                       pollForZip();
                       return;
                     }
