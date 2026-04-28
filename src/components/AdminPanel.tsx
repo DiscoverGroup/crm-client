@@ -58,6 +58,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [r2BackupProgress, setR2BackupProgress] = useState<number | null>(null);
   const [restoreProgress, setRestoreProgress] = useState<number | null>(null);
   const [r2FilesDownloadStatus, setR2FilesDownloadStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
   const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
@@ -2954,7 +2955,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
                     if (response.status === 202) {
                       // Background job started - now poll until ZIP file appears
-                      setR2FilesDownloadStatus({ type: 'loading', message: 'Creating ZIP archive of all files… This may take 1-2 minutes.' });
+                      setR2FilesDownloadStatus({ type: 'loading', message: 'Creating ZIP archive of all files…' });
+                      setZipProgress(5);
                       
                       const todayDate = new Date().toISOString().slice(0, 10);
                       let attempts = 0;
@@ -2962,6 +2964,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       
                       const pollForZip = async (): Promise<void> => {
                         attempts++;
+                        // Simulate progress: creep from 5% to 90% over 40 attempts
+                        setZipProgress(Math.min(90, 5 + Math.round((attempts / maxAttempts) * 85)));
                         
                         try {
                           // Check if all-files.zip exists in today's backups
@@ -2974,6 +2978,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                               const zipFile = todayGroup.files.find((f: any) => f.name === 'all-files.zip');
                               if (zipFile) {
                                 // ZIP is ready!
+                                setZipProgress(100);
                                 setR2FilesDownloadStatus({ 
                                   type: 'success', 
                                   message: `✅ ZIP created successfully! "${zipFile.name}" is ready in the R2 Backup Files section below (${(zipFile.size / 1024 / 1024).toFixed(1)} MB). Scroll down to download it.` 
@@ -2985,7 +2990,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   btn?.click();
                                 }, 500);
                                 
-                                setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 10000);
+                                setTimeout(() => { setR2FilesDownloadStatus({ type: 'idle', message: '' }); setZipProgress(null); }, 10000);
                                 return;
                               }
                             }
@@ -2996,6 +3001,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         }
                         
                         if (attempts >= maxAttempts) {
+                          setZipProgress(null);
                           setR2FilesDownloadStatus({ 
                             type: 'error', 
                             message: 'ZIP creation is taking longer than expected. Refresh the R2 Backup Files list manually to check if it completed.' 
@@ -3024,6 +3030,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
                   } catch (error) {
                     console.error('Start ZIP creation error:', error);
+                    setZipProgress(null);
                     setR2FilesDownloadStatus({ 
                       type: 'error', 
                       message: error instanceof Error ? error.message : 'Failed to start ZIP creation' 
@@ -3047,14 +3054,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 {r2FilesDownloadStatus.type === 'loading' ? '⏳ Creating ZIP…' : '📦 Create ZIP of All Files'}
               </button>
 
-              {r2FilesDownloadStatus.message && (
+              {/* ZIP progress bar */}
+              {zipProgress !== null && (
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
+                    <span>{zipProgress === 100 ? '✅ ZIP ready!' : '📦 Creating ZIP archive…'}</span>
+                    <span>{zipProgress}%</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ width: `${zipProgress}%`, height: '100%', background: zipProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#0284c7,#38bdf8)', borderRadius: '99px', transition: 'width 0.6s ease' }} />
+                  </div>
+                </div>
+              )}
+
+              {r2FilesDownloadStatus.message && r2FilesDownloadStatus.type !== 'loading' && (
                 <div style={{
-                  marginTop: '16px',
+                  marginTop: '12px',
                   padding: '14px 18px',
                   borderRadius: '10px',
-                  background: r2FilesDownloadStatus.type === 'success' ? '#f0fdf4' : r2FilesDownloadStatus.type === 'error' ? '#fef2f2' : '#eff6ff',
-                  border: `1px solid ${r2FilesDownloadStatus.type === 'success' ? '#bbf7d0' : r2FilesDownloadStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}`,
-                  color: r2FilesDownloadStatus.type === 'success' ? '#166534' : r2FilesDownloadStatus.type === 'error' ? '#991b1b' : '#1e40af',
+                  background: r2FilesDownloadStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${r2FilesDownloadStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                  color: r2FilesDownloadStatus.type === 'success' ? '#166534' : '#991b1b',
                   fontSize: '13px',
                   fontWeight: '500',
                 }}>
