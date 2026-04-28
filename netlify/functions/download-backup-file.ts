@@ -11,6 +11,7 @@
 
 import type { Handler } from '@netlify/functions';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { verifyAuthToken } from './middleware/authMiddleware';
 import { getCORSHeaders, getSecurityHeaders } from './utils/securityUtils';
 
@@ -56,10 +57,28 @@ export const handler: Handler = async (event) => {
       credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
     });
 
-    const obj = await s3.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
+    const command = new GetObjectCommand({ Bucket: R2_BUCKET, Key: key });
+    const fileName = key.split('/').pop() || 'backup.json';
+
+    // For ZIP and other binary files: generate a short-lived presigned URL and redirect
+    // the browser to it. This avoids (a) the 10-second Netlify timeout and (b) the
+    // UTF-8 transcoding corruption that `transformToString` would cause on binary data.
+    if (fileName.endsWith('.zip') || fileName.endsWith('.gz') || fileName.endsWith('.tar')) {
+      const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 900 }); // 15 min
+      return {
+        statusCode: 302,
+        headers: {
+          Location: presignedUrl,
+          'Cache-Control': 'no-store',
+        },
+        body: '',
+      };
+    }
+
+    // JSON and other text files: stream through the function as before
+    const obj = await s3.send(command);
 
     const bodyText = await obj.Body?.transformToString('utf-8') ?? '';
-    const fileName = key.split('/').pop() || 'backup.json';
 
     return {
       statusCode: 200,

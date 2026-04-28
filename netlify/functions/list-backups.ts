@@ -66,15 +66,21 @@ async function listBackups(
     credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
   });
 
-  // List all objects under backups/
-  const command = new ListObjectsV2Command({
-    Bucket: R2_BUCKET,
-    Prefix: 'backups/',
-    MaxKeys: 1000,
-  });
-
-  const response = await s3.send(command);
-  const objects = response.Contents || [];
+  // List ALL objects under backups/ — paginate past the 1000-key limit
+  const objects: NonNullable<typeof response>['Contents'] = [];
+  let continuationToken: string | undefined;
+  do {
+    const response = await s3.send(new ListObjectsV2Command({
+      Bucket: R2_BUCKET,
+      Prefix: 'backups/',
+      MaxKeys: 1000,
+      ContinuationToken: continuationToken,
+    }));
+    for (const obj of response.Contents ?? []) {
+      objects.push(obj);
+    }
+    continuationToken = response.NextContinuationToken;
+  } while (continuationToken);
 
   // Group by date folder: backups/YYYY-MM-DD/file.json
   const byDate: Record<string, Array<{ name: string; size: number; lastModified: string; key: string }>> = {};

@@ -2489,23 +2489,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               }
             }
 
-            // 2. Fetch MongoDB collections
-            const mongoData: Record<string, any[]> = {};
-            for (let i = 0; i < MONGO_COLLECTIONS.length; i++) {
-              const col = MONGO_COLLECTIONS[i];
-              try {
-                const res = await fetch(DB_API, {
-                  method: 'POST',
-                  headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ collection: col, operation: 'find', filter: {} }),
-                });
-                const json = await res.json();
-                mongoData[col] = json.success && Array.isArray(json.data) ? json.data : [];
-              } catch {
-                mongoData[col] = [];
-              }
-              setBackupProgress(Math.round(((i + 1) / MONGO_COLLECTIONS.length) * 85));
-            }
+            // 2. Fetch all MongoDB collections IN PARALLEL
+            setBackupProgress(10);
+            const mongoEntries = await Promise.all(
+              MONGO_COLLECTIONS.map(async (col) => {
+                try {
+                  const res = await fetch(DB_API, {
+                    method: 'POST',
+                    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection: col, operation: 'find', filter: {} }),
+                  });
+                  const json = await res.json();
+                  return [col, json.success && Array.isArray(json.data) ? json.data : []] as const;
+                } catch {
+                  return [col, []] as const;
+                }
+              })
+            );
+            const mongoData: Record<string, any[]> = Object.fromEntries(mongoEntries);
+            setBackupProgress(85);
 
             // 3. Build backup object
             const backup = {
@@ -2587,38 +2589,53 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               } catch { /* ignore quota issues for individual keys */ }
             }
 
-            // 2. Restore MongoDB collections
+            // 2. Restore MongoDB collections IN PARALLEL
             const mongoData = pendingRestoreData.mongodb || {};
-            let mongoErrors = 0;
             const colEntries = (Object.entries(mongoData) as [string, any[]][]).filter(([, docs]) => Array.isArray(docs) && docs.length > 0);
-            for (let i = 0; i < colEntries.length; i++) {
-              const [col, docs] = colEntries[i];
-              setRestoreStatus({ type: 'loading', message: `Restoring MongoDB: ${col} (${docs.length} records)…` });
-              setRestoreProgress(Math.round((i / Math.max(colEntries.length, 1)) * 85));
-              // Delete existing + re-insert in batches of 50
-              try {
-                await fetch(DB_API, {
+
+            setRestoreStatus({ type: 'loading', message: `Restoring ${colEntries.length} MongoDB collections in parallel…` });
+            setRestoreProgress(10);
+
+            const BATCH = 50;
+            const colResults = await Promise.allSettled(
+              colEntries.map(async ([col, docs]) => {
+                // Delete existing
+                const delRes = await fetch(DB_API, {
                   method: 'POST',
                   headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                   body: JSON.stringify({ collection: col, operation: 'deleteMany', filter: {} }),
                 });
-                const BATCH = 50;
+                if (!delRes.ok) {
+                  const j = await delRes.json().catch(() => ({}));
+                  throw new Error(`deleteMany failed for ${col}: ${j.error || delRes.status}`);
+                }
+
+                // Re-insert in batches of 50
                 for (let j = 0; j < docs.length; j += BATCH) {
                   const batch = docs.slice(j, j + BATCH);
-                  await fetch(DB_API, {
+                  const insRes = await fetch(DB_API, {
                     method: 'POST',
                     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({ collection: col, operation: 'insertMany', data: batch }),
                   });
+                  if (!insRes.ok) {
+                    const jb = await insRes.json().catch(() => ({}));
+                    throw new Error(`insertMany failed for ${col} batch ${j}: ${jb.error || insRes.status}`);
+                  }
                 }
-              } catch {
-                mongoErrors++;
-              }
-            }
+                return col;
+              })
+            );
+
+            const mongoErrors = colResults
+              .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+              .map(r => r.reason?.message || String(r.reason));
 
             setRestoreProgress(100);
-            const errNote = mongoErrors > 0 ? ` (${mongoErrors} collection(s) had errors — localStorage was restored successfully)` : '';
-            setRestoreStatus({ type: 'success', message: `Restore complete!${errNote} Reload the page to see the restored data.` });
+            const errNote = mongoErrors.length > 0
+              ? ` ⚠️ ${mongoErrors.length} collection error(s): ${mongoErrors.join('; ')}`
+              : '';
+            setRestoreStatus({ type: mongoErrors.length > 0 ? 'error' : 'success', message: `Restore complete!${errNote} Reload the page to see the restored data.` });
             setRestorePreview(null);
             setPendingRestoreData(null);
             setTimeout(() => setRestoreProgress(null), 2000);

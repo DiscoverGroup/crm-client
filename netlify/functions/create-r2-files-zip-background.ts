@@ -122,15 +122,17 @@ async function createZipBackup(): Promise<void> {
       );
 
       // Add successfully downloaded files to ZIP (in order)
+      let addedInBatch = 0;
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value) {
           archive.append(result.value.buffer, { name: result.value.key });
+          addedInBatch++;
         } else if (result.status === 'rejected') {
           console.error(`Skipping file:`, result.reason);
         }
       }
 
-      done += batch.length;
+      done += addedInBatch;
       await writeZipStatus(dateLabel, { state: 'running', done, total, phase: 'zipping' });
     }
 

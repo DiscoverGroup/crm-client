@@ -32,7 +32,7 @@ const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID         || '';
 const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY     || '';
 const R2_BUCKET     = process.env.R2_BUCKET_NAME           || 'crm-uploads';
 
-const COLLECTIONS = ['clients', 'users', 'log_notes', 'activity_logs', 'file_attachments', 'calendar_events'];
+const COLLECTIONS = ['clients', 'users', 'log_notes', 'activity_logs', 'file_attachments', 'calendar_events', 'notifications'];
 
 export const handler: Handler = async (event) => {
   const jsonHeaders = { 'Content-Type': 'application/json' };
@@ -111,26 +111,34 @@ async function runBackup(): Promise<void> {
     await mongo.connect();
     const db = mongo.db(DB_NAME);
 
-    for (let i = 0; i < COLLECTIONS.length; i++) {
-      const collectionName = COLLECTIONS[i];
-      // Write status BEFORE starting this collection so the UI shows it immediately
-      await writeStatus({ state: 'running', current: collectionName, done: i, total: COLLECTIONS.length, startedAt: new Date().toISOString(), date: dateLabel });
-      try {
+    // Write "in progress" status once before the parallel work starts
+    await writeStatus({ state: 'running', current: 'all-collections', done: 0, total: COLLECTIONS.length, startedAt: new Date().toISOString(), date: dateLabel });
+
+    // Back up all collections IN PARALLEL — significantly faster than sequential
+    const colResults = await Promise.allSettled(
+      COLLECTIONS.map(async (collectionName) => {
         const documents = await db.collection(collectionName).find({}).toArray();
         const cleanDocs = documents.map(({ _id, ...rest }) => rest);
         const r2Key = `backups/${dateLabel}/${collectionName}.json`;
-
         await s3.send(new PutObjectCommand({
           Bucket:      R2_BUCKET,
           Key:         r2Key,
           Body:        JSON.stringify(cleanDocs, null, 2),
           ContentType: 'application/json',
         }));
+        return { collectionName, count: cleanDocs.length, path: r2Key };
+      })
+    );
 
-        results[collectionName] = { count: cleanDocs.length, path: r2Key };
-      } catch (collErr: any) {
-        // Record error but continue with remaining collections
-        results[collectionName] = { error: collErr.message || 'Unknown error' };
+    for (const result of colResults) {
+      if (result.status === 'fulfilled') {
+        const { collectionName, count, path } = result.value;
+        results[collectionName] = { count, path };
+      } else {
+        // Find which collection failed — use index mapping
+        const i = colResults.indexOf(result);
+        const col = COLLECTIONS[i] ?? 'unknown';
+        results[col] = { error: (result.reason as Error)?.message || 'Unknown error' };
       }
     }
 
