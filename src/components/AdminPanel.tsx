@@ -2946,7 +2946,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 onClick={async () => {
                   setR2FilesDownloadStatus({ type: 'loading', message: 'Starting ZIP creation in background…' });
                   try {
-                    const response = await fetch('/.netlify/functions/download-all-r2-files', {
+                    const response = await fetch('/.netlify/functions/create-r2-files-zip-background', {
                       method: 'POST',
                       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
                       body: JSON.stringify({}),

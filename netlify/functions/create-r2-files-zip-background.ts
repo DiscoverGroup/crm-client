@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
+import { verifyAuthToken } from './middleware/authMiddleware';
 import { getSecurityHeaders } from './utils/securityUtils';
 import archiver from 'archiver';
 import { Readable } from 'stream';
@@ -31,9 +31,13 @@ export const handler: Handler = async (event) => {
   }
 
   // Auth check
-  const auth = verifyAuthToken(event);
+  const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid || auth.user?.role !== 'admin') {
-    return unauthorizedResponse();
+    return {
+      statusCode: 403,
+      headers: { ...getSecurityHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Unauthorized — admin access required' }),
+    };
   }
 
   // Fire and forget the background work
