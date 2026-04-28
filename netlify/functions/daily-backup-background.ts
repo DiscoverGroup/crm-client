@@ -106,12 +106,15 @@ async function runBackup(): Promise<void> {
   };
 
   try {
-    await writeStatus({ state: 'running', startedAt: new Date().toISOString(), date: dateLabel });
+    await writeStatus({ state: 'running', current: 'connecting', done: 0, total: COLLECTIONS.length, startedAt: new Date().toISOString(), date: dateLabel });
 
     await mongo.connect();
     const db = mongo.db(DB_NAME);
 
-    for (const collectionName of COLLECTIONS) {
+    for (let i = 0; i < COLLECTIONS.length; i++) {
+      const collectionName = COLLECTIONS[i];
+      // Write status BEFORE starting this collection so the UI shows it immediately
+      await writeStatus({ state: 'running', current: collectionName, done: i, total: COLLECTIONS.length, startedAt: new Date().toISOString(), date: dateLabel });
       try {
         const documents = await db.collection(collectionName).find({}).toArray();
         const cleanDocs = documents.map(({ _id, ...rest }) => rest);
@@ -126,6 +129,7 @@ async function runBackup(): Promise<void> {
 
         results[collectionName] = { count: cleanDocs.length, path: r2Key };
       } catch (collErr: any) {
+        // Record error but continue with remaining collections
         results[collectionName] = { error: collErr.message || 'Unknown error' };
       }
     }
@@ -137,7 +141,7 @@ async function runBackup(): Promise<void> {
       collections: results,
     };
 
-    // Write manifest — this is what list-backups shows and what the UI polls for
+    // Write manifest — always written even if some collections errored
     await s3.send(new PutObjectCommand({
       Bucket:      R2_BUCKET,
       Key:         `backups/${dateLabel}/manifest.json`,
@@ -145,7 +149,7 @@ async function runBackup(): Promise<void> {
       ContentType: 'application/json',
     }));
 
-    await writeStatus({ state: 'complete', completedAt: new Date().toISOString(), date: dateLabel });
+    await writeStatus({ state: 'complete', done: COLLECTIONS.length, total: COLLECTIONS.length, completedAt: new Date().toISOString(), date: dateLabel });
   } catch (err: any) {
     await writeStatus({ state: 'error', error: err.message || 'Unknown error', date: dateLabel });
   } finally {

@@ -2686,7 +2686,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     });
 
                     if (!triggerRes.ok && triggerRes.status !== 202) {
-                      // Config error returned before async work started (missing env vars, bad JWT, etc.)
                       let errMsg = 'Failed to start backup';
                       try { const j = await triggerRes.json(); errMsg = j.error || errMsg; } catch {}
                       setR2BackupProgress(null);
@@ -2694,45 +2693,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       return;
                     }
 
-                    // Backup is now running in the background.
-                    // Poll list-backups every 6s until today's manifest.json appears (up to 3 min).
-                    setR2BackupStatus({ type: 'loading', message: 'Backup running… (checking for completion every 6s)' });
+                    setR2BackupStatus({ type: 'loading', message: 'Connecting to database…' });
                     const todayDate = new Date().toISOString().slice(0, 10);
-                    let prog = 10;
                     let attempts = 0;
                     const maxAttempts = 30; // 30 × 6s = 3 min
 
+                    const COLLECTION_LABELS: Record<string, string> = {
+                      clients:         'Client records',
+                      users:           'User accounts',
+                      log_notes:       'Log notes',
+                      activity_logs:   'Activity logs',
+                      file_attachments:'File attachments',
+                      calendar_events: 'Calendar events',
+                    };
+
                     const poll = async (): Promise<void> => {
                       attempts++;
-                      prog = Math.min(prog + (90 - prog) * 0.18, 88);
-                      setR2BackupProgress(Math.round(prog));
-
                       try {
-                        const listRes = await fetch('/.netlify/functions/list-backups', { headers: authHeaders() });
-                        const listJson = await listRes.json();
-                        if (listRes.ok && listJson.success) {
-                          const todayEntry = (listJson.backups || []).find((b: any) => b.date === todayDate);
-                          const hasManifest = todayEntry?.files?.some((f: any) => f.name === 'manifest.json');
-                          if (hasManifest) {
+                        const statusRes = await fetch(`/.netlify/functions/get-backup-status?date=${todayDate}`, { headers: authHeaders() });
+                        const statusJson = await statusRes.json();
+
+                        if (statusRes.ok && statusJson.found && statusJson.status) {
+                          const s = statusJson.status;
+
+                          if (s.state === 'complete') {
                             setR2BackupProgress(100);
-                            const collCount = (todayEntry.files.length - 2); // subtract manifest + status
-                            setR2BackupStatus({ type: 'success', message: `✅ Backup complete → backups/${todayDate}/  (${Math.max(collCount, 0)} collections + manifest)` });
+                            setR2BackupStatus({ type: 'success', message: `✅ Backup complete → backups/${todayDate}/  (${s.total ?? 6} collections saved)` });
                             setTimeout(() => setR2BackupProgress(null), 2000);
                             return;
+                          }
+
+                          if (s.state === 'error') {
+                            setR2BackupProgress(null);
+                            setR2BackupStatus({ type: 'error', message: `Backup failed: ${s.error || 'Unknown error'}` });
+                            return;
+                          }
+
+                          if (s.state === 'running') {
+                            const done = s.done ?? 0;
+                            const total = s.total ?? 6;
+                            const collLabel = COLLECTION_LABELS[s.current] || s.current || 'data';
+                            // Real progress: 10% base + up to 85% from collection count
+                            const prog = Math.round(10 + (done / total) * 80);
+                            setR2BackupProgress(prog);
+                            if (s.current === 'connecting') {
+                              setR2BackupStatus({ type: 'loading', message: 'Connecting to database…' });
+                            } else {
+                              setR2BackupStatus({ type: 'loading', message: `Backing up ${collLabel}… (${done + 1} of ${total})` });
+                            }
                           }
                         }
                       } catch { /* network blip — keep polling */ }
 
                       if (attempts >= maxAttempts) {
                         setR2BackupProgress(null);
-                        setR2BackupStatus({ type: 'error', message: `Backup timed out after 3 minutes. Check the R2 Backup Files section below to see if it completed.` });
+                        setR2BackupStatus({ type: 'error', message: `Backup is taking longer than expected. Check the R2 Backup Files section below to see if it completed.` });
                         return;
                       }
 
                       setTimeout(poll, 6000);
                     };
 
-                    setTimeout(poll, 8000); // first poll after 8s (give the function time to start)
+                    setTimeout(poll, 6000);
                   } catch (err: any) {
                     setR2BackupProgress(null);
                     setR2BackupStatus({ type: 'error', message: `Request failed: ${err.message}` });
