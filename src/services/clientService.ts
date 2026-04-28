@@ -245,13 +245,23 @@ export class ClientService {
           });
           realtimeSync.signalChange('clients');
         } catch {
-          // console.error('MongoDB sync failed:', err);
-          window.dispatchEvent(new CustomEvent('showToast', {
-            detail: {
-              type: 'warning',
-              message: 'Changes saved locally but failed to sync with database. Will retry automatically.'
+          // One-shot retry after 5 s
+          setTimeout(async () => {
+            try {
+              await MongoDBService.updateClient(existingClient.id, {
+                ...clientData,
+                updatedAt: new Date().toISOString()
+              });
+              realtimeSync.signalChange('clients');
+            } catch {
+              window.dispatchEvent(new CustomEvent('showToast', {
+                detail: {
+                  type: 'error',
+                  message: 'Failed to sync with database. Please save again or contact support if this persists.'
+                }
+              }));
             }
-          }));
+          }, 5000);
         }
         
         return { clientId: existingClient.id, isNewClient: false };
@@ -275,13 +285,20 @@ export class ClientService {
           await MongoDBService.saveClient(newClient);
           realtimeSync.signalChange('clients');
         } catch {
-          // console.error('MongoDB sync failed:', err);
-          window.dispatchEvent(new CustomEvent('showToast', {
-            detail: {
-              type: 'warning',
-              message: 'Client saved locally but failed to sync with database. Will retry automatically.'
+          // One-shot retry after 5 s
+          setTimeout(async () => {
+            try {
+              await MongoDBService.saveClient(newClient);
+              realtimeSync.signalChange('clients');
+            } catch {
+              window.dispatchEvent(new CustomEvent('showToast', {
+                detail: {
+                  type: 'error',
+                  message: 'Failed to sync with database. Please save again or contact support if this persists.'
+                }
+              }));
             }
-          }));
+          }, 5000);
         }
         
         return { clientId, isNewClient: true };
@@ -319,13 +336,23 @@ export class ClientService {
         });
         realtimeSync.signalChange('clients');
       } catch {
-        // console.error('MongoDB sync failed:', err);
-        window.dispatchEvent(new CustomEvent('showToast', {
-          detail: {
-            type: 'warning',
-            message: 'Changes saved locally but failed to sync with database. Will retry automatically.'
+        // One-shot retry after 5 s
+        setTimeout(async () => {
+          try {
+            await MongoDBService.updateClient(clientId, {
+              ...clientData,
+              updatedAt: new Date().toISOString()
+            });
+            realtimeSync.signalChange('clients');
+          } catch {
+            window.dispatchEvent(new CustomEvent('showToast', {
+              detail: {
+                type: 'error',
+                message: 'Failed to sync with database. Please save again or contact support if this persists.'
+              }
+            }));
           }
-        }));
+        }, 5000);
       }
       
       // Return old values for change tracking

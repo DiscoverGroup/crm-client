@@ -6,6 +6,27 @@ import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
+// Module-level cached client — reused across warm Netlify function invocations
+// to avoid opening a new connection on every request (connection pool exhaustion fix).
+let cachedClient: MongoClient | null = null;
+
+async function getMongoClient(): Promise<MongoClient> {
+  if (cachedClient) {
+    return cachedClient;
+  }
+  cachedClient = new MongoClient(MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+    connectTimeoutMS: 10000,
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    retryWrites: true,
+    w: 'majority',
+    maxPoolSize: 10,
+  });
+  await cachedClient.connect();
+  return cachedClient;
+}
+
 export const handler: Handler = async (event) => {
   const headers = {
     ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
@@ -43,33 +64,28 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
+
+  // ── Collection allowlist — prevent access to sensitive internal collections ──
+  const ALLOWED_COLLECTIONS = [
+    'clients', 'messages', 'groups', 'conversation_meta',
+    'log_notes', 'activity_logs', 'notifications', 'calendar_events',
+    'file_attachments', 'file_recovery_requests', 'client_recovery_requests',
+    'users'
+  ];
+  if (!collection || !ALLOWED_COLLECTIONS.includes(collection)) {
+    return {
+      statusCode: 403,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Access to this collection is not permitted' })
+    };
+  }
+
+  // Bug fix: declare client outside try so finally can always close it
+  const mongoClient = await getMongoClient();
+
   try {
-    const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
-
-    // ── Collection allowlist — prevent access to sensitive internal collections ──
-    const ALLOWED_COLLECTIONS = [
-      'clients', 'messages', 'groups', 'conversation_meta',
-      'log_notes', 'activity_logs', 'notifications', 'calendar_events',
-      'file_attachments', 'file_recovery_requests', 'client_recovery_requests',
-      'users'
-    ];
-    if (!collection || !ALLOWED_COLLECTIONS.includes(collection)) {
-      return {
-        statusCode: 403,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Access to this collection is not permitted' })
-      };
-    }
-
-    const client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      retryWrites: true,
-      w: 'majority',
-    });
-    const db = client.db(DB_NAME);
+    const db = mongoClient.db(DB_NAME);
     const col = db.collection(collection);
 
     let result;
@@ -100,32 +116,31 @@ export const handler: Handler = async (event) => {
         result = await col.deleteMany(filter);
         break;
       default:
-        await client.close();
         return {
           statusCode: 400,
+          headers,
           body: JSON.stringify({ error: 'Invalid operation' })
         };
     }
 
-    await client.close();
-
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
-    // console.error('Database error:', error);
-    
+    // If the connection is broken, clear the cache so next request gets a fresh client
+    if (error?.message?.includes('topology') || error?.message?.includes('connection')) {
+      cachedClient = null;
+    }
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        success: false, 
+      body: JSON.stringify({
+        success: false,
         error: 'Database operation failed'
       })
     };
   }
+  // Note: do NOT close the cached client here — it is reused across warm invocations
 };

@@ -162,8 +162,6 @@ export class MongoDBService {
   // Delete client in MongoDB (soft delete)
   static async deleteClient(clientId: string, deletedBy: string): Promise<{ success: boolean; message?: string }> {
     try {
-      console.log('🗑️ Attempting to soft delete client from MongoDB:', clientId, 'by:', deletedBy);
-      
       const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -186,14 +184,11 @@ export class MongoDBService {
       const result = await response.json();
       
       if (result.success) {
-        console.log('✅ Client soft deleted in MongoDB:', clientId, result);
         return { success: true, message: 'Client soft deleted in MongoDB' };
       } else {
-        console.error('❌ MongoDB soft delete failed:', clientId, result);
         return { success: false, message: result.error || 'Failed to soft delete client' };
       }
     } catch (error) {
-      console.error('❌ Error soft deleting client in MongoDB:', clientId, error);
       return { success: false, message: `Failed to sync with MongoDB: ${(error as Error).message}` };
     }
   }
