@@ -57,6 +57,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [backupProgress, setBackupProgress] = useState<number | null>(null);
   const [r2BackupProgress, setR2BackupProgress] = useState<number | null>(null);
   const [restoreProgress, setRestoreProgress] = useState<number | null>(null);
+  const [r2FilesDownloadStatus, setR2FilesDownloadStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
   const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
@@ -2915,6 +2916,111 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       Reload Page
                     </button>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* Download All R2 Files Section */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>📦 Download All Files from R2</h2>
+              <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '13px' }}>
+                Download all actual uploaded files (PDFs, images, documents) from R2 cloud storage as a single ZIP archive to your Mac.
+              </p>
+
+              <div style={{ padding: '14px 18px', background: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe', marginBottom: '20px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', fontWeight: '500' }}>
+                  💡 What's included:
+                </p>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', fontSize: '13px', color: '#1e40af', lineHeight: '1.7' }}>
+                  <li>All <strong>uploaded files</strong> (booking confirmations, receipts, documents, images)</li>
+                  <li>Files are organized in the ZIP with their original folder structure</li>
+                  <li>Excludes JSON backup files (use "R2 Backup Files" section below for those)</li>
+                </ul>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#1e40af' }}>
+                  ⚠️ Download size depends on how many files you've uploaded. May take a few minutes for large archives.
+                </p>
+              </div>
+
+              <button
+                onClick={async () => {
+                  setR2FilesDownloadStatus({ type: 'loading', message: 'Preparing files from R2…' });
+                  try {
+                    const response = await fetch('/.netlify/functions/download-all-r2-files', {
+                      method: 'GET',
+                      headers: authHeaders(),
+                    });
+
+                    if (!response.ok) {
+                      let errorMsg = 'Failed to download files';
+                      try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                      } catch {}
+                      setR2FilesDownloadStatus({ type: 'error', message: errorMsg });
+                      return;
+                    }
+
+                    // Check if response has data (could be empty if no files)
+                    const contentType = response.headers.get('Content-Type');
+                    if (contentType?.includes('application/json')) {
+                      const data = await response.json();
+                      if (data.fileCount === 0) {
+                        setR2FilesDownloadStatus({ type: 'success', message: 'No files found in R2 storage.' });
+                        setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 3000);
+                        return;
+                      }
+                    }
+
+                    // Download the ZIP file
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `r2-files-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+
+                    setR2FilesDownloadStatus({ type: 'success', message: '✅ ZIP file downloaded successfully!' });
+                    setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 4000);
+                  } catch (error) {
+                    console.error('Download all R2 files error:', error);
+                    setR2FilesDownloadStatus({ 
+                      type: 'error', 
+                      message: error instanceof Error ? error.message : 'Failed to download files' 
+                    });
+                  }
+                }}
+                disabled={r2FilesDownloadStatus.type === 'loading'}
+                style={{
+                  padding: '12px 28px',
+                  background: r2FilesDownloadStatus.type === 'loading' ? '#dbeafe' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: r2FilesDownloadStatus.type === 'loading' ? '#075985' : 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: r2FilesDownloadStatus.type === 'loading' ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(2,132,199,0.3)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {r2FilesDownloadStatus.type === 'loading' ? '⏳ Creating ZIP archive…' : '📦 Download All Files as ZIP'}
+              </button>
+
+              {r2FilesDownloadStatus.message && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '14px 18px',
+                  borderRadius: '10px',
+                  background: r2FilesDownloadStatus.type === 'success' ? '#f0fdf4' : r2FilesDownloadStatus.type === 'error' ? '#fef2f2' : '#eff6ff',
+                  border: `1px solid ${r2FilesDownloadStatus.type === 'success' ? '#bbf7d0' : r2FilesDownloadStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}`,
+                  color: r2FilesDownloadStatus.type === 'success' ? '#166534' : r2FilesDownloadStatus.type === 'error' ? '#991b1b' : '#1e40af',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                }}>
+                  {r2FilesDownloadStatus.message}
                 </div>
               )}
             </div>
