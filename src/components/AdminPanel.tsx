@@ -49,6 +49,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [packageEditValue, setPackageEditValue] = useState('');
   const [backupStatus, setBackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [r2BackupStatus, setR2BackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [r2BackupList, setR2BackupList] = useState<Array<{ date: string; files: Array<{ name: string; size: number; lastModified: string; url: string }>; totalSize: number }> | null>(null);
+  const [r2BackupListLoading, setR2BackupListLoading] = useState(false);
+  const [r2BackupListError, setR2BackupListError] = useState('');
   const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
   const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
@@ -2788,6 +2791,135 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       Reload Page
                     </button>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* R2 Backup Files Browser */}
+            <div style={{ background: 'white', borderRadius: '12px', padding: '28px', boxShadow: '0 2px 12px rgba(10,45,116,0.08)', border: '1px solid rgba(10,45,116,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <div>
+                  <h2 style={{ margin: '0 0 4px 0', fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>🗂️ R2 Backup Files</h2>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '13px' }}>All backups stored in Cloudflare R2 — grouped by date.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    setR2BackupListLoading(true);
+                    setR2BackupListError('');
+                    try {
+                      const res = await fetch('/.netlify/functions/list-backups', {
+                        headers: authHeaders(),
+                      });
+                      const json = await res.json();
+                      if (res.ok && json.success) {
+                        setR2BackupList(json.backups);
+                      } else {
+                        setR2BackupListError(json.error || 'Failed to load backup list');
+                      }
+                    } catch (err: any) {
+                      setR2BackupListError(`Request failed: ${err.message}`);
+                    } finally {
+                      setR2BackupListLoading(false);
+                    }
+                  }}
+                  disabled={r2BackupListLoading}
+                  style={{
+                    padding: '9px 20px',
+                    background: r2BackupListLoading ? '#e0f2fe' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    color: r2BackupListLoading ? '#0369a1' : 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    cursor: r2BackupListLoading ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {r2BackupListLoading ? '⏳ Loading…' : '🔄 Refresh'}
+                </button>
+              </div>
+
+              {r2BackupListError && (
+                <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: '8px', color: '#dc2626', fontSize: '13px', border: '1px solid #fecaca', marginBottom: '12px' }}>
+                  {r2BackupListError}
+                </div>
+              )}
+
+              {r2BackupList === null && !r2BackupListLoading && !r2BackupListError && (
+                <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  Click <strong>Refresh</strong> to load backup files from Cloudflare R2.
+                </div>
+              )}
+
+              {r2BackupList !== null && r2BackupList.length === 0 && (
+                <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '14px', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                  No backups found. Create your first backup using the button above.
+                </div>
+              )}
+
+              {r2BackupList !== null && r2BackupList.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {r2BackupList.map(group => (
+                    <div key={group.date} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                      {/* Date header */}
+                      <div style={{ padding: '10px 16px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>📅 {group.date}</span>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                          {group.files.length} file{group.files.length !== 1 ? 's' : ''} · {(group.totalSize / 1024).toFixed(1)} KB total
+                        </span>
+                      </div>
+                      {/* Files list */}
+                      <div>
+                        {group.files.map((file, idx) => (
+                          <div
+                            key={file.name}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '10px 16px',
+                              borderTop: idx === 0 ? 'none' : '1px solid #f1f5f9',
+                              background: 'white',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              <span style={{ fontSize: '16px' }}>{file.name === 'manifest.json' ? '📋' : '📄'}</span>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                  {(file.size / 1024).toFixed(1)} KB
+                                  {file.lastModified ? ` · ${new Date(file.lastModified).toLocaleString()}` : ''}
+                                </div>
+                              </div>
+                            </div>
+                            {file.url ? (
+                              <a
+                                href={file.url}
+                                download={file.name}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  padding: '5px 14px',
+                                  background: '#f1f5f9',
+                                  color: '#0369a1',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                ⬇️ Download
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: '#94a3b8' }}>No public URL</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
