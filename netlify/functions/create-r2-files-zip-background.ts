@@ -92,7 +92,7 @@ async function createZipBackup(): Promise<void> {
     await writeZipStatus(dateLabel, { state: 'running', done: 0, total, phase: 'zipping' });
 
     // Create ZIP in memory
-    const archive = archiver('zip', { zlib: { level: 1 } }); // level 1 = fast, less memory
+    const archive = archiver('zip', { zlib: { level: 0 } }); // level 0 = no compression (fastest — files are mostly already-compressed PDFs/images)
     const chunks: Buffer[] = [];
     let archiveComplete = false;
     let archiveError: Error | null = null;
@@ -101,26 +101,37 @@ async function createZipBackup(): Promise<void> {
     archive.on('end', () => { archiveComplete = true; });
     archive.on('error', (err: Error) => { archiveError = err; archiveComplete = true; });
 
-    // Download each file and add to ZIP
-    for (let i = 0; i < uploadedFiles.length; i++) {
-      const obj = uploadedFiles[i];
-      try {
-        const res = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: obj.Key }));
-        if (res.Body) {
+    // Download files in parallel batches of 15 (much faster than one-by-one)
+    const BATCH_SIZE = 15;
+    let done = 0;
+
+    for (let batchStart = 0; batchStart < uploadedFiles.length; batchStart += BATCH_SIZE) {
+      const batch = uploadedFiles.slice(batchStart, batchStart + BATCH_SIZE);
+      
+      // Download all files in this batch simultaneously
+      const results = await Promise.allSettled(
+        batch.map(async (obj) => {
+          const res = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: obj.Key }));
+          if (!res.Body) return null;
           const fileChunks: Buffer[] = [];
           for await (const chunk of res.Body as Readable) {
             fileChunks.push(Buffer.from(chunk));
           }
-          archive.append(Buffer.concat(fileChunks), { name: obj.Key });
+          return { key: obj.Key, buffer: Buffer.concat(fileChunks) };
+        })
+      );
+
+      // Add successfully downloaded files to ZIP (in order)
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          archive.append(result.value.buffer, { name: result.value.key });
+        } else if (result.status === 'rejected') {
+          console.error(`Skipping file:`, result.reason);
         }
-      } catch (err) {
-        console.error(`Skipping ${obj.Key}:`, err);
       }
 
-      // Update status every 10 files
-      if ((i + 1) % 10 === 0 || i === uploadedFiles.length - 1) {
-        await writeZipStatus(dateLabel, { state: 'running', done: i + 1, total, phase: 'zipping' });
-      }
+      done += batch.length;
+      await writeZipStatus(dateLabel, { state: 'running', done, total, phase: 'zipping' });
     }
 
     await archive.finalize();
