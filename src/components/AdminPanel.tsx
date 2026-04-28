@@ -49,7 +49,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [packageEditValue, setPackageEditValue] = useState('');
   const [backupStatus, setBackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
   const [r2BackupStatus, setR2BackupStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
-  const [r2BackupList, setR2BackupList] = useState<Array<{ date: string; files: Array<{ name: string; size: number; lastModified: string; url: string }>; totalSize: number }> | null>(null);
+  const [r2BackupList, setR2BackupList] = useState<Array<{ date: string; files: Array<{ name: string; size: number; lastModified: string; key: string }>; totalSize: number }> | null>(null);
   const [r2BackupListLoading, setR2BackupListLoading] = useState(false);
   const [r2BackupListError, setR2BackupListError] = useState('');
   const [r2SelectedDate, setR2SelectedDate] = useState<string>('');
@@ -3060,29 +3060,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   </div>
                                 </div>
                               </div>
-                              {file.url ? (
-                                <a
-                                  href={file.url}
-                                  download={file.name}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{
-                                    padding: '5px 14px',
-                                    background: '#f1f5f9',
-                                    color: '#0369a1',
-                                    borderRadius: '6px',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    textDecoration: 'none',
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  ⬇️ Download
-                                </a>
-                              ) : (
-                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>No public URL</span>
-                              )}
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(
+                                      `/.netlify/functions/download-backup-file?key=${encodeURIComponent(file.key)}`,
+                                      { headers: authHeaders() }
+                                    );
+                                    if (!res.ok) {
+                                      const j = await res.json().catch(() => ({}));
+                                      alert(`Download failed: ${j.error || res.status}`);
+                                      return;
+                                    }
+                                    const blob = await res.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = file.name;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                  } catch (err: any) {
+                                    alert(`Download failed: ${err.message}`);
+                                  }
+                                }}
+                                style={{
+                                  padding: '5px 14px',
+                                  background: '#f1f5f9',
+                                  color: '#0369a1',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                ⬇️ Download
+                              </button>
                             </div>
                           ))}
                         </div>

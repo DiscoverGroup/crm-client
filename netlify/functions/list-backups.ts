@@ -77,7 +77,7 @@ async function listBackups(
   const objects = response.Contents || [];
 
   // Group by date folder: backups/YYYY-MM-DD/file.json
-  const byDate: Record<string, Array<{ name: string; size: number; lastModified: string; url: string }>> = {};
+  const byDate: Record<string, Array<{ name: string; size: number; lastModified: string; key: string }>> = {};
 
   for (const obj of objects) {
     const key = obj.Key || '';
@@ -86,14 +86,13 @@ async function listBackups(
 
     const date = parts[1];
     const fileName = parts[2];
-    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key}` : '';
 
     if (!byDate[date]) byDate[date] = [];
     byDate[date].push({
       name: fileName,
       size: obj.Size || 0,
       lastModified: obj.LastModified?.toISOString() || '',
-      url: publicUrl,
+      key,  // R2 object key — frontend uses this to call download-backup-file
     });
   }
 
