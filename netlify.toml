@@ -8,6 +8,7 @@
 # Daily backup at 2:00 AM UTC — exports all MongoDB collections to Cloudflare R2
 [functions."daily-backup"]
   schedule = "0 2 * * *"
+  timeout = 26
 
 [dev]
   command = "npm run dev"

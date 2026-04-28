@@ -53,6 +53,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [r2BackupListLoading, setR2BackupListLoading] = useState(false);
   const [r2BackupListError, setR2BackupListError] = useState('');
   const [restoreStatus, setRestoreStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [backupProgress, setBackupProgress] = useState<number | null>(null);
+  const [r2BackupProgress, setR2BackupProgress] = useState<number | null>(null);
+  const [restoreProgress, setRestoreProgress] = useState<number | null>(null);
   const [restorePreview, setRestorePreview] = useState<{ createdAt: string; createdBy: string; collections: string[]; localKeys: string[] } | null>(null);
   const [pendingRestoreData, setPendingRestoreData] = useState<any>(null);
   const [recoveryRequests, setRecoveryRequests] = useState<FileRecoveryRequest[]>([]);
@@ -2472,6 +2475,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
         const handleBackup = async () => {
           setBackupStatus({ type: 'loading', message: 'Fetching data from MongoDB…' });
+          setBackupProgress(0);
           try {
             // 1. Gather localStorage
             const localStorageData: Record<string, any> = {};
@@ -2484,7 +2488,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
             // 2. Fetch MongoDB collections
             const mongoData: Record<string, any[]> = {};
-            for (const col of MONGO_COLLECTIONS) {
+            for (let i = 0; i < MONGO_COLLECTIONS.length; i++) {
+              const col = MONGO_COLLECTIONS[i];
               try {
                 const res = await fetch(DB_API, {
                   method: 'POST',
@@ -2496,6 +2501,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               } catch {
                 mongoData[col] = [];
               }
+              setBackupProgress(Math.round(((i + 1) / MONGO_COLLECTIONS.length) * 85));
             }
 
             // 3. Build backup object
@@ -2517,9 +2523,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             a.click();
             URL.revokeObjectURL(url);
 
+            setBackupProgress(100);
             setBackupStatus({ type: 'success', message: `Backup downloaded successfully. Includes ${Object.keys(localStorageData).length} localStorage keys and ${MONGO_COLLECTIONS.length} MongoDB collections.` });
+            setTimeout(() => setBackupProgress(null), 2000);
           } catch (err: any) {
             setBackupStatus({ type: 'error', message: `Backup failed: ${err.message || err}` });
+            setBackupProgress(null);
           }
         };
 
@@ -2565,6 +2574,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           if (!confirmed) return;
 
           setRestoreStatus({ type: 'loading', message: 'Restoring localStorage…' });
+          setRestoreProgress(0);
           try {
             // 1. Restore localStorage
             const lsData = pendingRestoreData.localStorage || {};
@@ -2577,9 +2587,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             // 2. Restore MongoDB collections
             const mongoData = pendingRestoreData.mongodb || {};
             let mongoErrors = 0;
-            for (const [col, docs] of Object.entries(mongoData) as [string, any[]][]) {
-              if (!Array.isArray(docs) || docs.length === 0) continue;
+            const colEntries = (Object.entries(mongoData) as [string, any[]][]).filter(([, docs]) => Array.isArray(docs) && docs.length > 0);
+            for (let i = 0; i < colEntries.length; i++) {
+              const [col, docs] = colEntries[i];
               setRestoreStatus({ type: 'loading', message: `Restoring MongoDB: ${col} (${docs.length} records)…` });
+              setRestoreProgress(Math.round((i / Math.max(colEntries.length, 1)) * 85));
               // Delete existing + re-insert in batches of 50
               try {
                 await fetch(DB_API, {
@@ -2588,12 +2600,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   body: JSON.stringify({ collection: col, operation: 'deleteMany', filter: {} }),
                 });
                 const BATCH = 50;
-                for (let i = 0; i < docs.length; i += BATCH) {
-                  const batch = docs.slice(i, i + BATCH);
+                for (let j = 0; j < docs.length; j += BATCH) {
+                  const batch = docs.slice(j, j + BATCH);
                   await fetch(DB_API, {
                     method: 'POST',
                     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ collection: col, operation: 'insertMany', data: batch }),
+                    body: JSON.stringify({ collection: col, operation: 'insertMany', data: batch }),
                   });
                 }
               } catch {
@@ -2601,12 +2613,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               }
             }
 
+            setRestoreProgress(100);
             const errNote = mongoErrors > 0 ? ` (${mongoErrors} collection(s) had errors — localStorage was restored successfully)` : '';
             setRestoreStatus({ type: 'success', message: `Restore complete!${errNote} Reload the page to see the restored data.` });
             setRestorePreview(null);
             setPendingRestoreData(null);
+            setTimeout(() => setRestoreProgress(null), 2000);
           } catch (err: any) {
             setRestoreStatus({ type: 'error', message: `Restore failed: ${err.message || err}` });
+            setRestoreProgress(null);
           }
         };
 
@@ -2661,6 +2676,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               <button
                 onClick={async () => {
                   setR2BackupStatus({ type: 'loading', message: 'Uploading backup to Cloudflare R2…' });
+                  setR2BackupProgress(0);
+                  let prog = 0;
+                  const progressInterval = setInterval(() => {
+                    prog = Math.min(prog + Math.random() * 4 + 1, 85);
+                    setR2BackupProgress(Math.round(prog));
+                  }, 700);
                   try {
                     const res = await fetch('/.netlify/functions/daily-backup', {
                       method: 'POST',
@@ -2668,14 +2689,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       body: JSON.stringify({}),
                     });
                     const json = await res.json();
+                    clearInterval(progressInterval);
                     if (res.ok && json.success) {
+                      setR2BackupProgress(100);
                       const cols = Object.entries(json.backup?.collections || {}) as [string, any][];
                       const summary = cols.map(([c, v]) => `${c}: ${v.count ?? '?'} docs`).join(', ');
                       setR2BackupStatus({ type: 'success', message: `✅ Saved to R2 → backups/${json.backup?.date}/  (${summary})` });
+                      setTimeout(() => setR2BackupProgress(null), 2000);
                     } else {
+                      setR2BackupProgress(null);
                       setR2BackupStatus({ type: 'error', message: json.error || 'Backup failed. Make sure you are logged in as admin.' });
                     }
                   } catch (err: any) {
+                    clearInterval(progressInterval);
+                    setR2BackupProgress(null);
                     setR2BackupStatus({ type: 'error', message: `Request failed: ${err.message}` });
                   }
                 }}
@@ -2697,9 +2724,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 {r2BackupStatus.type === 'loading' ? '⏳ Uploading to R2…' : '☁️ Backup to Cloudflare R2'}
               </button>
 
+              {/* Download progress bar */}
+              {backupProgress !== null && (
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
+                    <span>⬇️ Downloading backup…</span>
+                    <span>{backupProgress}%</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ width: `${backupProgress}%`, height: '100%', background: backupProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#059669,#34d399)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+              )}
+
               {backupStatus.message && (
                 <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(backupStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(backupStatus.type), border: `1px solid ${backupStatus.type === 'success' ? '#bbf7d0' : backupStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
                   {backupStatus.message}
+                </div>
+              )}
+
+              {/* R2 upload progress bar */}
+              {r2BackupProgress !== null && (
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
+                    <span>☁️ Uploading to Cloudflare R2…</span>
+                    <span>{r2BackupProgress}%</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
+                    <div style={{ width: `${r2BackupProgress}%`, height: '100%', background: r2BackupProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#0284c7,#38bdf8)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                  </div>
                 </div>
               )}
 
@@ -2782,6 +2835,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
               {restoreStatus.message && (
                 <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(restoreStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(restoreStatus.type), border: `1px solid ${restoreStatus.type === 'success' ? '#bbf7d0' : restoreStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
+                  {restoreStatus.type === 'loading' && restoreProgress !== null && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '5px', fontWeight: '500' }}>
+                        <span>Restoring…</span>
+                        <span>{restoreProgress}%</span>
+                      </div>
+                      <div style={{ background: 'rgba(0,0,0,0.1)', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: `${restoreProgress}%`, height: '100%', background: restoreProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#dc2626,#f87171)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                      </div>
+                    </div>
+                  )}
                   {restoreStatus.message}
                   {restoreStatus.type === 'success' && (
                     <button
