@@ -2952,7 +2952,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       body: JSON.stringify({}),
                     });
 
-                    if (!response.ok && response.status !== 202) {
+                    if (response.status === 202) {
+                      // Accepted - background job started successfully
+                      let message = 'ZIP creation started! The file "all-files.zip" will appear in the R2 Backup Files section below (under today\'s date) when ready. Refresh the list in 1-2 minutes.';
+                      try {
+                        const data = await response.json();
+                        if (data.message) message = data.message;
+                      } catch {}
+                      
+                      setR2FilesDownloadStatus({ 
+                        type: 'success', 
+                        message: `✅ ${message}` 
+                      });
+                      
+                      // Auto-clear message after 8 seconds
+                      setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 8000);
+                      return;
+                    }
+
+                    if (!response.ok) {
                       let errorMsg = 'Failed to start ZIP creation';
                       try {
                         const errorData = await response.json();
@@ -2962,14 +2980,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       return;
                     }
 
-                    const data = await response.json();
-                    setR2FilesDownloadStatus({ 
-                      type: 'success', 
-                      message: `✅ ${data.message || 'ZIP creation started! The file "all-files.zip" will appear in the R2 Backup Files section below (under today\'s date) when ready. Refresh the list in 1-2 minutes.'}` 
-                    });
-                    
-                    // Auto-clear message after 8 seconds
-                    setTimeout(() => setR2FilesDownloadStatus({ type: 'idle', message: '' }), 8000);
                   } catch (error) {
                     console.error('Start ZIP creation error:', error);
                     setR2FilesDownloadStatus({ 
