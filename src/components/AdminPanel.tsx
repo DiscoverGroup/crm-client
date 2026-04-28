@@ -2654,24 +2654,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 </p>
               </div>
 
-              <button
-                onClick={handleBackup}
-                disabled={backupStatus.type === 'loading'}
-                style={{
-                  padding: '12px 28px',
-                  background: backupStatus.type === 'loading' ? '#d1fae5' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                  color: backupStatus.type === 'loading' ? '#065f46' : 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: backupStatus.type === 'loading' ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 8px rgba(5,150,105,0.3)',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {backupStatus.type === 'loading' ? '⏳ Creating backup…' : '⬇️ Download Backup Now'}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  onClick={handleBackup}
+                  disabled={backupStatus.type === 'loading'}
+                  style={{
+                    padding: '12px 28px',
+                    background: backupStatus.type === 'loading' ? '#d1fae5' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    color: backupStatus.type === 'loading' ? '#065f46' : 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: backupStatus.type === 'loading' ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 8px rgba(5,150,105,0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {backupStatus.type === 'loading' ? '⏳ Creating backup…' : '💾 Save to This Mac'}
+                </button>
+                <p style={{ margin: 0, fontSize: '12px', color: '#64748b', paddingLeft: '4px' }}>
+                  Saves to your <strong>Downloads</strong> folder. You can then move it to Desktop or any folder (512GB storage available).
+                </p>
+              </div>
 
               {/* Manual R2 cloud backup trigger */}
               <button
@@ -2783,7 +2788,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {backupProgress !== null && (
                 <div style={{ marginTop: '14px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
-                    <span>⬇️ Downloading backup…</span>
+                    <span>💾 Saving backup to Mac…</span>
                     <span>{backupProgress}%</span>
                   </div>
                   <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
