@@ -23,6 +23,22 @@ export const handler: Handler = async (event) => {
     'Content-Type': 'application/json',
   };
 
+  // Top-level safety net — always return JSON, never an HTML error page
+  try {
+    return await listBackups(event, headers);
+  } catch (err: any) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ success: false, error: err.message || 'Unexpected error in list-backups function' }),
+    };
+  }
+};
+
+async function listBackups(
+  event: Parameters<Handler>[0],
+  headers: Record<string, string>
+): Promise<ReturnType<Handler>> {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
@@ -40,67 +56,59 @@ export const handler: Handler = async (event) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'R2 credentials not configured' }),
+      body: JSON.stringify({ error: 'R2 credentials not configured (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)' }),
     };
   }
 
-  try {
-    const s3 = new S3Client({
-      region: 'auto',
-      endpoint: R2_ENDPOINT,
-      credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+  const s3 = new S3Client({
+    region: 'auto',
+    endpoint: R2_ENDPOINT,
+    credentials: { accessKeyId: R2_ACCESS_KEY, secretAccessKey: R2_SECRET_KEY },
+  });
+
+  // List all objects under backups/
+  const command = new ListObjectsV2Command({
+    Bucket: R2_BUCKET,
+    Prefix: 'backups/',
+    MaxKeys: 1000,
+  });
+
+  const response = await s3.send(command);
+  const objects = response.Contents || [];
+
+  // Group by date folder: backups/YYYY-MM-DD/file.json
+  const byDate: Record<string, Array<{ name: string; size: number; lastModified: string; url: string }>> = {};
+
+  for (const obj of objects) {
+    const key = obj.Key || '';
+    const parts = key.split('/'); // ['backups', 'YYYY-MM-DD', 'file.json']
+    if (parts.length < 3 || !parts[2]) continue; // skip folder entries
+
+    const date = parts[1];
+    const fileName = parts[2];
+    const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key}` : '';
+
+    if (!byDate[date]) byDate[date] = [];
+    byDate[date].push({
+      name: fileName,
+      size: obj.Size || 0,
+      lastModified: obj.LastModified?.toISOString() || '',
+      url: publicUrl,
     });
-
-    // List all objects under backups/
-    const command = new ListObjectsV2Command({
-      Bucket: R2_BUCKET,
-      Prefix: 'backups/',
-      MaxKeys: 1000,
-    });
-
-    const response = await s3.send(command);
-    const objects = response.Contents || [];
-
-    // Group by date folder: backups/YYYY-MM-DD/file.json
-    const byDate: Record<string, Array<{ name: string; size: number; lastModified: string; url: string }>> = {};
-
-    for (const obj of objects) {
-      const key = obj.Key || '';
-      const parts = key.split('/'); // ['backups', 'YYYY-MM-DD', 'file.json']
-      if (parts.length < 3 || !parts[2]) continue; // skip folder entries
-
-      const date = parts[1];
-      const fileName = parts[2];
-      const publicUrl = R2_PUBLIC_URL ? `${R2_PUBLIC_URL.replace(/\/$/, '')}/${key}` : '';
-
-      if (!byDate[date]) byDate[date] = [];
-      byDate[date].push({
-        name: fileName,
-        size: obj.Size || 0,
-        lastModified: obj.LastModified?.toISOString() || '',
-        url: publicUrl,
-      });
-    }
-
-    // Sort dates descending (newest first)
-    const sorted = Object.entries(byDate)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([date, files]) => ({
-        date,
-        files: files.sort((a, b) => a.name.localeCompare(b.name)),
-        totalSize: files.reduce((sum, f) => sum + f.size, 0),
-      }));
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ success: true, backups: sorted }),
-    };
-  } catch (err: any) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ success: false, error: err.message || 'Failed to list backups' }),
-    };
   }
-};
+
+  // Sort dates descending (newest first)
+  const sorted = Object.entries(byDate)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, files]) => ({
+      date,
+      files: files.sort((a, b) => a.name.localeCompare(b.name)),
+      totalSize: files.reduce((sum, f) => sum + f.size, 0),
+    }));
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ success: true, backups: sorted }),
+  };
+}

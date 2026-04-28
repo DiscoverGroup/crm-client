@@ -34,26 +34,43 @@ const R2_BUCKET     = process.env.R2_BUCKET_NAME || 'crm-uploads';
 const COLLECTIONS = ['clients', 'users', 'log_notes', 'activity_logs', 'file_attachments', 'calendar_events'];
 
 export const handler: Handler = async (event) => {
+  const jsonHeaders = { 'Content-Type': 'application/json' };
+
+  // Top-level safety net — ensures we ALWAYS return JSON, never an HTML error page
+  try {
+    return await runBackup(event);
+  } catch (err: any) {
+    return {
+      statusCode: 500,
+      headers: jsonHeaders,
+      body: JSON.stringify({ success: false, error: err.message || 'Unexpected error in backup function' }),
+    };
+  }
+};
+
+async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: number; headers?: Record<string, string>; body: string }> {
+  const jsonHeaders = { 'Content-Type': 'application/json' };
+
   // Allow both scheduled invocations (no body) and manual HTTP trigger.
   // Manual trigger requires a valid admin JWT — same token used for all other functions.
   const isScheduled = !event.body;
 
   if (!isScheduled) {
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method not allowed' };
+      return { statusCode: 405, headers: jsonHeaders, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
     // Validate JWT — admin must be logged in to trigger a manual backup
     const auth = verifyAuthToken(event.headers['authorization']);
     if (!auth.valid) {
-      return { statusCode: 403, body: JSON.stringify({ error: 'Unauthorized — valid admin JWT required' }) };
+      return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ error: 'Unauthorized — valid admin JWT required' }) };
     }
   }
 
   if (!MONGODB_URI) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'MONGODB_URI not configured' }) };
+    return { statusCode: 500, headers: jsonHeaders, body: JSON.stringify({ error: 'MONGODB_URI not configured' }) };
   }
-  if (!R2_ENDPOINT || !R2_ACCESS_KEY || !R2_SECRET_KEY || !R2_BUCKET) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'R2 credentials not configured' }) };
+  if (!R2_ENDPOINT || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
+    return { statusCode: 500, headers: jsonHeaders, body: JSON.stringify({ error: 'R2 credentials not configured (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)' }) };
   }
 
   const dateLabel = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -113,14 +130,16 @@ export const handler: Handler = async (event) => {
 
     return {
       statusCode: 200,
+      headers: jsonHeaders,
       body: JSON.stringify({ success: true, backup: manifest }),
     };
   } catch (err: any) {
     return {
       statusCode: 500,
+      headers: jsonHeaders,
       body: JSON.stringify({ success: false, error: err.message || 'Backup failed' }),
     };
   } finally {
-    await mongo.close();
+    await mongo.close().catch(() => {});
   }
-};
+}
