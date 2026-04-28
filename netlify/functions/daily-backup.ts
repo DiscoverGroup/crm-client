@@ -24,9 +24,11 @@ import { verifyAuthToken } from './middleware/authMiddleware';
 const MONGODB_URI   = process.env.MONGODB_URI   || '';
 const DB_NAME       = 'dg_crm';
 const R2_ENDPOINT   = process.env.R2_ENDPOINT   || '';
-const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID     || '';
-const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY || '';
-const R2_BUCKET     = process.env.R2_BUCKET_NAME       || '';
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID      || '';
+const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY  || '';
+// Bucket name matches the hardcoded value in get-upload-url.ts ('crm-uploads')
+// Falls back to R2_BUCKET_NAME env var if set, otherwise uses 'crm-uploads'
+const R2_BUCKET     = process.env.R2_BUCKET_NAME || 'crm-uploads';
 
 // Collections to back up
 const COLLECTIONS = ['clients', 'users', 'log_notes', 'activity_logs', 'file_attachments', 'calendar_events'];
