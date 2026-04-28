@@ -15,8 +15,9 @@ async function getMongoClient(): Promise<MongoClient> {
     return cachedClient;
   }
   cachedClient = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 7000,  // Keep well below Netlify's 10s gateway timeout
+    connectTimeoutMS: 7000,          // so the function returns 500 instead of letting Netlify return 504
+    socketTimeoutMS: 9000,
     tls: true,
     tlsAllowInvalidCertificates: false,
     retryWrites: true,

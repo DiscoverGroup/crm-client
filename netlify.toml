@@ -4,6 +4,7 @@
 
 [functions]
   directory = "netlify/functions"
+  timeout = 26  # Global timeout for all functions (seconds)
 
 # Daily backup at 2:00 AM UTC — background function, runs up to 15 min, no timeout on free tier
 [functions."daily-backup-background"]

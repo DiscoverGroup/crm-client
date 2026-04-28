@@ -203,32 +203,8 @@ const App: React.FC = () => {
       // console.log('🚀 Running on Netlify - Production Mode');
       // console.log('─────────────────────────────────────');
 
-      // Check MongoDB Atlas connection (only if a token is present)
-      if (getAuthToken()) {
-        try {
-          const response = await fetch('/.netlify/functions/database', {
-            method: 'POST',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({ collection: 'users', operation: 'find', filter: {} })
-          });
-          
-          if (!response.ok) {
-            await response.text();
-            // console.log('❌ MongoDB Atlas: Function error');
-            // console.log(`   • Status: ${response.status}`);
-            // console.log(`   • Response: ${errorText.substring(0, 200)}`);
-          } else {
-            const result = await response.json();
-            if (result.success) {
-              // console.log('✅ MongoDB Atlas: Connected');
-            } else {
-              // console.log('❌ MongoDB Atlas: Connection issue -', result.error);
-            }
-          }
-        } catch (error) {
-          // console.error('❌ MongoDB Atlas: Connection failed -', error);
-        }
-      }
+      // MongoDB connectivity check intentionally removed — the full-collection scan
+      // on every page load caused 504 Gateway Timeouts when Atlas was cold-starting.
 
       // Check Cloudflare R2 configuration
       const r2AccountId = import.meta.env.VITE_R2_ACCOUNT_ID;
