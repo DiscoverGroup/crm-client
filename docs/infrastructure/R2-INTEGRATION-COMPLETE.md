@@ -124,10 +124,10 @@ crm-uploads/                    (your bucket)
 
 Your `.env.local` should have:
 ```bash
-VITE_R2_ACCOUNT_ID=b825320c39dd07bb2ae33de95f61e4f4
-VITE_R2_ACCESS_KEY_ID=c5801ce6f3079988c674a23757013060
-VITE_R2_SECRET_ACCESS_KEY=12cb104e5af91be86275f93b1b259487eff3b3950906a1a6321f989e4b874618
-VITE_R2_BUCKET_NAME=crm-uploads
+VITE_R2_ACCOUNT_ID=<your_r2_account_id>
+VITE_R2_ACCESS_KEY_ID=<your_r2_access_key_id>
+VITE_R2_SECRET_ACCESS_KEY=<your_r2_secret_access_key>
+VITE_R2_BUCKET_NAME=<your_bucket_name>
 ```
 
 ## Testing Checklist

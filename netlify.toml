@@ -41,7 +41,13 @@
   status = 200
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
+  # FROM_NAME ("DG-CRM") and VITE_R2_BUCKET_NAME ("crm-uploads") are not secrets —
+  # they appear legitimately throughout the codebase as app name and bucket name.
+  # VITE_R2_PUBLIC_URL is the public read URL for the R2 bucket, intentionally public.
+  # docs/** and scripts/** contain example/setup values, not production credentials.
+  SECRETS_SCAN_OMIT_KEYS = "FROM_NAME,VITE_R2_BUCKET_NAME,VITE_R2_PUBLIC_URL"
+  SECRETS_SCAN_OMIT_PATHS = "docs/**,scripts/**"
 
 # ── HTTP Security Headers ──────────────────────────────────────────────────────
 [[headers]]

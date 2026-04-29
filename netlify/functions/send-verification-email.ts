@@ -6,9 +6,9 @@ import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/ra
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 
 // Gmail SMTP Configuration
-const GMAIL_USER = process.env.GMAIL_USER || 'romanolantano.discovergrp@gmail.com';
+const GMAIL_USER = process.env.GMAIL_USER || '';
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
-const FROM_EMAIL = process.env.FROM_EMAIL || 'romanolantano.discovergrp@gmail.com';
+const FROM_EMAIL = process.env.FROM_EMAIL || '';
 const FROM_NAME = process.env.FROM_NAME || 'DG-CRM';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';

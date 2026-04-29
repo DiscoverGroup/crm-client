@@ -338,7 +338,7 @@ export class FileService {
   static fixR2URLs(): void {
     try {
       const attachments = this.getAllFileAttachments();
-      const correctUrl = 'https://pub-39400cda7bb94c4fa451404e2759a6b8.r2.dev';
+      const correctUrl = import.meta.env.VITE_R2_PUBLIC_URL || '';
       const incorrectPatterns = [
         'pub-39d00feda7bb94c4fa451404e2759a6b8.r2.dev',
         'pub-394006da7bb94c4fa451404e2759a6b8.r2.dev',
