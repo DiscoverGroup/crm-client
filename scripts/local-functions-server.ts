@@ -42,7 +42,7 @@ async function getHandler(name: string): Promise<((event: unknown) => Promise<un
   if (!handlerCache.has(name)) {
     try {
       // tsx registers a TypeScript loader so dynamic import of .ts files works
-      const mod = await import(`./netlify/functions/${name}.ts`);
+      const mod = await import(`../netlify/functions/${name}.ts`);
       if (typeof mod.handler !== 'function') {
         console.error(`  [${name}] No 'handler' export found.`);
         return null;
