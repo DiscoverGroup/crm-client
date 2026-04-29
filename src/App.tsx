@@ -313,10 +313,11 @@ const App: React.FC = () => {
     // Start real-time sync polling (5-second lightweight check)
     realtimeSync.start();
 
-    // Periodic full sync every 120 seconds as fallback
+    // Periodic full sync every 5 minutes — reduced from 120s to avoid
+    // hammering Atlas M0 connection limits across multiple concurrent Lambda instances
     const interval = setInterval(() => {
       syncAllFromMongoDB();
-    }, 120000);
+    }, 300000);
 
     return () => {
       clearTimeout(timer);

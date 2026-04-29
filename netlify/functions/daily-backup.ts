@@ -81,10 +81,15 @@ async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: n
   });
 
   const mongo = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 15000,
-    connectTimeoutMS: 15000,
+    serverSelectionTimeoutMS: 7000,
+    connectTimeoutMS:         7000,
+    socketTimeoutMS:          9000,
     tls: true,
     tlsAllowInvalidCertificates: false,
+    retryWrites: false,
+    retryReads: false,
+    maxPoolSize: 1,
+    minPoolSize: 0,
   });
 
   const results: Record<string, { count: number; path: string } | { error: string }> = {};
