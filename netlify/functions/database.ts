@@ -142,8 +142,7 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({
         success: false,
-        error: 'Database operation failed',
-        detail: msg
+        error: 'Database operation failed'
       })
     };
   }
