@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { validateRoleChange, sanitizeEmail } from '../utils/formSanitizer';
 import { MongoDBService } from '../services/mongoDBService';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
@@ -12,6 +12,9 @@ import WorkflowBuilder from './WorkflowBuilder';
 import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
 import StressTest from './StressTest';
+import { checkLocalMacConnection, listMacBackups, uploadFileToLocalMac } from '../services/localMacService';
+import { uploadFileToR2 } from '../services/r2UploadService';
+import type { StorageSettings, StorageMode, LocalMacConfig } from '../types/storage';
 
 interface User {
   fullName: string;
@@ -42,7 +45,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterVerified, setFilterVerified] = useState<string>('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota' | 'backup-restore' | 'packages'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'file-recovery' | 'client-recovery' | 'version' | 'workflows' | 'monitoring' | 'territory' | 'stress-test' | 'branding' | 'storage-quota' | 'storage-settings' | 'backup-restore' | 'packages'>('users');
   const [packageOptions, setPackageOptions] = useState<string[]>(() => getPackageOptions());
   const [newPackageInput, setNewPackageInput] = useState('');
   const [packageEditIdx, setPackageEditIdx] = useState<number | null>(null);
@@ -78,6 +81,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     } catch { return { defaultLimit: 100, perUser: {} }; }
   });
   const [quotaEditValues, setQuotaEditValues] = useState<Record<string, string>>({});
+
+  // ── Storage Settings state ─────────────────────────────────────────────────
+  const [storageSettings, setStorageSettings] = useState<StorageSettings>({ mode: 'cloudflare-r2', localMac: { ip: '', port: 4040, token: '' } });
+  const [storageSettingsLoading, setStorageSettingsLoading] = useState(false);
+  const [storageSaveStatus, setStorageSaveStatus] = useState<'idle' | 'saving' | 'ok' | 'error'>('idle');
+  const [macConnectionStatus, setMacConnectionStatus] = useState<'untested' | 'testing' | 'ok' | 'fail'>('untested');
+  const [macBackupProgress, setMacBackupProgress] = useState<{ current: number; total: number } | null>(null);
+  const [macBackupStatus, setMacBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [macBackupMessage, setMacBackupMessage] = useState('');
+  const storageSettingsLoadedRef = useRef(false);
 
   const saveQuotaSettings = (updated: typeof quotaSettings) => {
     setQuotaSettings(updated);
@@ -738,6 +751,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           }}
         >
           💾 Storage &amp; Quota
+        </button>
+        <button
+          onClick={() => {
+            setActiveTab('storage-settings');
+            if (!storageSettingsLoadedRef.current) {
+              storageSettingsLoadedRef.current = true;
+              setStorageSettingsLoading(true);
+              FileService.getStorageConfig().then(cfg => setStorageSettings(cfg)).finally(() => setStorageSettingsLoading(false));
+            }
+          }}
+          style={{
+            padding: '12px 24px',
+            background: activeTab === 'storage-settings' ? 'white' : 'transparent',
+            color: activeTab === 'storage-settings' ? '#0369a1' : '#64748b',
+            border: 'none',
+            borderBottom: activeTab === 'storage-settings' ? '3px solid #0369a1' : '3px solid transparent',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s ease',
+            marginBottom: '-2px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          🖥️ Storage Settings
         </button>
         <button
           onClick={() => setActiveTab('backup-restore')}
@@ -2444,6 +2482,227 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </div>
         );
       })()}
+
+      {/* Storage Settings Tab */}
+      {activeTab === 'storage-settings' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+          {/* ── Loading state ── */}
+          {storageSettingsLoading && (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Loading storage config…</div>
+          )}
+
+          {!storageSettingsLoading && (
+            <>
+              {/* ── Warning banner when local-mac is active ── */}
+              {storageSettings.mode === 'local-mac' && (
+                <div style={{ background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '8px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '18px' }}>⚠️</span>
+                  <div style={{ fontSize: '14px', color: '#92400e' }}>
+                    <strong>Local Mac Storage is active.</strong> All employee file uploads go to your Mac server.
+                    Ensure the server is running and all employees are on the same WiFi or VPN.
+                    Files stored on Mac are <strong>not accessible remotely</strong>.
+                  </div>
+                </div>
+              )}
+
+              {/* ── Storage Mode Toggle ── */}
+              <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Active Storage Backend</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {(['cloudflare-r2', 'local-mac'] as StorageMode[]).map(mode => (
+                    <label key={mode} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', border: `2px solid ${storageSettings.mode === mode ? '#0369a1' : '#e2e8f0'}`, borderRadius: '8px', background: storageSettings.mode === mode ? '#f0f9ff' : 'white' }}>
+                      <input type="radio" name="storageMode" value={mode} checked={storageSettings.mode === mode} onChange={() => setStorageSettings(s => ({ ...s, mode }))} style={{ accentColor: '#0369a1' }} />
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '14px', color: '#1e293b' }}>
+                          {mode === 'cloudflare-r2' ? '☁️ Cloudflare R2' : '💻 Local Mac Storage'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                          {mode === 'cloudflare-r2' ? 'Default — files stored in Cloudflare R2 bucket (accessible from anywhere)' : 'Files stored on admin\'s MacBook — accessible on local WiFi only'}
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Save button */}
+                <div style={{ marginTop: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    onClick={async () => {
+                      if (storageSettings.mode === 'local-mac') {
+                        if (!storageSettings.localMac.ip) { showErrorToast('IP address is required for Local Mac mode'); return; }
+                        if (!storageSettings.localMac.token || storageSettings.localMac.token.length < 8) { showErrorToast('Token must be at least 8 characters'); return; }
+                      }
+                      setStorageSaveStatus('saving');
+                      try {
+                        const res = await fetch('/.netlify/functions/update-storage-config', {
+                          method: 'POST',
+                          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ mode: storageSettings.mode, localMac: storageSettings.localMac }),
+                        });
+                        const json = await res.json();
+                        if (!res.ok || !json.success) throw new Error(json.error || 'Save failed');
+                        FileService.invalidateStorageConfigCache();
+                        setStorageSaveStatus('ok');
+                        showSuccessToast('Storage setting saved');
+                        setTimeout(() => setStorageSaveStatus('idle'), 3000);
+                      } catch (err: any) {
+                        setStorageSaveStatus('error');
+                        showErrorToast(err.message || 'Failed to save');
+                      }
+                    }}
+                    disabled={storageSaveStatus === 'saving'}
+                    style={{ padding: '8px 20px', background: '#0369a1', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}
+                  >
+                    {storageSaveStatus === 'saving' ? 'Saving…' : 'Save Setting'}
+                  </button>
+                  {storageSaveStatus === 'ok' && <span style={{ color: '#10b981', fontSize: '13px' }}>✅ Saved</span>}
+                  {storageSaveStatus === 'error' && <span style={{ color: '#ef4444', fontSize: '13px' }}>❌ Error — try again</span>}
+                </div>
+              </div>
+
+              {/* ── Local Mac Connection Config (only when local-mac selected) ── */}
+              {storageSettings.mode === 'local-mac' && (
+                <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Mac Server Connection</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>IP Address</label>
+                      <input
+                        type="text"
+                        placeholder="192.168.1.x"
+                        value={storageSettings.localMac.ip}
+                        onChange={e => setStorageSettings(s => ({ ...s, localMac: { ...s.localMac, ip: e.target.value } }))}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Port</label>
+                      <input
+                        type="number"
+                        value={storageSettings.localMac.port}
+                        onChange={e => setStorageSettings(s => ({ ...s, localMac: { ...s.localMac, port: parseInt(e.target.value) || 4040 } }))}
+                        style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Auth Token</label>
+                    <input
+                      type="password"
+                      placeholder="Minimum 8 characters"
+                      value={storageSettings.localMac.token}
+                      onChange={e => setStorageSettings(s => ({ ...s, localMac: { ...s.localMac, token: e.target.value } }))}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <button
+                      onClick={async () => {
+                        setMacConnectionStatus('testing');
+                        const ok = await checkLocalMacConnection(storageSettings.localMac);
+                        setMacConnectionStatus(ok ? 'ok' : 'fail');
+                      }}
+                      disabled={macConnectionStatus === 'testing' || !storageSettings.localMac.ip}
+                      style={{ padding: '8px 20px', background: '#0369a1', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      {macConnectionStatus === 'testing' ? 'Testing…' : '🔌 Test Connection'}
+                    </button>
+                    {macConnectionStatus === 'ok' && <span style={{ color: '#10b981', fontSize: '13px', fontWeight: '600' }}>✅ Connected</span>}
+                    {macConnectionStatus === 'fail' && <span style={{ color: '#ef4444', fontSize: '13px', fontWeight: '600' }}>❌ Unreachable — check IP, port, and that the server is running</span>}
+                  </div>
+                  <p style={{ marginTop: '12px', fontSize: '12px', color: '#94a3b8' }}>
+                    Start the server on your Mac: <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>cd local-device-server &amp;&amp; npm run dev</code>
+                  </p>
+                </div>
+              )}
+
+              {/* ── Backup / Restore (only when local-mac selected) ── */}
+              {storageSettings.mode === 'local-mac' && (
+                <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                  <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Backup &amp; Restore Files</h3>
+
+                  {/* Backup R2 → Mac */}
+                  <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>📦 Backup R2 → Mac</h4>
+                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px' }}>Downloads all R2 files to your Mac server. Your browser relays each file.</p>
+                    <button
+                      onClick={async () => {
+                        if (!storageSettings.localMac.ip || !storageSettings.localMac.token) { showErrorToast('Save Mac connection settings first'); return; }
+                        setMacBackupStatus('running');
+                        setMacBackupMessage('');
+                        try {
+                          const r2Files = FileService.getAllFileAttachments().filter(a => a.file.isR2 && a.file.r2Path);
+                          setMacBackupProgress({ current: 0, total: r2Files.length });
+                          let done = 0;
+                          let failed = 0;
+                          for (const att of r2Files) {
+                            try {
+                              // Download from R2 via signed URL
+                              const dlRes = await fetch('/.netlify/functions/download-file?' + new URLSearchParams({ path: att.file.r2Path! }), { headers: authHeaders() });
+                              if (!dlRes.ok) { failed++; continue; }
+                              const { url: signedUrl } = await dlRes.json();
+                              const fileRes = await fetch(signedUrl);
+                              if (!fileRes.ok) { failed++; continue; }
+                              const blob = await fileRes.blob();
+                              const fileObj = new File([blob], att.file.name, { type: att.file.type });
+                              // Re-upload to Mac
+                              const folder = att.file.r2Path!.split('/')[0];
+                              await uploadFileToLocalMac(fileObj, folder, storageSettings.localMac);
+                            } catch { failed++; }
+                            done++;
+                            setMacBackupProgress({ current: done, total: r2Files.length });
+                          }
+                          setMacBackupStatus('done');
+                          setMacBackupMessage(`Completed: ${done - failed} copied, ${failed} failed.`);
+                        } catch (err: any) {
+                          setMacBackupStatus('error');
+                          setMacBackupMessage(err.message || 'Backup failed');
+                        }
+                      }}
+                      disabled={macBackupStatus === 'running'}
+                      style={{ padding: '8px 20px', background: '#0369a1', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      {macBackupStatus === 'running' ? 'Backing up…' : '📦 Start Backup'}
+                    </button>
+                    {macBackupProgress && macBackupStatus === 'running' && (
+                      <div style={{ marginTop: '12px' }}>
+                        <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                          <div style={{ background: '#0369a1', height: '100%', width: `${(macBackupProgress.current / macBackupProgress.total) * 100}%`, transition: 'width 0.3s' }} />
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>{macBackupProgress.current} / {macBackupProgress.total} files</p>
+                      </div>
+                    )}
+                    {macBackupMessage && (
+                      <p style={{ marginTop: '10px', fontSize: '13px', color: macBackupStatus === 'error' ? '#ef4444' : '#10b981' }}>{macBackupMessage}</p>
+                    )}
+                  </div>
+
+                  {/* Restore Mac → R2 */}
+                  <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>⬆️ Restore Mac → R2</h4>
+                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px' }}>Lists JSON backup files saved on your Mac. Select one to push its file records to R2.</p>
+                    <button
+                      onClick={async () => {
+                        if (!storageSettings.localMac.ip || !storageSettings.localMac.token) { showErrorToast('Save Mac connection settings first'); return; }
+                        const files = await listMacBackups(storageSettings.localMac);
+                        if (files.length === 0) {
+                          showErrorToast('No backup files found on Mac server');
+                        } else {
+                          showSuccessToast(`Found ${files.length} backup file(s) on Mac server. Use the Backup & Restore tab to restore data.`);
+                        }
+                      }}
+                      style={{ padding: '8px 20px', background: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      ⬆️ List Mac Backups
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Backup & Restore Tab */}
       {activeTab === 'backup-restore' && (() => {
