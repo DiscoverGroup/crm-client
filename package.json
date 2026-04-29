@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "mac-server": "node_modules/.bin/tsx local-device-server/index.ts",
     "dev": "vite",
     "dev:local": "concurrently --names \"vite,fns,tunnel\" --prefix-colors \"cyan,yellow,magenta\" \"vite\" \"tsx scripts/local-functions-server.ts\" \"tsx scripts/start-tunnel.ts\"",
     "netlify": "netlify dev",
