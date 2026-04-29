@@ -16,11 +16,10 @@ async function getMongoClient(): Promise<MongoClient> {
     return cachedClient;
   }
   const client = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 7000,
-    connectTimeoutMS: 7000,
-    socketTimeoutMS: 9000,
+    serverSelectionTimeoutMS: 15000, // Increased: Netlify US-East → Atlas Hong Kong (ap-east-1) needs more time
+    connectTimeoutMS: 15000,
+    socketTimeoutMS: 20000,
     tls: true,
-    tlsAllowInvalidCertificates: false,
     tlsAllowInvalidCertificates: false,
     retryWrites: false,
     retryReads: false,

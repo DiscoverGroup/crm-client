@@ -81,9 +81,9 @@ async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: n
   });
 
   const mongo = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 7000,
-    connectTimeoutMS:         7000,
-    socketTimeoutMS:          9000,
+    serverSelectionTimeoutMS: 15000, // Netlify US-East → Atlas Hong Kong needs more time
+    connectTimeoutMS:         15000,
+    socketTimeoutMS:          20000,
     tls: true,
     tlsAllowInvalidCertificates: false,
     retryWrites: false,
