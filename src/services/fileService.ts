@@ -3,6 +3,9 @@ import { ActivityLogService } from './activityLogService';
 import { ClientService } from './clientService';
 import { authHeaders } from '../utils/authToken';
 import { realtimeSync } from './realtimeSyncService';
+import { uploadFileToLocalMac, deleteFileFromLocalMac } from './localMacService';
+import type { StorageSettings } from '../types/storage';
+import { DEFAULT_STORAGE_SETTINGS } from '../types/storage';
 
 const DB_API = '/.netlify/functions/database';
 
@@ -10,11 +13,12 @@ export interface StoredFile {
   name: string;
   type: string;
   size: number;
-  data: string; // R2 URL or Base64 for backward compatibility
+  data: string; // R2 URL, Mac HTTP URL, or Base64 for backward compatibility
   uploadDate: string;
   id: string;
   r2Path?: string; // R2 file path for deletion
   isR2?: boolean; // Flag to identify R2 files
+  storagePlatform?: 'r2' | 'local-mac'; // Which backend stored this file (undefined = r2 for legacy files)
 }
 
 export interface FileAttachment {
@@ -33,35 +37,89 @@ export class FileService {
   private static R2_BUCKET = import.meta.env.VITE_R2_BUCKET_NAME || 'crm-uploads';
   private static syncInProgress = false;
 
-  // Convert File to StoredFile with R2 upload
-  static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
+  // ── Storage config cache ─────────────────────────────────────────────────
+  private static _configCache: StorageSettings | null = null;
+  private static _configCacheExpiry = 0;
+  private static readonly CONFIG_TTL_MS = 60_000; // 60-second cache
+  private static readonly CONFIG_CACHE_KEY = 'crm_storage_config_cache';
+
+  static async getStorageConfig(): Promise<StorageSettings> {
+    // Return cached value if still fresh
+    if (this._configCache && Date.now() < this._configCacheExpiry) {
+      return this._configCache;
+    }
     try {
-      // Upload to R2
-      // console.log('🔄 Attempting R2 upload for:', file.name);
+      const res = await fetch('/.netlify/functions/get-storage-config', {
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          this._configCache = json.data as StorageSettings;
+          this._configCacheExpiry = Date.now() + this.CONFIG_TTL_MS;
+          localStorage.setItem(this.CONFIG_CACHE_KEY, JSON.stringify(json.data));
+          return this._configCache;
+        }
+      }
+    } catch {
+      // Network failure — fall through to local cache
+    }
+    // Fallback: try localStorage cache
+    try {
+      const raw = localStorage.getItem(this.CONFIG_CACHE_KEY);
+      if (raw) return JSON.parse(raw) as StorageSettings;
+    } catch {}
+    return DEFAULT_STORAGE_SETTINGS;
+  }
+
+  /** Invalidate the in-memory config cache (call after admin saves new config). */
+  static invalidateStorageConfigCache(): void {
+    this._configCache = null;
+    this._configCacheExpiry = 0;
+  }
+
+  // Convert File to StoredFile — routes to R2 or Mac server based on admin config
+  static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
+    const config = await this.getStorageConfig();
+
+    if (config.mode === 'local-mac' && config.localMac?.ip) {
+      try {
+        const result = await uploadFileToLocalMac(file, folder, config.localMac);
+        if (!result.success) throw new Error(result.error || 'Mac upload failed');
+        return {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          data: result.url,
+          uploadDate: new Date().toISOString(),
+          id: this.generateFileId(),
+          r2Path: result.path, // reuse field to store mac path
+          isR2: false,
+          storagePlatform: 'local-mac',
+        };
+      } catch {
+        // Fall through to R2 if Mac server unreachable
+      }
+    }
+
+    // ── Cloudflare R2 (default) ───────────────────────────────────────────────
+    try {
       const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
-      
       if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
-        // console.error('❌ R2 Upload Failed:', uploadResult.error || 'Unknown error');
         throw new Error(uploadResult.error || 'Failed to upload to R2');
       }
-
-      // console.log('✅ R2 Upload Success:', uploadResult.url);
-      const storedFile: StoredFile = {
+      return {
         name: file.name,
         type: file.type,
         size: file.size,
-        data: uploadResult.url, // Store R2 URL instead of base64
+        data: uploadResult.url,
         uploadDate: new Date().toISOString(),
         id: this.generateFileId(),
         r2Path: uploadResult.path,
-        isR2: true
+        isR2: true,
+        storagePlatform: 'r2',
       };
-      
-      return storedFile;
-    } catch (error) {
-      // console.error('❌ R2 Upload Error - Falling back to base64:', error);
-      // console.warn('⚠️ File will be stored as base64 (not recommended for large files)');
-      // Fallback to base64 if R2 fails
+    } catch {
       return this.fileToBase64StoredFile(file);
     }
   }
@@ -243,16 +301,20 @@ export class FileService {
         this.deleteAttachmentFromMongoDB(attachment.file.id).catch(() => {});
       }
       
-      // Delete from R2 in the background (non-blocking)
-      if (attachment && attachment.file.isR2 && attachment.file.r2Path) {
-        // console.log('☁️ Attempting R2 deletion in background:', attachment.file.r2Path);
-        deleteFileFromR2(this.R2_BUCKET, attachment.file.r2Path)
-          .then(() => {
-            // console.log('✅ R2 deletion successful')
-          })
-          .catch(() => {
-            // console.error('❌ R2 deletion failed (file already removed from UI):', error)
+      // Delete from storage backend in the background (non-blocking)
+      if (attachment?.file.r2Path) {
+        if (attachment.file.storagePlatform === 'local-mac') {
+          // Mac path is stored as "folder/filename"
+          const [macFolder, ...rest] = attachment.file.r2Path.split('/');
+          const macFilename = rest.join('/');
+          this.getStorageConfig().then(cfg => {
+            if (cfg.localMac?.ip) {
+              deleteFileFromLocalMac(macFolder, macFilename, cfg.localMac).catch(() => {});
+            }
           });
+        } else if (attachment.file.isR2) {
+          deleteFileFromR2(this.R2_BUCKET, attachment.file.r2Path).catch(() => {});
+        }
       }
       
       // Log file deletion activity if clientId exists
