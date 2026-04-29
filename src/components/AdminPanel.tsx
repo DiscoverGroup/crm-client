@@ -13,8 +13,7 @@ import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
 import StressTest from './StressTest';
 import { checkLocalMacConnection, listMacBackups, uploadFileToLocalMac } from '../services/localMacService';
-import { uploadFileToR2 } from '../services/r2UploadService';
-import type { StorageSettings, StorageMode, LocalMacConfig } from '../types/storage';
+import type { StorageSettings, StorageMode } from '../types/storage';
 
 interface User {
   fullName: string;
