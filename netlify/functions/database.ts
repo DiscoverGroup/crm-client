@@ -21,10 +21,11 @@ async function getMongoClient(): Promise<MongoClient> {
     socketTimeoutMS: 9000,
     tls: true,
     tlsAllowInvalidCertificates: false,
-    retryWrites: false,  // Disable to prevent double-timeout (7s → 14-18s) on cold starts
+    tlsAllowInvalidCertificates: false,
+    retryWrites: false,
     retryReads: false,
     w: 'majority',
-    maxPoolSize: 3,
+    maxPoolSize: 1,
     minPoolSize: 0,
   });
   await client.connect();
@@ -37,6 +38,8 @@ export const handler: Handler = async (event) => {
     ...getCORSHeaders(process.env.ALLOWED_ORIGIN),
     ...getSecurityHeaders(),
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    'Surrogate-Control': 'no-store',
   };
 
   if (event.httpMethod === 'OPTIONS') {
