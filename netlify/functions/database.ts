@@ -22,7 +22,8 @@ async function getMongoClient(): Promise<MongoClient> {
     tlsAllowInvalidCertificates: false,
     retryWrites: true,
     w: 'majority',
-    maxPoolSize: 10,
+    maxPoolSize: 3,  // Reduced: two Netlify sites share the same M0 free-tier connection limit
+    minPoolSize: 0,
   });
   // Only assign to cachedClient AFTER a successful connect.
   // If connect() throws, cachedClient stays null so the next request retries fresh.
