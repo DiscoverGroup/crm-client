@@ -6,15 +6,17 @@ import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
+let cachedClient: MongoClient | null = null;
+
 async function getMongoClient(): Promise<MongoClient> {
-  // No caching — always create a fresh connection per invocation.
-  // Cached clients in serverless get stale TCP sockets dropped by AWS NAT
-  // after ~4 minutes of idle, causing "connection timed out" on reuse.
-  // Connections are at ~111/500 so fresh-per-request is safe.
+  if (cachedClient) {
+    return cachedClient;
+  }
   const client = new MongoClient(MONGODB_URI, {
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
     socketTimeoutMS: 20000,
+    maxIdleTimeMS: 120000, // Close idle connections after 2min — before AWS NAT drops them at ~4min
     tls: true,
     tlsAllowInvalidCertificates: false,
     retryWrites: false,
@@ -24,7 +26,8 @@ async function getMongoClient(): Promise<MongoClient> {
     minPoolSize: 0,
   });
   await client.connect();
-  return client;
+  cachedClient = client;
+  return cachedClient;
 }
 
 export const handler: Handler = async (event) => {
@@ -116,7 +119,6 @@ export const handler: Handler = async (event) => {
         result = await col.deleteMany(filter);
         break;
       default:
-        await mongoClient.close();
         return {
           statusCode: 400,
           headers,
@@ -124,14 +126,17 @@ export const handler: Handler = async (event) => {
         };
     }
 
-    await mongoClient.close();
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
+    // Clear cached client on connection errors so next request gets a fresh one
     const msg = error?.message || '';
+    if (msg.includes('timed out') || msg.includes('topology') || msg.includes('connection') || msg.includes('ECONNREFUSED')) {
+      cachedClient = null;
+    }
     return {
       statusCode: 500,
       headers,
