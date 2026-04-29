@@ -8,26 +8,52 @@ const DB_NAME = 'dg_crm';
 
 let cachedClient: MongoClient | null = null;
 
-async function getMongoClient(): Promise<MongoClient> {
-  if (cachedClient) {
-    return cachedClient;
-  }
-  const client = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 10000, // Must leave room for query + response within Netlify's 30s limit
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 15000,
-    maxIdleTimeMS: 120000, // Close idle connections after 2min — before AWS NAT drops them at ~4min
-    tls: true,
-    tlsAllowInvalidCertificates: false,
-    retryWrites: false,
-    retryReads: false,
-    w: 'majority',
-    maxPoolSize: 1,
-    minPoolSize: 0,
-  });
+const MONGO_OPTIONS = {
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 15000,
+  maxIdleTimeMS: 120000, // Close idle connections after 2min — before AWS NAT drops them at ~4min
+  tls: true,
+  tlsAllowInvalidCertificates: false,
+  retryWrites: false,
+  retryReads: false,
+  w: 'majority' as const,
+  maxPoolSize: 1,
+  minPoolSize: 0,
+};
+
+function isConnectionError(err: any): boolean {
+  const msg: string = err?.message || '';
+  return (
+    msg.includes('timed out') ||
+    msg.includes('topology') ||
+    msg.includes('connection') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('ENOTFOUND') ||
+    msg.includes('ETIMEDOUT')
+  );
+}
+
+async function createFreshClient(): Promise<MongoClient> {
+  const client = new MongoClient(MONGODB_URI, MONGO_OPTIONS);
   await client.connect();
   cachedClient = client;
-  return cachedClient;
+  return client;
+}
+
+async function getMongoClient(): Promise<MongoClient> {
+  if (cachedClient) {
+    // Quick ping to verify the cached connection is still alive
+    try {
+      await cachedClient.db('admin').command({ ping: 1 });
+      return cachedClient;
+    } catch {
+      // Stale connection — discard and reconnect
+      try { await cachedClient.close(); } catch {}
+      cachedClient = null;
+    }
+  }
+  return createFreshClient();
 }
 
 export const handler: Handler = async (event) => {
@@ -87,43 +113,62 @@ export const handler: Handler = async (event) => {
   }
 
   try {
-    const mongoClient = await getMongoClient();
-    const db = mongoClient.db(DB_NAME);
-    const col = db.collection(collection);
+    let mongoClient = await getMongoClient();
+    let db = mongoClient.db(DB_NAME);
+    let col = db.collection(collection);
 
     let result;
+    let lastError: any;
 
-    switch (operation) {
-      case 'find':
-        result = await col.find(filter || {}).toArray();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        switch (operation) {
+          case 'find':
+            result = await col.find(filter || {}).toArray();
+            break;
+          case 'findOne':
+            result = await col.findOne(filter);
+            break;
+          case 'insertOne':
+            result = await col.insertOne(data);
+            break;
+          case 'insertMany':
+            result = await col.insertMany(data);
+            break;
+          case 'updateOne':
+            result = await col.updateOne(filter, { $set: update }, { upsert: upsert || false });
+            break;
+          case 'updateMany':
+            result = await col.updateMany(filter, { $set: update }, { upsert: upsert || false });
+            break;
+          case 'deleteOne':
+            result = await col.deleteOne(filter);
+            break;
+          case 'deleteMany':
+            result = await col.deleteMany(filter);
+            break;
+          default:
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({ error: 'Invalid operation' })
+            };
+        }
+        // Success — exit retry loop
         break;
-      case 'findOne':
-        result = await col.findOne(filter);
-        break;
-      case 'insertOne':
-        result = await col.insertOne(data);
-        break;
-      case 'insertMany':
-        result = await col.insertMany(data);
-        break;
-      case 'updateOne':
-        result = await col.updateOne(filter, { $set: update }, { upsert: upsert || false });
-        break;
-      case 'updateMany':
-        result = await col.updateMany(filter, { $set: update }, { upsert: upsert || false });
-        break;
-      case 'deleteOne':
-        result = await col.deleteOne(filter);
-        break;
-      case 'deleteMany':
-        result = await col.deleteMany(filter);
-        break;
-      default:
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: 'Invalid operation' })
-        };
+      } catch (opError: any) {
+        lastError = opError;
+        if (attempt === 0 && isConnectionError(opError)) {
+          // Stale connection slipped through ping check — retry with fresh connection
+          try { await cachedClient?.close(); } catch {}
+          cachedClient = null;
+          mongoClient = await createFreshClient();
+          db = mongoClient.db(DB_NAME);
+          col = db.collection(collection);
+        } else {
+          throw opError;
+        }
+      }
     }
 
     return {
@@ -133,8 +178,8 @@ export const handler: Handler = async (event) => {
     };
   } catch (error: any) {
     // Clear cached client on connection errors so next request gets a fresh one
-    const msg = error?.message || '';
-    if (msg.includes('timed out') || msg.includes('topology') || msg.includes('connection') || msg.includes('ECONNREFUSED')) {
+    if (isConnectionError(error)) {
+      try { await cachedClient?.close(); } catch {}
       cachedClient = null;
     }
     return {
