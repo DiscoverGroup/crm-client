@@ -10,8 +10,20 @@ function macUrl(config: LocalMacConfig, path: string): string {
   return `http://${config.ip}:${config.port}${path}`;
 }
 
+function isTunnelUrl(config: LocalMacConfig): boolean {
+  return config.ip.startsWith('http://') || config.ip.startsWith('https://');
+}
+
+function baseHeaders(config: LocalMacConfig): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (isTunnelUrl(config)) {
+    headers['ngrok-skip-browser-warning'] = 'true';
+  }
+  return headers;
+}
+
 function authHeader(config: LocalMacConfig): Record<string, string> {
-  return { Authorization: `Bearer ${config.token}` };
+  return { ...baseHeaders(config), Authorization: `Bearer ${config.token}` };
 }
 
 async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = API_TIMEOUT_MS): Promise<Response> {
@@ -27,7 +39,7 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = A
 /** Returns true if the Mac server is reachable. */
 export async function checkLocalMacConnection(config: LocalMacConfig): Promise<boolean> {
   try {
-    const res = await fetchWithTimeout(macUrl(config, '/health'), {}, 5000);
+    const res = await fetchWithTimeout(macUrl(config, '/health'), { headers: baseHeaders(config) }, 5000);
     return res.ok;
   } catch {
     return false;
