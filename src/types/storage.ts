@@ -15,7 +15,7 @@ export const DEFAULT_STORAGE_SETTINGS: StorageSettings = {
   mode: 'cloudflare-r2',
   localMac: {
     ip: '',
-    port: 4040,
+    port: 4041,
     token: '',
   },
 };

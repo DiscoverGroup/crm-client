@@ -82,7 +82,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [quotaEditValues, setQuotaEditValues] = useState<Record<string, string>>({});
 
   // ── Storage Settings state ─────────────────────────────────────────────────
-  const [storageSettings, setStorageSettings] = useState<StorageSettings>({ mode: 'cloudflare-r2', localMac: { ip: '', port: 4040, token: '' } });
+  const [storageSettings, setStorageSettings] = useState<StorageSettings>({ mode: 'cloudflare-r2', localMac: { ip: '', port: 4041, token: '' } });
   const [storageSettingsLoading, setStorageSettingsLoading] = useState(false);
   const [storageSaveStatus, setStorageSaveStatus] = useState<'idle' | 'saving' | 'ok' | 'error'>('idle');
   const [macConnectionStatus, setMacConnectionStatus] = useState<'untested' | 'testing' | 'ok' | 'fail'>('untested');
