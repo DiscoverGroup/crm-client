@@ -13,9 +13,9 @@ async function getMongoClient(): Promise<MongoClient> {
     return cachedClient;
   }
   const client = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 15000,
-    connectTimeoutMS: 15000,
-    socketTimeoutMS: 20000,
+    serverSelectionTimeoutMS: 10000, // Must leave room for query + response within Netlify's 30s limit
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 15000,
     maxIdleTimeMS: 120000, // Close idle connections after 2min — before AWS NAT drops them at ~4min
     tls: true,
     tlsAllowInvalidCertificates: false,

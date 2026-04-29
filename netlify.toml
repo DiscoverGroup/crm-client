@@ -14,7 +14,7 @@
   timeout = 26
 
 [functions."database"]
-  timeout = 26
+  timeout = 30
 
 [functions."get-users"]
   timeout = 26
