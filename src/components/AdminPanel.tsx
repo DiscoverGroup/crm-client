@@ -2647,13 +2647,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                               const fileObj = new File([blob], att.file.name, { type: att.file.type });
                               // Re-upload to Mac
                               const folder = att.file.r2Path!.split('/')[0];
-                              await uploadFileToLocalMac(fileObj, folder, storageSettings.localMac);
+                              const macResult = await uploadFileToLocalMac(fileObj, folder, storageSettings.localMac);
+                              if (!macResult.success) { failed++; }
                             } catch { failed++; }
                             done++;
                             setMacBackupProgress({ current: done, total: r2Files.length });
                           }
                           setMacBackupStatus('done');
-                          setMacBackupMessage(`Completed: ${done - failed} copied, ${failed} failed.`);
+                          const copied = done - failed;
+                          setMacBackupMessage(`Completed: ${copied} copied, ${failed} failed.${failed > 0 ? ' Check that Mac server is reachable and storage mode is saved.' : ''}`);
                         } catch (err: any) {
                           setMacBackupStatus('error');
                           setMacBackupMessage(err.message || 'Backup failed');
