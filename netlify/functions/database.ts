@@ -143,7 +143,8 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({
         success: false,
-        error: 'Database operation failed'
+        error: 'Database operation failed',
+        detail: msg  // temporary — for diagnosing connection failures
       })
     };
   }
