@@ -1,7 +1,11 @@
 import dotenv from 'dotenv';
 import path from 'path';
-// Load .env relative to this file's directory (works regardless of cwd)
-dotenv.config({ path: path.join(__dirname ?? new URL('.', import.meta.url).pathname, '.env') });
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 import express from 'express';
 import cors from 'cors';
 
