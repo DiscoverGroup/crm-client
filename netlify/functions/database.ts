@@ -6,17 +6,13 @@ import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
-// Module-level cached client — reused across warm Netlify function invocations
-// to avoid opening a new connection on every request (connection pool exhaustion fix).
-let cachedClient: MongoClient | null = null;
-let lastClearTime = 0; // Prevent rapid cache-clearing feedback loops
-
 async function getMongoClient(): Promise<MongoClient> {
-  if (cachedClient) {
-    return cachedClient;
-  }
+  // No caching — always create a fresh connection per invocation.
+  // Cached clients in serverless get stale TCP sockets dropped by AWS NAT
+  // after ~4 minutes of idle, causing "connection timed out" on reuse.
+  // Connections are at ~111/500 so fresh-per-request is safe.
   const client = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 15000, // Increased: Netlify US-East → Atlas Hong Kong (ap-east-1) needs more time
+    serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
     socketTimeoutMS: 20000,
     tls: true,
@@ -28,8 +24,7 @@ async function getMongoClient(): Promise<MongoClient> {
     minPoolSize: 0,
   });
   await client.connect();
-  cachedClient = client;
-  return cachedClient;
+  return client;
 }
 
 export const handler: Handler = async (event) => {
@@ -121,6 +116,7 @@ export const handler: Handler = async (event) => {
         result = await col.deleteMany(filter);
         break;
       default:
+        await mongoClient.close();
         return {
           statusCode: 400,
           headers,
@@ -128,31 +124,22 @@ export const handler: Handler = async (event) => {
         };
     }
 
+    await mongoClient.close();
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
-    // Clear the cached client on connection errors, but with a 10-second cooldown
-    // to prevent a feedback loop where every parallel request clears and re-attempts.
     const msg = error?.message || '';
-    const now = Date.now();
-    const isConnectionError = msg.includes('topology') || msg.includes('connection') ||
-      msg.includes('ECONNREFUSED') || msg.includes('timed out') || msg.includes('connect');
-    if (isConnectionError && (now - lastClearTime) > 10000) {
-      cachedClient = null;
-      lastClearTime = now;
-    }
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
         error: 'Database operation failed',
-        detail: msg  // temporary — for diagnosing connection failures
+        detail: msg
       })
     };
   }
-  // Note: do NOT close the cached client here — it is reused across warm invocations
 };
