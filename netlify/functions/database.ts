@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { logInfo, logWarn, logError, startTimer } from './utils/logger';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -77,9 +79,13 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  const ip = getClientIP(event.headers as Record<string, string>);
+  const elapsed = startTimer();
+
   // ── JWT Authentication ─────────────────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) {
+    logWarn({ fn: 'database', msg: 'Unauthorized request', ip });
     return unauthorizedResponse(headers, auth.error);
   }
 
@@ -97,12 +103,16 @@ export const handler: Handler = async (event) => {
 
   const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
 
+  // ── Rate limiting: 300 requests per IP per minute ─────────────────────────
+  // Prevents runaway clients or compromised tokens from hammering Atlas.
+  // Runs inside the try-block below to reuse the same connection.
+
   // ── Collection allowlist — prevent access to sensitive internal collections ──
   const ALLOWED_COLLECTIONS = [
     'clients', 'messages', 'groups', 'conversation_meta',
     'log_notes', 'activity_logs', 'notifications', 'calendar_events',
     'file_attachments', 'file_recovery_requests', 'client_recovery_requests',
-    'users'
+    'users', 'settings'
   ];
   if (!collection || !ALLOWED_COLLECTIONS.includes(collection)) {
     return {
@@ -115,6 +125,14 @@ export const handler: Handler = async (event) => {
   try {
     let mongoClient = await getMongoClient();
     let db = mongoClient.db(DB_NAME);
+
+    // ── Rate limit (300 req / IP / 60 s) ──────────────────────────────────────
+    const rateLimit = await checkRateLimit(db, ip, 'database', 300, 60);
+    if (rateLimit.limited) {
+      logWarn({ fn: 'database', msg: 'Rate limit exceeded', ip, userId: auth.user?.userId });
+      return tooManyRequestsResponse(headers, 60);
+    }
+
     let col = db.collection(collection);
 
     let result;
@@ -160,6 +178,7 @@ export const handler: Handler = async (event) => {
         lastError = opError;
         if (attempt === 0 && isConnectionError(opError)) {
           // Stale connection slipped through ping check — retry with fresh connection
+          logWarn({ fn: 'database', msg: 'Stale connection — retrying', op: `${operation}:${collection}`, userId: auth.user?.userId, ip });
           try { await cachedClient?.close(); } catch {}
           cachedClient = null;
           mongoClient = await createFreshClient();
@@ -171,17 +190,21 @@ export const handler: Handler = async (event) => {
       }
     }
 
+    const durationMs = elapsed();
+    logInfo({ fn: 'database', msg: 'OK', op: `${operation}:${collection}`, userId: auth.user?.userId, ip, durationMs, statusCode: 200 });
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
+    const durationMs = elapsed();
     // Clear cached client on connection errors so next request gets a fresh one
     if (isConnectionError(error)) {
       try { await cachedClient?.close(); } catch {}
       cachedClient = null;
     }
+    logError({ fn: 'database', msg: error?.message || 'Unknown error', op: `${operation}:${collection}`, userId: auth.user?.userId, ip, durationMs, statusCode: 500 });
     return {
       statusCode: 500,
       headers,

@@ -114,6 +114,11 @@ export const handler: Handler = async (event) => {
     await logNotesCol.createIndex({ userId: 1, timestamp: -1 });
     results.push('Log notes indexes created');
 
+    // ── Settings collection ───────────────────────────────────────────────────
+    const settingsCol = db.collection('settings');
+    await settingsCol.createIndex({ key: 1 }, { unique: true });
+    results.push('Settings indexes created');
+
     await client.close();
 
     return {
