@@ -3,6 +3,10 @@ import type { LocalMacConfig } from '../types/storage';
 const API_TIMEOUT_MS = 10000;
 
 function macUrl(config: LocalMacConfig, path: string): string {
+  // If ip looks like a full URL (e.g. https://abc.loca.lt), use it directly
+  if (config.ip.startsWith('http://') || config.ip.startsWith('https://')) {
+    return `${config.ip.replace(/\/$/, '')}${path}`;
+  }
   return `http://${config.ip}:${config.port}${path}`;
 }
 

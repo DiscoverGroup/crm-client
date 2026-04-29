@@ -2566,10 +2566,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Mac Server Connection</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>IP Address</label>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>IP Address or Tunnel URL</label>
                       <input
                         type="text"
-                        placeholder="192.168.1.x"
+                        placeholder="192.168.1.x or https://xxx.loca.lt"
                         value={storageSettings.localMac.ip}
                         onChange={e => setStorageSettings(s => ({ ...s, localMac: { ...s.localMac, ip: e.target.value } }))}
                         style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
