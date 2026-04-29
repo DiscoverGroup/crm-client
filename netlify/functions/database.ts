@@ -9,24 +9,24 @@ const DB_NAME = 'dg_crm';
 // Module-level cached client — reused across warm Netlify function invocations
 // to avoid opening a new connection on every request (connection pool exhaustion fix).
 let cachedClient: MongoClient | null = null;
+let lastClearTime = 0; // Prevent rapid cache-clearing feedback loops
 
 async function getMongoClient(): Promise<MongoClient> {
   if (cachedClient) {
     return cachedClient;
   }
   const client = new MongoClient(MONGODB_URI, {
-    serverSelectionTimeoutMS: 7000,  // Keep well below Netlify's 10s gateway timeout
-    connectTimeoutMS: 7000,          // so the function returns 500 instead of letting Netlify return 504
+    serverSelectionTimeoutMS: 7000,
+    connectTimeoutMS: 7000,
     socketTimeoutMS: 9000,
     tls: true,
     tlsAllowInvalidCertificates: false,
-    retryWrites: true,
+    retryWrites: false,  // Disable to prevent double-timeout (7s → 14-18s) on cold starts
+    retryReads: false,
     w: 'majority',
-    maxPoolSize: 3,  // Reduced: two Netlify sites share the same M0 free-tier connection limit
+    maxPoolSize: 3,
     minPoolSize: 0,
   });
-  // Only assign to cachedClient AFTER a successful connect.
-  // If connect() throws, cachedClient stays null so the next request retries fresh.
   await client.connect();
   cachedClient = client;
   return cachedClient;
@@ -132,11 +132,15 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ success: true, data: result })
     };
   } catch (error: any) {
-    // Clear the cached client on any connection-related error so the next
-    // request gets a fresh connection attempt instead of reusing a broken socket.
+    // Clear the cached client on connection errors, but with a 10-second cooldown
+    // to prevent a feedback loop where every parallel request clears and re-attempts.
     const msg = error?.message || '';
-    if (msg.includes('topology') || msg.includes('connection') || msg.includes('ECONNREFUSED') || msg.includes('timed out') || msg.includes('connect')) {
+    const now = Date.now();
+    const isConnectionError = msg.includes('topology') || msg.includes('connection') ||
+      msg.includes('ECONNREFUSED') || msg.includes('timed out') || msg.includes('connect');
+    if (isConnectionError && (now - lastClearTime) > 10000) {
       cachedClient = null;
+      lastClearTime = now;
     }
     return {
       statusCode: 500,
