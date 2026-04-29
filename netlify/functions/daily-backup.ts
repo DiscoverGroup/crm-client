@@ -20,6 +20,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuthToken } from './middleware/authMiddleware';
+import { logInfo, logError, startTimer } from './utils/logger';
 
 const MONGODB_URI   = process.env.MONGODB_URI   || '';
 const DB_NAME       = 'dg_crm';
@@ -94,6 +95,9 @@ async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: n
 
   const results: Record<string, { count: number; path: string } | { error: string }> = {};
 
+  const elapsed = startTimer();
+  logInfo({ fn: 'daily-backup', msg: 'Backup started', isScheduled });
+
   try {
     await mongo.connect();
     const db = mongo.db(DB_NAME);
@@ -133,12 +137,14 @@ async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: n
       ContentType: 'application/json',
     }));
 
+    logInfo({ fn: 'daily-backup', msg: 'Backup complete', durationMs: elapsed() });
     return {
       statusCode: 200,
       headers: jsonHeaders,
       body: JSON.stringify({ success: true, backup: manifest }),
     };
   } catch (err: any) {
+    logError({ fn: 'daily-backup', msg: err.message || 'Backup failed', durationMs: elapsed() });
     return {
       statusCode: 500,
       headers: jsonHeaders,

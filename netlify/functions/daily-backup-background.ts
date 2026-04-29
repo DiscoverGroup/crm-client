@@ -24,6 +24,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuthToken } from './middleware/authMiddleware';
+import { logInfo, logError, startTimer } from './utils/logger';
 
 const MONGODB_URI   = process.env.MONGODB_URI              || '';
 const DB_NAME       = 'dg_crm';
@@ -76,7 +77,9 @@ export const handler: Handler = async (event) => {
 };
 
 async function runBackup(): Promise<void> {
+  const elapsed = startTimer();
   const dateLabel = new Date().toISOString().slice(0, 10);
+  logInfo({ fn: 'daily-backup-background', msg: 'Background backup started', dateLabel });
   const s3 = new S3Client({
     region: 'auto',
     endpoint: R2_ENDPOINT,
@@ -163,7 +166,9 @@ async function runBackup(): Promise<void> {
     }));
 
     await writeStatus({ state: 'complete', done: COLLECTIONS.length, total: COLLECTIONS.length, completedAt: new Date().toISOString(), date: dateLabel });
+    logInfo({ fn: 'daily-backup-background', msg: 'Background backup complete', durationMs: elapsed() });
   } catch (err: any) {
+    logError({ fn: 'daily-backup-background', msg: err.message || 'Unknown error', durationMs: elapsed() });
     await writeStatus({ state: 'error', error: err.message || 'Unknown error', date: dateLabel });
   } finally {
     await mongo.close().catch(() => {});
