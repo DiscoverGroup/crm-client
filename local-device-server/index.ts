@@ -31,7 +31,7 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Authorization', 'Content-Type'],
+  allowedHeaders: ['Authorization', 'Content-Type', 'ngrok-skip-browser-warning'],
 }));
 
 app.use(express.json({ limit: '10mb' }));
