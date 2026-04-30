@@ -1915,6 +1915,7 @@ const ClientRecords: React.FC<{
   }
 
   return (
+    <>
     <div style={{
       flex: 1,
       overflowY: 'auto',
@@ -4631,6 +4632,7 @@ const ClientRecords: React.FC<{
       message={driveBackupMessage}
       onClose={() => { setDriveModalVisible(false); setDriveBackupStatus('idle'); setDriveBackupMessage(''); }}
     />
+    </>
   );
 };
 
@@ -4921,6 +4923,7 @@ const MainPage: React.FC<MainPageProps> = ({
   };
 
   return (
+    <>
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {viewingForm ? (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
@@ -6200,6 +6203,7 @@ const MainPage: React.FC<MainPageProps> = ({
       onClose={() => setDriveRestoreVisible(false)}
       clients={clients}
     />
+    </>
   );
 };
 
