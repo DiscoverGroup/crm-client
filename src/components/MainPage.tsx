@@ -6209,10 +6209,9 @@ const MainPage: React.FC<MainPageProps> = ({
       visible={driveRestoreVisible}
       onClose={() => setDriveRestoreVisible(false)}
       clients={clients}
+      currentUser={currentUser}
       onFilesRestored={() => {
-        // Reload the page so the attachments tab picks up newly restored files.
-        // sessionStorage preserves the current client view so the user lands back on the same form.
-        window.location.reload();
+        // intentionally left empty — reload is triggered by the Done/Restore More buttons in the modal
       }}
     />
     </>

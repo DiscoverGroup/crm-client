@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
 import type { ClientData } from '../services/clientService';
 import type { FileAttachment } from '../services/fileService';
+import { ActivityLogService } from '../services/activityLogService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DriveFolder { id: string; name: string; }
@@ -17,6 +18,7 @@ export interface DriveRestoreModalProps {
   onClose: () => void;
   clients: ClientData[];
   onFilesRestored?: () => void;
+  currentUser?: { fullName: string; username: string; id: string; email: string };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,7 +49,7 @@ function generateId(): string {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
-  visible, onClose, clients, onFilesRestored
+  visible, onClose, clients, onFilesRestored, currentUser
 }) => {
   const [view, setView] = useState<'browse' | 'restoring' | 'done'>('browse');
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
@@ -247,6 +249,20 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
         } catch {}
 
         results.push({ fileName: file.name, status: 'ok' });
+
+        // Activity log
+        try {
+          const resolvedClientId = effectiveClientId || clientContext.id || undefined;
+          const resolvedClientName = clients.find(c => c.id === resolvedClientId)?.contactName || clientContext.name || 'Unknown';
+          ActivityLogService.addLog({
+            clientId: resolvedClientId || 'unknown',
+            clientName: resolvedClientName,
+            action: 'file_recovered',
+            performedBy: currentUser?.fullName || currentUser?.username || 'System',
+            performedByUser: currentUser?.fullName || currentUser?.username || 'System',
+            details: `Restored from Google Drive: ${file.name}`,
+          });
+        } catch {}
       } catch (e: any) {
         results.push({ fileName: file.name, status: 'error', error: e.message });
       }
@@ -663,11 +679,8 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           {view === 'done' && (
             <>
               <button onClick={() => {
-                setView('browse');
-                setBreadcrumb([]);
-                setClientContext({ id: null, name: '' });
-                setSelected(new Set());
-                loadFolder(null);
+                // Reload first so attachments refresh, then the page will restore to the same form via sessionStorage
+                window.location.reload();
               }} style={{
                 padding: '9px 20px', background: '#f1f5f9', border: '1px solid #e2e8f0',
                 borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
@@ -675,7 +688,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
               }}>
                 ← Restore More
               </button>
-              <button onClick={onClose} style={{
+              <button onClick={() => window.location.reload()} style={{
                 padding: '9px 20px', background: '#0A2D74', border: 'none',
                 borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600',
                 color: '#fff', fontFamily: 'inherit',
