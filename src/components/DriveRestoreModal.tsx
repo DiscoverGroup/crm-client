@@ -259,17 +259,17 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           attachmentFileType = cfg.fileType;
           if (cfg.category) attachmentCategory = cfg.category;
         } else if (cfg.kind === 'auto-slot') {
-          // Find used slot numbers for this client+source, then pick the next empty one
-          const existingAll = FileService.getAllFileAttachments();
+          // Find used slot numbers for THIS client+source only (not stale entries from other clients)
+          const clientAttachments = effectiveClientId
+            ? FileService.getFilesByClient(effectiveClientId).filter(a => a.source === restoreSource)
+            : [];
           const usedSlots = new Set(
-            existingAll
-              .filter(a => a.clientId === (effectiveClientId || undefined) && a.source === restoreSource)
-              .map(a => {
-                const m = a.fileType?.match(/(\d+)(?:-attachment)?$/);
-                return m ? parseInt(m[1]) : 0;
-              })
+            clientAttachments.map(a => {
+              const m = a.fileType?.match(/(\d+)(?:-attachment)?$/);
+              return m ? parseInt(m[1]) : 0;
+            })
           );
-          // Also add slots assigned earlier in this batch
+          // Also account for slots assigned earlier in this batch
           const batchCount = slotCounters[restoreSource] ?? 0;
           slotCounters[restoreSource] = batchCount + 1;
           // Find the lowest slot number not already used
