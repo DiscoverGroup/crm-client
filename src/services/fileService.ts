@@ -476,6 +476,19 @@ export class FileService {
 
   // ─── MongoDB Sync Methods ─────────────────────────────────────────────
 
+  /**
+   * Register a fully-constructed attachment (e.g. from Drive restore).
+   * Saves to localStorage immediately and syncs to MongoDB with realtimeSync signalling.
+   */
+  static addRestoredAttachment(attachment: FileAttachment): void {
+    const existing = this.getAllFileAttachments();
+    existing.push(attachment);
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existing));
+    this.saveAttachmentToMongoDB(attachment).then(() => {
+      realtimeSync.signalChange('file_attachments');
+    }).catch(() => {});
+  }
+
   // Sync from MongoDB → localStorage (call on app load)
   static async syncFromMongoDB(): Promise<void> {
     if (this.syncInProgress) return;

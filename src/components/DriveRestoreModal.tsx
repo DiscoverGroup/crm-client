@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
 import type { ClientData } from '../services/clientService';
+import { FileService } from '../services/fileService';
 import type { FileAttachment } from '../services/fileService';
 import { ActivityLogService } from '../services/activityLogService';
 
@@ -258,16 +259,23 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           attachmentFileType = cfg.fileType;
           if (cfg.category) attachmentCategory = cfg.category;
         } else if (cfg.kind === 'auto-slot') {
-          // Count existing attachments for this source+client, plus any already added in this batch
-          const existingRaw = localStorage.getItem('crm_file_attachments');
-          const existing: FileAttachment[] = existingRaw ? JSON.parse(existingRaw) : [];
-          const existingCount = existing.filter(
-            a => a.clientId === (effectiveClientId || undefined) && a.source === restoreSource
-          ).length;
+          // Find used slot numbers for this client+source, then pick the next empty one
+          const existingAll = FileService.getAllFileAttachments();
+          const usedSlots = new Set(
+            existingAll
+              .filter(a => a.clientId === (effectiveClientId || undefined) && a.source === restoreSource)
+              .map(a => {
+                const m = a.fileType?.match(/(\d+)(?:-attachment)?$/);
+                return m ? parseInt(m[1]) : 0;
+              })
+          );
+          // Also add slots assigned earlier in this batch
           const batchCount = slotCounters[restoreSource] ?? 0;
           slotCounters[restoreSource] = batchCount + 1;
-          const slotNum = existingCount + batchCount + 1;
-          // passport-info uses "passport-{n}-attachment", booking-confirmation uses prefix + n
+          // Find the lowest slot number not already used
+          let slotNum = 1;
+          while (usedSlots.has(slotNum) || slotNum <= batchCount) slotNum++;
+          // passport-info uses "passport-{n}-attachment", others use prefix + n
           attachmentFileType = restoreSource === 'passport-info'
             ? `passport-${slotNum}-attachment`
             : `${cfg.prefix}${slotNum}`;
@@ -300,26 +308,10 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           paymentIndex: attachmentPaymentIndex,
         };
 
-        // Save to localStorage immediately
+        // Save to localStorage + MongoDB via FileService (ensures proper sync signalling)
         try {
-          const raw = localStorage.getItem('crm_file_attachments');
-          const existingList = raw ? JSON.parse(raw) : [];
-          existingList.push(attachment);
-          localStorage.setItem('crm_file_attachments', JSON.stringify(existingList));
+          FileService.addRestoredAttachment(attachment);
         } catch {}
-
-        // Sync to MongoDB — fire-and-forget so UI doesn't freeze on timeout
-        fetch('/.netlify/functions/database', {
-          method: 'POST',
-          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            collection: 'file_attachments',
-            operation: 'updateOne',
-            filter: { 'file.id': attachment.file.id },
-            update: attachment,
-            upsert: true,
-          }),
-        }).catch(() => {});
 
         results.push({ fileName: file.name, status: 'ok' });
 
