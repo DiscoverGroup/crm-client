@@ -130,8 +130,9 @@ export const handler: Handler = async (event) => {
   try {
     const accessToken = await getServiceAccountToken(keyJson);
 
-    // Ensure root CRM-Backups folder exists
-    const rootFolderId = await ensureFolder('CRM-Backups', null, accessToken);
+    // Use the pre-shared folder ID if provided, otherwise create/find from root
+    const sharedFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const rootFolderId = sharedFolderId || await ensureFolder('CRM-Backups', null, accessToken);
 
     // Ensure per-client subfolder if clientName provided
     let folderId = rootFolderId;
