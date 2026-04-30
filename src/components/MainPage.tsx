@@ -1995,7 +1995,7 @@ const ClientRecords: React.FC<{
                       try {
                         const result = await backupFilesToDrive(r2Files, contactName || clientId, (p) => setDriveProgress(p));
                         setDriveBackupStatus(result.failed === 0 ? 'done' : 'error');
-                        setDriveBackupMessage(`✅ ${result.copied} backed up${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
+                        setDriveBackupMessage(`${result.copied > 0 ? '✅' : '❌'} ${result.copied} backed up${result.failed > 0 ? `, ${result.failed} failed` : ''}${result.errors.length > 0 ? ` — ${result.errors[0]}` : ''}`); 
                       } catch (err: any) {
                         setDriveBackupStatus('error');
                         setDriveBackupMessage(`❌ ${err.message || 'Backup failed'}`);
