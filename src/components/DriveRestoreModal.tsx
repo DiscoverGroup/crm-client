@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
 import type { ClientData } from '../services/clientService';
+import type { FileAttachment } from '../services/fileService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DriveFolder { id: string; name: string; }
@@ -58,7 +59,6 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
 
   // Restore progress
   const [restoreTotal, setRestoreTotal] = useState(0);
-  const [restoreDone, setRestoreDone] = useState(0);
   const [restoreCurrent, setRestoreCurrent] = useState('');
   const [restoreResults, setRestoreResults] = useState<RestoreResult[]>([]);
 
@@ -66,6 +66,23 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
   const [clientContext, setClientContext] = useState<{ id: string | null; name: string }>({ id: null, name: '' });
   // Manual client override when auto-match fails
   const [clientOverride, setClientOverride] = useState<string>('');
+  // Destination field / source selector
+  const [restoreSource, setRestoreSource] = useState<string>('other');
+
+  const SOURCE_OPTIONS: { value: string; label: string }[] = [
+    { value: 'other', label: 'General Attachments' },
+    { value: 'booking-confirmation', label: 'Booking Confirmation' },
+    { value: 'booking-voucher', label: 'Booking Voucher' },
+    { value: 'approval-invoice', label: 'Approval / Invoice' },
+    { value: 'first-payment', label: 'First Payment' },
+    { value: 'other-payment', label: 'Other Payment' },
+    { value: 'visa-service', label: 'Visa Service' },
+    { value: 'insurance-service', label: 'Insurance Service' },
+    { value: 'eta-service', label: 'ETA Service' },
+    { value: 'passport-info', label: 'Passport Info' },
+    { value: 'sc-report', label: 'SC Report' },
+    { value: 'account-relations', label: 'Account Relations' },
+  ];
 
   const currentLevel: 'root' | 'route' | 'client' = breadcrumb.length === 0 ? 'root' : breadcrumb.length === 1 ? 'route' : 'client';
   // The effective clientId to use for restore — manual override takes priority
@@ -101,6 +118,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
       setView('browse');
       setSelected(new Set());
       setRestoreResults([]);
+      setRestoreSource('other');
       loadFolder(null);
     }
   }, [visible, loadFolder]);
@@ -166,7 +184,6 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
 
     setView('restoring');
     setRestoreTotal(filesToRestore.length);
-    setRestoreDone(0);
     setRestoreCurrent('');
     setRestoreResults([]);
 
@@ -203,7 +220,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           },
           category: 'other' as const,
           clientId: effectiveClientId || undefined,
-          source: undefined,
+          source: restoreSource as FileAttachment['source'],
         };
 
         // Save to localStorage
@@ -233,7 +250,6 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
       } catch (e: any) {
         results.push({ fileName: file.name, status: 'error', error: e.message });
       }
-      setRestoreDone(d => d + 1);
       setRestoreResults([...results]);
     }
 
@@ -246,7 +262,8 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
 
   if (!visible) return null;
 
-  const pct = restoreTotal > 0 ? Math.round((restoreDone / restoreTotal) * 100) : 0;
+  // Use restoreResults.length for live pct (restoreDone state update is async)
+  const pct = restoreTotal > 0 ? Math.round((restoreResults.length / restoreTotal) * 100) : 0;
   const successCount = restoreResults.filter(r => r.status === 'ok').length;
   const errorCount = restoreResults.filter(r => r.status === 'error').length;
 
@@ -424,6 +441,32 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
                     </div>
                   )}
 
+                  {/* Destination field selector — shown whenever files are present */}
+                  {files.length > 0 && breadcrumb.length > 0 && (
+                    <div style={{
+                      padding: '10px 14px', background: '#f8fafc',
+                      border: '1px solid #e2e8f0', borderRadius: '10px',
+                      fontSize: '12px', marginBottom: '12px',
+                    }}>
+                      <label style={{ display: 'block', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                        📁 Restore files into:
+                      </label>
+                      <select
+                        value={restoreSource}
+                        onChange={e => setRestoreSource(e.target.value)}
+                        style={{
+                          width: '100%', padding: '7px 10px', borderRadius: '7px',
+                          border: '1px solid #cbd5e1', fontSize: '12px',
+                          fontFamily: 'inherit', background: '#fff', color: '#1e293b',
+                        }}
+                      >
+                        {SOURCE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {/* Files list — shown at any folder depth where files exist */}
                   {files.length > 0 && (
                     <div>
@@ -497,7 +540,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
                   }} />
                 </div>
                 <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#94a3b8' }}>
-                  {restoreDone} / {restoreTotal} files
+                  {restoreResults.length} / {restoreTotal} files
                 </p>
               </div>
 
