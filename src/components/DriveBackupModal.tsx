@@ -16,10 +16,11 @@ interface Props {
   status: 'running' | 'done' | 'error';
   progress: DriveBackupModalProgress | null;
   message: string;
+  errors?: string[];
   onClose: () => void;
 }
 
-const DriveBackupModal: React.FC<Props> = ({ visible, status, progress, message, onClose }) => {
+const DriveBackupModal: React.FC<Props> = ({ visible, status, progress, message, errors, onClose }) => {
   if (!visible) return null;
 
   const filePct = progress && progress.totalFiles > 0
@@ -140,12 +141,34 @@ const DriveBackupModal: React.FC<Props> = ({ visible, status, progress, message,
             border: `1px solid ${status === 'error' ? '#fca5a5' : '#86efac'}`,
             borderRadius: '10px',
             padding: '12px 16px',
-            marginBottom: '20px',
+            marginBottom: errors && errors.length > 0 ? '10px' : '20px',
             fontSize: '13px',
             color: status === 'error' ? '#dc2626' : '#16a34a',
             wordBreak: 'break-word'
           }}>
             {message}
+          </div>
+        )}
+
+        {/* Failed file details */}
+        {isDone && errors && errors.length > 0 && (
+          <div style={{
+            background: '#fef2f2',
+            border: '1px solid #fca5a5',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            marginBottom: '20px',
+            maxHeight: '160px',
+            overflowY: 'auto',
+          }}>
+            <p style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: '700', color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              Failed files
+            </p>
+            {errors.map((e, i) => (
+              <div key={i} style={{ fontSize: '11px', color: '#7f1d1d', padding: '3px 0', borderTop: i > 0 ? '1px solid #fecaca' : 'none', wordBreak: 'break-all' }}>
+                ❌ {e}
+              </div>
+            ))}
           </div>
         )}
 

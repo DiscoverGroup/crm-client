@@ -4660,6 +4660,7 @@ const MainPage: React.FC<MainPageProps> = ({
   const [testClients, setTestClients] = useState<ClientData[]>([]);
   const [batchDriveStatus, setBatchDriveStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [batchDriveMessage, setBatchDriveMessage] = useState('');
+  const [batchDriveErrors, setBatchDriveErrors] = useState<string[]>([]);
   const [batchDriveModalVisible, setBatchDriveModalVisible] = useState(false);
   const [batchDriveProgress, setBatchDriveProgress] = useState<DriveBackupModalProgress | null>(null);
   const [driveRestoreVisible, setDriveRestoreVisible] = useState(false);
@@ -5623,9 +5624,11 @@ const MainPage: React.FC<MainPageProps> = ({
                       if (allClients.length === 0) { setBatchDriveMessage('No clients to back up.'); return; }
                       setBatchDriveStatus('running');
                       setBatchDriveMessage('');
+                      setBatchDriveErrors([]);
                       setBatchDriveModalVisible(true);
                       setBatchDriveProgress(null);
                       let totalCopied = 0, totalFailed = 0;
+                      const allErrors: string[] = [];
                       for (let i = 0; i < allClients.length; i++) {
                         const client = allClients[i];
                         const clientName = client.contactName || client.clientNo || `Client-${i+1}`;
@@ -5641,12 +5644,15 @@ const MainPage: React.FC<MainPageProps> = ({
                           }, routeName);
                           totalCopied += result.copied;
                           totalFailed += result.failed;
-                        } catch {
+                          allErrors.push(...result.errors);
+                        } catch (err: any) {
                           totalFailed += files.length;
+                          allErrors.push(`${clientName}: ${err.message || 'Backup failed'}`);
                         }
                       }
                       setBatchDriveStatus(totalFailed === 0 ? 'done' : 'error');
-                      setBatchDriveMessage(`✅ ${totalCopied} files backed up${totalFailed > 0 ? `, ${totalFailed} failed` : ''}`);
+                      setBatchDriveMessage(`${totalFailed === 0 ? '✅' : '⚠️'} ${totalCopied} files backed up${totalFailed > 0 ? `, ${totalFailed} failed` : ''}`);
+                      setBatchDriveErrors(allErrors);
                       setBatchDriveProgress(null);
                     }}
                     style={{
@@ -6196,7 +6202,8 @@ const MainPage: React.FC<MainPageProps> = ({
       status={batchDriveStatus === 'idle' ? 'running' : batchDriveStatus}
       progress={batchDriveProgress}
       message={batchDriveMessage}
-      onClose={() => { setBatchDriveModalVisible(false); setBatchDriveStatus('idle'); setBatchDriveMessage(''); }}
+      errors={batchDriveErrors}
+      onClose={() => { setBatchDriveModalVisible(false); setBatchDriveStatus('idle'); setBatchDriveMessage(''); setBatchDriveErrors([]); }}
     />
     <DriveRestoreModal
       visible={driveRestoreVisible}
