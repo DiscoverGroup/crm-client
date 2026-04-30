@@ -5593,7 +5593,7 @@ const MainPage: React.FC<MainPageProps> = ({
                         const client = allClients[i];
                         const clientName = client.contactName || client.clientNo || `Client-${i+1}`;
                         setBatchDriveProgress({ current: i + 1, total: allClients.length, clientName });
-                        const files = FileService.getFilesByClient(client.id || client.clientNo).filter(a => a.file.isR2 && a.file.r2Path);
+                        const files = FileService.getFilesByClient(client.id || client.clientNo || '').filter(a => a.file.isR2 && a.file.r2Path);
                         if (files.length === 0) continue;
                         try {
                           const result = await backupFilesToDrive(files, clientName, () => {});
