@@ -23,6 +23,7 @@ import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
 import { useWindowWidth } from '../hooks/useWindowWidth';
+import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
@@ -645,6 +646,9 @@ const ClientRecords: React.FC<{
   const [voucherModalType, setVoucherModalType] = useState<string | null>(null);
   // File attachment state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
+  const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [driveBackupMessage, setDriveBackupMessage] = useState('');
+  const [driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
 
   // PaymentTerm-driven behavior
   const currentOption = paymentOptions.find(opt => opt.value === paymentTerm) ?? paymentOptions[0];
@@ -1976,28 +1980,76 @@ const ClientRecords: React.FC<{
                 </h1>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={onNavigateBack}
-              style={{
-                padding: windowWidth < 640 ? '9px 14px' : '10px 20px',
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.35)',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: windowWidth < 640 ? '12px' : '13px',
-                fontWeight: '600',
-                transition: 'all 0.2s ease',
-                width: windowWidth < 640 ? '100%' : 'auto',
-                whiteSpace: 'nowrap',
-                backdropFilter: 'blur(10px)'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'; }}
-              onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'; }}
-            >
-              ← Back to Dashboard
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: windowWidth < 640 ? 'flex-start' : 'flex-end' }}>
+              {clientId && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  <button
+                    type="button"
+                    disabled={driveBackupStatus === 'running'}
+                    onClick={async () => {
+                      const r2Files = attachments.filter(a => a.file.isR2 && a.file.r2Path);
+                      if (r2Files.length === 0) { setDriveBackupMessage('No R2 files to back up.'); return; }
+                      setDriveBackupStatus('running');
+                      setDriveBackupMessage('');
+                      setDriveProgress(null);
+                      try {
+                        const result = await backupFilesToDrive(r2Files, contactName || clientId, (p) => setDriveProgress(p));
+                        setDriveBackupStatus(result.failed === 0 ? 'done' : 'error');
+                        setDriveBackupMessage(`✅ ${result.copied} backed up${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
+                      } catch (err: any) {
+                        setDriveBackupStatus('error');
+                        setDriveBackupMessage(`❌ ${err.message || 'Backup failed'}`);
+                      } finally {
+                        setDriveProgress(null);
+                      }
+                    }}
+                    style={{
+                      padding: windowWidth < 640 ? '9px 14px' : '10px 18px',
+                      backgroundColor: driveBackupStatus === 'running' ? 'rgba(156,163,175,0.5)' : 'rgba(22,163,74,0.85)',
+                      color: 'white',
+                      border: '1px solid rgba(255,255,255,0.35)',
+                      borderRadius: '8px',
+                      cursor: driveBackupStatus === 'running' ? 'not-allowed' : 'pointer',
+                      fontSize: windowWidth < 640 ? '12px' : '13px',
+                      fontWeight: '600',
+                      whiteSpace: 'nowrap',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    {driveBackupStatus === 'running'
+                      ? `⏳ ${driveProgress ? `${driveProgress.current}/${driveProgress.total}` : 'Backing up…'}`
+                      : '📂 Backup to Drive'}
+                  </button>
+                  {driveBackupMessage && (
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', maxWidth: '180px', textAlign: 'right' }}>
+                      {driveBackupMessage}
+                    </span>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onNavigateBack}
+                style={{
+                  padding: windowWidth < 640 ? '9px 14px' : '10px 20px',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  color: 'white',
+                  border: '1px solid rgba(255,255,255,0.35)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: windowWidth < 640 ? '12px' : '13px',
+                  fontWeight: '600',
+                  transition: 'all 0.2s ease',
+                  width: windowWidth < 640 ? '100%' : 'auto',
+                  whiteSpace: 'nowrap',
+                  backdropFilter: 'blur(10px)'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.25)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)'; }}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
           </div>
           
           {/* Client Info */}
