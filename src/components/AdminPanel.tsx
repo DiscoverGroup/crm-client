@@ -13,6 +13,7 @@ import SystemMonitoring from './SystemMonitoring';
 import TerritoryManager from './TerritoryManager';
 import StressTest from './StressTest';
 import { checkLocalMacConnection, listMacBackups, uploadFileToLocalMac } from '../services/localMacService';
+import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
 import type { StorageSettings, StorageMode } from '../types/storage';
 
 interface User {
@@ -2698,6 +2699,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       ⬆️ List Mac Backups
                     </button>
                   </div>
+
+                  {/* Backup All R2 → Google Drive */}
+                  {(() => {
+                    const [driveStatus, setDriveStatus] = React.useState<'idle'|'running'|'done'|'error'>('idle');
+                    const [driveMsg, setDriveMsg] = React.useState('');
+                    const [driveProgress, setDriveProgress] = React.useState<DriveProgress|null>(null);
+                    return (
+                      <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <h4 style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '700', color: '#374151' }}>📂 Backup All R2 → Google Drive</h4>
+                        <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 12px' }}>Downloads all R2 files and uploads them to Google Drive under <code>CRM-Backups/</code>. Browser relays each file.</p>
+                        <button
+                          disabled={driveStatus === 'running'}
+                          onClick={async () => {
+                            const allR2 = FileService.getAllFileAttachments().filter(a => a.file.isR2 && a.file.r2Path);
+                            if (allR2.length === 0) { showErrorToast('No R2 files found'); return; }
+                            setDriveStatus('running');
+                            setDriveMsg('');
+                            setDriveProgress(null);
+                            try {
+                              const result = await backupFilesToDrive(allR2, 'All-Files', p => setDriveProgress(p));
+                              setDriveStatus(result.failed === 0 ? 'done' : 'error');
+                              setDriveMsg(`Completed: ${result.copied} backed up, ${result.failed} failed.`);
+                            } catch (err: any) {
+                              setDriveStatus('error');
+                              setDriveMsg(err.message || 'Backup failed');
+                            } finally {
+                              setDriveProgress(null);
+                            }
+                          }}
+                          style={{ padding: '8px 20px', background: driveStatus === 'running' ? '#9ca3af' : '#16a34a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: '600', cursor: driveStatus === 'running' ? 'not-allowed' : 'pointer', fontSize: '14px' }}
+                        >
+                          {driveStatus === 'running'
+                            ? `⏳ Backing up… ${driveProgress ? `${driveProgress.current}/${driveProgress.total}` : ''}`
+                            : '📂 Start Drive Backup'}
+                        </button>
+                        {driveProgress && driveStatus === 'running' && (
+                          <div style={{ marginTop: '12px' }}>
+                            <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
+                              <div style={{ background: '#16a34a', height: '100%', width: `${(driveProgress.current / driveProgress.total) * 100}%`, transition: 'width 0.3s' }} />
+                            </div>
+                            <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>{driveProgress.current} / {driveProgress.total} — {driveProgress.currentFile}</p>
+                          </div>
+                        )}
+                        {driveMsg && (
+                          <p style={{ marginTop: '10px', fontSize: '13px', color: driveStatus === 'error' ? '#ef4444' : '#10b981' }}>{driveMsg}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </>

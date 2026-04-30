@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileService, type FileAttachment } from '../services/fileService';
 import FileAttachmentList from './FileAttachmentList';
+import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
 
 interface ClientAttachmentsProps {
   clientId: string;
@@ -12,6 +13,11 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [filteredAttachments, setFilteredAttachments] = useState<FileAttachment[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Google Drive backup state
+  const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [driveBackupMessage, setDriveBackupMessage] = useState('');
+  const [driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,24 +176,75 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
             Client: <strong>{clientName}</strong>
           </p>
         </div>
-        <button
-          onClick={onBack}
-          style={{
-            padding: '12px 24px',
-            backgroundColor: '#3498db',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500',
-            transition: 'background-color 0.3s ease'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2980b9'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3498db'}
-        >
-          ← Back to Records
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Google Drive Backup button */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            <button
+              disabled={driveBackupStatus === 'running'}
+              onClick={async () => {
+                const r2Files = attachments.filter(a => a.file.isR2 && a.file.r2Path);
+                if (r2Files.length === 0) { setDriveBackupMessage('No R2 files to back up.'); return; }
+                setDriveBackupStatus('running');
+                setDriveBackupMessage('');
+                setDriveProgress(null);
+                try {
+                  const result = await backupFilesToDrive(
+                    r2Files,
+                    clientName,
+                    (p) => setDriveProgress(p)
+                  );
+                  setDriveBackupStatus(result.failed === 0 ? 'done' : 'error');
+                  setDriveBackupMessage(`✅ ${result.copied} backed up to Google Drive${result.failed > 0 ? `, ${result.failed} failed` : ''}`);
+                } catch (err: any) {
+                  setDriveBackupStatus('error');
+                  setDriveBackupMessage(`❌ ${err.message || 'Backup failed'}`);
+                } finally {
+                  setDriveProgress(null);
+                }
+              }}
+              style={{
+                padding: '10px 18px',
+                backgroundColor: driveBackupStatus === 'running' ? '#9ca3af' : '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: driveBackupStatus === 'running' ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {driveBackupStatus === 'running'
+                ? `⏳ Backing up… ${driveProgress ? `${driveProgress.current}/${driveProgress.total}` : ''}`
+                : '📂 Backup to Drive'}
+            </button>
+            {driveBackupMessage && (
+              <span style={{ fontSize: '12px', color: driveBackupStatus === 'error' ? '#dc2626' : '#16a34a', maxWidth: '200px', textAlign: 'right' }}>
+                {driveBackupMessage}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onBack}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background-color 0.3s ease'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2980b9'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3498db'}
+          >
+            ← Back to Records
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters Section */}
