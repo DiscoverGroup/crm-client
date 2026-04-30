@@ -76,7 +76,7 @@ interface ServiceAccountKey {
 async function ensureFolder(name: string, parentId: string | null, token: string): Promise<string> {
   const safeParent = parentId ?? 'root';
   const q = `name='${name.replace(/'/g, "\\'")}' and mimeType='application/vnd.google-apps.folder' and '${safeParent}' in parents and trashed=false`;
-  const searchRes = await fetch(`${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name)`, {
+  const searchRes = await fetch(`${DRIVE_API}/files?q=${encodeURIComponent(q)}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -85,7 +85,7 @@ async function ensureFolder(name: string, parentId: string | null, token: string
   if (files && files.length > 0) return files[0].id as string;
 
   // Create it
-  const createRes = await fetch(`${DRIVE_API}/files`, {
+  const createRes = await fetch(`${DRIVE_API}/files?supportsAllDrives=true`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({

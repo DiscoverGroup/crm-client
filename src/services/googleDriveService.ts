@@ -43,7 +43,7 @@ async function uploadToDrive(
   body.set(fileBytes, metaBytes.length + filePartBytes.length);
   body.set(closeBytes, metaBytes.length + filePartBytes.length + fileBytes.length);
 
-  const res = await fetch(`${uploadApi}/files?uploadType=multipart`, {
+  const res = await fetch(`${uploadApi}/files?uploadType=multipart&supportsAllDrives=true`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
