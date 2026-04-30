@@ -4633,6 +4633,9 @@ const MainPage: React.FC<MainPageProps> = ({
 }) => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [testClients, setTestClients] = useState<ClientData[]>([]);
+  const [batchDriveStatus, setBatchDriveStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [batchDriveMessage, setBatchDriveMessage] = useState('');
+  const [batchDriveProgress, setBatchDriveProgress] = useState<{ current: number; total: number; clientName: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -5573,8 +5576,59 @@ const MainPage: React.FC<MainPageProps> = ({
               }}>
                 {clients.length} {clients.length === 1 ? 'client' : 'clients'}
               </span>
-              {/* View toggle */}
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              {/* View toggle + Batch Drive backup */}
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Batch backup to Drive */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                  <button
+                    disabled={batchDriveStatus === 'running'}
+                    onClick={async () => {
+                      const allClients = clients.filter(c => !c.isTestRecord);
+                      if (allClients.length === 0) { setBatchDriveMessage('No clients to back up.'); return; }
+                      setBatchDriveStatus('running');
+                      setBatchDriveMessage('');
+                      setBatchDriveProgress(null);
+                      let totalCopied = 0, totalFailed = 0;
+                      for (let i = 0; i < allClients.length; i++) {
+                        const client = allClients[i];
+                        const clientName = client.contactName || client.clientNo || `Client-${i+1}`;
+                        setBatchDriveProgress({ current: i + 1, total: allClients.length, clientName });
+                        const files = FileService.getFilesByClient(client._id || client.clientNo).filter(a => a.file.isR2 && a.file.r2Path);
+                        if (files.length === 0) continue;
+                        try {
+                          const result = await backupFilesToDrive(files, clientName, () => {});
+                          totalCopied += result.copied;
+                          totalFailed += result.failed;
+                        } catch {
+                          totalFailed += files.length;
+                        }
+                      }
+                      setBatchDriveStatus(totalFailed === 0 ? 'done' : 'error');
+                      setBatchDriveMessage(`✅ ${totalCopied} files backed up${totalFailed > 0 ? `, ${totalFailed} failed` : ''}`);
+                      setBatchDriveProgress(null);
+                    }}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: batchDriveStatus === 'running' ? 'not-allowed' : 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      background: batchDriveStatus === 'running' ? '#9ca3af' : '#16a34a',
+                      color: '#fff',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {batchDriveStatus === 'running'
+                      ? `⏳ ${batchDriveProgress ? `${batchDriveProgress.current}/${batchDriveProgress.total} ${batchDriveProgress.clientName.slice(0, 12)}…` : 'Starting…'}`
+                      : '📂 Backup All → Drive'}
+                  </button>
+                  {batchDriveMessage && (
+                    <span style={{ fontSize: '11px', color: batchDriveStatus === 'error' ? '#dc2626' : '#16a34a', maxWidth: '200px', textAlign: 'right' }}>
+                      {batchDriveMessage}
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={() => setViewMode('table')}
                   title="Table view"
