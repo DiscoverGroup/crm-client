@@ -76,13 +76,14 @@ async function getR2DownloadUrl(r2Path: string): Promise<string> {
 export async function backupFilesToDrive(
   attachments: FileAttachment[],
   clientName: string,
-  onProgress?: (p: DriveProgress) => void
+  onProgress?: (p: DriveProgress) => void,
+  routeName?: string
 ): Promise<DriveBackupResult> {
   // Get Drive token + folder from Netlify function
   const tokenRes = await fetch('/.netlify/functions/get-drive-token', {
     method: 'POST',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ clientName }),
+    body: JSON.stringify({ clientName, routeName }),
   });
 
   if (!tokenRes.ok) {

@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { FileService, type FileAttachment } from '../services/fileService';
 import FileAttachmentList from './FileAttachmentList';
 import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
+import DriveBackupModal, { type DriveBackupModalProgress } from './DriveBackupModal';
 
 interface ClientAttachmentsProps {
   clientId: string;
   clientName: string;
+  packageName?: string;
   onBack: () => void;
 }
 
-const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientName, onBack }) => {
+const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientName, packageName, onBack }) => {
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [filteredAttachments, setFilteredAttachments] = useState<FileAttachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,8 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
   const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [driveBackupMessage, setDriveBackupMessage] = useState('');
   const [driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
+  const [driveModalVisible, setDriveModalVisible] = useState(false);
+  const [driveModalProgress, setDriveModalProgress] = useState<DriveBackupModalProgress | null>(null);
   
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,12 +190,25 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
                 if (r2Files.length === 0) { setDriveBackupMessage('No R2 files to back up.'); return; }
                 setDriveBackupStatus('running');
                 setDriveBackupMessage('');
+                setDriveModalVisible(true);
+                setDriveModalProgress(null);
                 setDriveProgress(null);
                 try {
                   const result = await backupFilesToDrive(
                     r2Files,
                     clientName,
-                    (p) => setDriveProgress(p)
+                    (p) => {
+                      setDriveProgress(p);
+                      setDriveModalProgress({
+                        clientIndex: 0, totalClients: 1,
+                        clientName,
+                        routeName: packageName || 'Unassigned',
+                        fileIndex: p.current,
+                        totalFiles: p.total,
+                        currentFile: p.currentFile
+                      });
+                    },
+                    packageName || undefined
                   );
                   setDriveBackupStatus(result.failed === 0 ? 'done' : 'error');
                   setDriveBackupMessage(`${result.copied > 0 ? '✅' : '❌'} ${result.copied} backed up to Google Drive${result.failed > 0 ? `, ${result.failed} failed` : ''}${result.errors.length > 0 ? ` — ${result.errors[0]}` : ''}`);
@@ -200,6 +217,7 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
                   setDriveBackupMessage(`❌ ${err.message || 'Backup failed'}`);
                 } finally {
                   setDriveProgress(null);
+                  setDriveModalProgress(null);
                 }
               }}
               style={{
@@ -216,16 +234,16 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
                 gap: '6px',
               }}
             >
-              {driveBackupStatus === 'running'
-                ? `⏳ Backing up… ${driveProgress ? `${driveProgress.current}/${driveProgress.total}` : ''}`
-                : '📂 Backup to Drive'}
+              {driveBackupStatus === 'running' ? '⏳ Backing up…' : '📂 Backup to Drive'}
             </button>
-            {driveBackupMessage && (
-              <span style={{ fontSize: '12px', color: driveBackupStatus === 'error' ? '#dc2626' : '#16a34a', maxWidth: '200px', textAlign: 'right' }}>
-                {driveBackupMessage}
-              </span>
-            )}
           </div>
+          <DriveBackupModal
+            visible={driveModalVisible}
+            status={driveBackupStatus === 'idle' ? 'running' : driveBackupStatus}
+            progress={driveModalProgress}
+            message={driveBackupMessage}
+            onClose={() => { setDriveModalVisible(false); setDriveBackupStatus('idle'); setDriveBackupMessage(''); }}
+          />
           <button
             onClick={onBack}
             style={{

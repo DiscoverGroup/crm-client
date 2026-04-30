@@ -23,7 +23,8 @@ import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
 import { useWindowWidth } from '../hooks/useWindowWidth';
-import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
+import { backupFilesToDrive } from '../services/googleDriveService';
+import DriveBackupModal, { type DriveBackupModalProgress } from './DriveBackupModal';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
@@ -648,7 +649,8 @@ const ClientRecords: React.FC<{
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [driveBackupMessage, setDriveBackupMessage] = useState('');
-  const [driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
+  const [driveModalVisible, setDriveModalVisible] = useState(false);
+  const [driveModalProgress, setDriveModalProgress] = useState<DriveBackupModalProgress | null>(null);
 
   // PaymentTerm-driven behavior
   const currentOption = paymentOptions.find(opt => opt.value === paymentTerm) ?? paymentOptions[0];
@@ -1991,16 +1993,31 @@ const ClientRecords: React.FC<{
                       if (r2Files.length === 0) { setDriveBackupMessage('No R2 files to back up.'); return; }
                       setDriveBackupStatus('running');
                       setDriveBackupMessage('');
-                      setDriveProgress(null);
+                      setDriveModalVisible(true);
+                      setDriveModalProgress(null);
                       try {
-                        const result = await backupFilesToDrive(r2Files, contactName || clientId, (p) => setDriveProgress(p));
+                        const result = await backupFilesToDrive(
+                          r2Files,
+                          contactName || clientId,
+                          (p) => {
+                            setDriveModalProgress({
+                              clientIndex: 0, totalClients: 1,
+                              clientName: contactName || clientId,
+                              routeName: packageName || 'Unassigned',
+                              fileIndex: p.current,
+                              totalFiles: p.total,
+                              currentFile: p.currentFile
+                            });
+                          },
+                          packageName || undefined
+                        );
                         setDriveBackupStatus(result.failed === 0 ? 'done' : 'error');
-                        setDriveBackupMessage(`${result.copied > 0 ? '✅' : '❌'} ${result.copied} backed up${result.failed > 0 ? `, ${result.failed} failed` : ''}${result.errors.length > 0 ? ` — ${result.errors[0]}` : ''}`); 
+                        setDriveBackupMessage(`${result.copied > 0 ? '✅' : '❌'} ${result.copied} backed up${result.failed > 0 ? `, ${result.failed} failed` : ''}${result.errors.length > 0 ? ` — ${result.errors[0]}` : ''}`);
                       } catch (err: any) {
                         setDriveBackupStatus('error');
                         setDriveBackupMessage(`❌ ${err.message || 'Backup failed'}`);
                       } finally {
-                        setDriveProgress(null);
+                        setDriveModalProgress(null);
                       }
                     }}
                     style={{
@@ -2016,9 +2033,7 @@ const ClientRecords: React.FC<{
                       backdropFilter: 'blur(10px)'
                     }}
                   >
-                    {driveBackupStatus === 'running'
-                      ? `⏳ ${driveProgress ? `${driveProgress.current}/${driveProgress.total}` : 'Backing up…'}`
-                      : '📂 Backup to Drive'}
+                    {driveBackupStatus === 'running' ? '⏳ Backing up…' : '📂 Backup to Drive'}
                   </button>
                   {driveBackupMessage && (
                     <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.9)', maxWidth: '180px', textAlign: 'right' }}>
@@ -4608,6 +4623,13 @@ const ClientRecords: React.FC<{
       </div>
       </div>
     </div>
+    <DriveBackupModal
+      visible={driveModalVisible}
+      status={driveBackupStatus === 'idle' ? 'running' : driveBackupStatus}
+      progress={driveModalProgress}
+      message={driveBackupMessage}
+      onClose={() => { setDriveModalVisible(false); setDriveBackupStatus('idle'); setDriveBackupMessage(''); }}
+    />
   );
 };
 
@@ -4635,7 +4657,8 @@ const MainPage: React.FC<MainPageProps> = ({
   const [testClients, setTestClients] = useState<ClientData[]>([]);
   const [batchDriveStatus, setBatchDriveStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [batchDriveMessage, setBatchDriveMessage] = useState('');
-  const [batchDriveProgress, setBatchDriveProgress] = useState<{ current: number; total: number; clientName: string } | null>(null);
+  const [batchDriveModalVisible, setBatchDriveModalVisible] = useState(false);
+  const [batchDriveProgress, setBatchDriveProgress] = useState<DriveBackupModalProgress | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -5587,16 +5610,22 @@ const MainPage: React.FC<MainPageProps> = ({
                       if (allClients.length === 0) { setBatchDriveMessage('No clients to back up.'); return; }
                       setBatchDriveStatus('running');
                       setBatchDriveMessage('');
+                      setBatchDriveModalVisible(true);
                       setBatchDriveProgress(null);
                       let totalCopied = 0, totalFailed = 0;
                       for (let i = 0; i < allClients.length; i++) {
                         const client = allClients[i];
                         const clientName = client.contactName || client.clientNo || `Client-${i+1}`;
-                        setBatchDriveProgress({ current: i + 1, total: allClients.length, clientName });
+                        const routeName = client.packageName || 'Unassigned';
                         const files = FileService.getFilesByClient(client.id || client.clientNo || '').filter(a => a.file.isR2 && a.file.r2Path);
-                        if (files.length === 0) continue;
+                        if (files.length === 0) {
+                          setBatchDriveProgress({ clientIndex: i, totalClients: allClients.length, clientName, routeName, fileIndex: 0, totalFiles: 0, currentFile: '' });
+                          continue;
+                        }
                         try {
-                          const result = await backupFilesToDrive(files, clientName, () => {});
+                          const result = await backupFilesToDrive(files, clientName, (p) => {
+                            setBatchDriveProgress({ clientIndex: i, totalClients: allClients.length, clientName, routeName, fileIndex: p.current, totalFiles: p.total, currentFile: p.currentFile });
+                          }, routeName);
                           totalCopied += result.copied;
                           totalFailed += result.failed;
                         } catch {
@@ -5619,15 +5648,8 @@ const MainPage: React.FC<MainPageProps> = ({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {batchDriveStatus === 'running'
-                      ? `⏳ ${batchDriveProgress ? `${batchDriveProgress.current}/${batchDriveProgress.total} ${batchDriveProgress.clientName.slice(0, 12)}…` : 'Starting…'}`
-                      : '📂 Backup All → Drive'}
+                    {batchDriveStatus === 'running' ? '⏳ Backing up…' : '📂 Backup All → Drive'}
                   </button>
-                  {batchDriveMessage && (
-                    <span style={{ fontSize: '11px', color: batchDriveStatus === 'error' ? '#dc2626' : '#16a34a', maxWidth: '200px', textAlign: 'right' }}>
-                      {batchDriveMessage}
-                    </span>
-                  )}
                 </div>
                 <button
                   onClick={() => setViewMode('table')}
@@ -6156,6 +6178,13 @@ const MainPage: React.FC<MainPageProps> = ({
         </div>
       )}
     </div>
+    <DriveBackupModal
+      visible={batchDriveModalVisible}
+      status={batchDriveStatus === 'idle' ? 'running' : batchDriveStatus}
+      progress={batchDriveProgress}
+      message={batchDriveMessage}
+      onClose={() => { setBatchDriveModalVisible(false); setBatchDriveStatus('idle'); setBatchDriveMessage(''); }}
+    />
   );
 };
 

@@ -125,7 +125,7 @@ export const handler: Handler = async (event) => {
     private_key: privateKey.replace(/\\n/g, '\n'),
   };
 
-  const { clientName } = JSON.parse(event.body || '{}');
+  const { clientName, routeName } = JSON.parse(event.body || '{}');
 
   try {
     const accessToken = await getServiceAccountToken(keyJson);
@@ -134,12 +134,18 @@ export const handler: Handler = async (event) => {
     const sharedFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
     const rootFolderId = sharedFolderId || await ensureFolder('CRM-Backups', null, accessToken);
 
-    // Ensure per-client subfolder if clientName provided
-    let folderId = rootFolderId;
+    // Ensure route subfolder if routeName provided: root/{routeName}/
+    let parentFolderId = rootFolderId;
+    if (routeName) {
+      const safeRoute = (routeName as string).replace(/[<>:"/\\|?*]/g, '-').trim().slice(0, 100);
+      parentFolderId = await ensureFolder(safeRoute, rootFolderId, accessToken);
+    }
+
+    // Ensure per-client subfolder: root/{routeName?}/{clientName}/
+    let folderId = parentFolderId;
     if (clientName) {
-      // Sanitize client name for folder name
       const safeName = (clientName as string).replace(/[<>:"/\\|?*]/g, '-').trim().slice(0, 100);
-      folderId = await ensureFolder(safeName, rootFolderId, accessToken);
+      folderId = await ensureFolder(safeName, parentFolderId, accessToken);
     }
 
     return {
