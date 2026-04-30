@@ -70,6 +70,44 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
   const [clientOverride, setClientOverride] = useState<string>('');
   // Destination field / source selector
   const [restoreSource, setRestoreSource] = useState<string>('other');
+  const [restoreFileType, setRestoreFileType] = useState<string>('');
+
+  // Per-source config: how to derive fileType and category for each restored file
+  type SourceCfg =
+    | { kind: 'other' }
+    | { kind: 'fixed'; fileType: string; category?: FileAttachment['category'] }
+    | { kind: 'auto-slot'; prefix: string }               // e.g. booking-confirmation-1, -2 …
+    | { kind: 'sub-select'; options: { value: string; label: string }[] }
+    | { kind: 'payment-index' };                          // visa/insurance/eta — uses category:deposit-slip + paymentIndex:0
+
+  const FILE_TYPE_CONFIG: Record<string, SourceCfg> = {
+    'other':              { kind: 'other' },
+    'booking-confirmation':{ kind: 'auto-slot', prefix: 'booking-confirmation-' },
+    'passport-info':      { kind: 'auto-slot', prefix: 'passport-', },
+    'other-payment':      { kind: 'fixed', fileType: 'other-payment-attachment' },
+    'account-relations':  { kind: 'fixed', fileType: 'after-sales-sc-attachment' },
+    'first-payment': {
+      kind: 'sub-select',
+      options: [
+        { value: 'first-payment-deposit', label: 'Deposit Slip' },
+        { value: 'first-payment-receipt', label: 'Receipt' },
+      ],
+    },
+    'sc-report': {
+      kind: 'sub-select',
+      options: [
+        { value: 'after-visa-sc-attachment',       label: 'After Visa' },
+        { value: 'pre-departure-sc-attachment',    label: 'Pre-Departure' },
+        { value: 'post-departure-sc-attachment',   label: 'Post-Departure' },
+      ],
+    },
+    'visa-service':      { kind: 'payment-index' },
+    'insurance-service': { kind: 'payment-index' },
+    'eta-service':       { kind: 'payment-index' },
+    'payment-terms':     { kind: 'payment-index' },
+    'approval-invoice':  { kind: 'other' },
+    'booking-voucher':   { kind: 'other' },
+  };
 
   const SOURCE_OPTIONS: { value: string; label: string }[] = [
     { value: 'other', label: 'General Attachments' },
@@ -78,9 +116,9 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
     { value: 'approval-invoice', label: 'Approval / Invoice' },
     { value: 'first-payment', label: 'First Payment' },
     { value: 'other-payment', label: 'Other Payment' },
-    { value: 'visa-service', label: 'Visa Service' },
-    { value: 'insurance-service', label: 'Insurance Service' },
-    { value: 'eta-service', label: 'ETA Service' },
+    { value: 'visa-service', label: 'Visa Service (Slot 1)' },
+    { value: 'insurance-service', label: 'Insurance Service (Slot 1)' },
+    { value: 'eta-service', label: 'ETA Service (Slot 1)' },
     { value: 'passport-info', label: 'Passport Info' },
     { value: 'sc-report', label: 'SC Report' },
     { value: 'account-relations', label: 'Account Relations' },
@@ -121,6 +159,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
       setSelected(new Set());
       setRestoreResults([]);
       setRestoreSource('other');
+      setRestoreFileType('');
       loadFolder(null);
     }
   }, [visible, loadFolder]);
@@ -190,6 +229,8 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
     setRestoreResults([]);
 
     const results: RestoreResult[] = [];
+    // Track slot counters per source for auto-slot sources within this restore batch
+    const slotCounters: Record<string, number> = {};
 
     for (const file of filesToRestore) {
       setRestoreCurrent(file.name);
@@ -207,8 +248,40 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Restore failed');
 
+        // Determine correct fileType and category based on source config
+        const cfg = FILE_TYPE_CONFIG[restoreSource] ?? { kind: 'other' };
+        let attachmentCategory: FileAttachment['category'] = 'other';
+        let attachmentFileType: string | undefined;
+        let attachmentPaymentIndex: number | undefined;
+
+        if (cfg.kind === 'fixed') {
+          attachmentFileType = cfg.fileType;
+          if (cfg.category) attachmentCategory = cfg.category;
+        } else if (cfg.kind === 'auto-slot') {
+          // Count existing attachments for this source+client, plus any already added in this batch
+          const existingRaw = localStorage.getItem('crm_file_attachments');
+          const existing: FileAttachment[] = existingRaw ? JSON.parse(existingRaw) : [];
+          const existingCount = existing.filter(
+            a => a.clientId === (effectiveClientId || undefined) && a.source === restoreSource
+          ).length;
+          const batchCount = slotCounters[restoreSource] ?? 0;
+          slotCounters[restoreSource] = batchCount + 1;
+          const slotNum = existingCount + batchCount + 1;
+          // passport-info uses "passport-{n}-attachment", booking-confirmation uses prefix + n
+          attachmentFileType = restoreSource === 'passport-info'
+            ? `passport-${slotNum}-attachment`
+            : `${cfg.prefix}${slotNum}`;
+        } else if (cfg.kind === 'sub-select') {
+          const subOptions = cfg.options;
+          attachmentFileType = restoreFileType || subOptions[0]?.value;
+        } else if (cfg.kind === 'payment-index') {
+          attachmentCategory = 'deposit-slip';
+          attachmentPaymentIndex = 0;
+        }
+        // kind === 'other': category='other', no fileType
+
         // Register in FileService (localStorage + MongoDB)
-        const attachment = {
+        const attachment: FileAttachment = {
           file: {
             id: generateId(),
             name: data.fileName,
@@ -220,33 +293,33 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
             isR2: true,
             storagePlatform: 'r2' as const,
           },
-          category: 'other' as const,
+          category: attachmentCategory,
           clientId: effectiveClientId || undefined,
           source: restoreSource as FileAttachment['source'],
+          fileType: attachmentFileType,
+          paymentIndex: attachmentPaymentIndex,
         };
 
-        // Save to localStorage
+        // Save to localStorage immediately
         try {
           const raw = localStorage.getItem('crm_file_attachments');
-          const existing = raw ? JSON.parse(raw) : [];
-          existing.push(attachment);
-          localStorage.setItem('crm_file_attachments', JSON.stringify(existing));
+          const existingList = raw ? JSON.parse(raw) : [];
+          existingList.push(attachment);
+          localStorage.setItem('crm_file_attachments', JSON.stringify(existingList));
         } catch {}
 
-        // Sync to MongoDB
-        try {
-          await fetch('/.netlify/functions/database', {
-            method: 'POST',
-            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              collection: 'file_attachments',
-              operation: 'updateOne',
-              filter: { 'file.id': attachment.file.id },
-              update: attachment,
-              upsert: true,
-            }),
-          });
-        } catch {}
+        // Sync to MongoDB — fire-and-forget so UI doesn't freeze on timeout
+        fetch('/.netlify/functions/database', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collection: 'file_attachments',
+            operation: 'updateOne',
+            filter: { 'file.id': attachment.file.id },
+            update: attachment,
+            upsert: true,
+          }),
+        }).catch(() => {});
 
         results.push({ fileName: file.name, status: 'ok' });
 
@@ -469,7 +542,10 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
                       </label>
                       <select
                         value={restoreSource}
-                        onChange={e => setRestoreSource(e.target.value)}
+                        onChange={e => {
+                          setRestoreSource(e.target.value);
+                          setRestoreFileType('');
+                        }}
                         style={{
                           width: '100%', padding: '7px 10px', borderRadius: '7px',
                           border: '1px solid #cbd5e1', fontSize: '12px',
@@ -480,6 +556,27 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                      {/* Sub-type picker for sources with multiple slots */}
+                      {(() => {
+                        const cfg = FILE_TYPE_CONFIG[restoreSource];
+                        if (!cfg || cfg.kind !== 'sub-select') return null;
+                        return (
+                          <select
+                            value={restoreFileType || cfg.options[0]?.value}
+                            onChange={e => setRestoreFileType(e.target.value)}
+                            style={{
+                              width: '100%', padding: '7px 10px', borderRadius: '7px',
+                              border: '1px solid #cbd5e1', fontSize: '12px',
+                              fontFamily: 'inherit', background: '#fff', color: '#1e293b',
+                              marginTop: '6px',
+                            }}
+                          >
+                            {cfg.options.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
                   )}
 
