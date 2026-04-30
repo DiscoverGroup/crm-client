@@ -110,9 +110,12 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
     const newBreadcrumb = [...breadcrumb, { id: folder.id, name: folder.name, level: newLevel }];
     setBreadcrumb(newBreadcrumb);
 
-    // Always try to find a matching client by folder name (handles both 2-level and 3-level structures)
+    // Match by contactName, clientNo, or id (handles CLT-xxx style folder names)
+    const folderLower = folder.name.toLowerCase().trim();
     const match = clients.find(c =>
-      c.contactName?.toLowerCase().trim() === folder.name.toLowerCase().trim()
+      c.contactName?.toLowerCase().trim() === folderLower ||
+      c.clientNo?.toLowerCase().trim() === folderLower ||
+      c.id?.toLowerCase().trim() === folderLower
     );
     setClientContext({ id: match?.id || null, name: folder.name });
     setClientOverride('');
@@ -132,8 +135,11 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
       setBreadcrumb(newBreadcrumb);
       setClientOverride('');
       const item = newBreadcrumb[index];
+      const itemLower = item.name.toLowerCase().trim();
       const match = clients.find(c =>
-        c.contactName?.toLowerCase().trim() === item.name.toLowerCase().trim()
+        c.contactName?.toLowerCase().trim() === itemLower ||
+        c.clientNo?.toLowerCase().trim() === itemLower ||
+        c.id?.toLowerCase().trim() === itemLower
       );
       setClientContext({ id: match?.id || null, name: item.name });
       loadFolder(item.id);
