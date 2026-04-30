@@ -114,17 +114,16 @@ export const handler: Handler = async (event) => {
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) return unauthorizedResponse(headers, auth.error);
 
-  const keyEnv = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
-  if (!keyEnv) {
-    return { statusCode: 503, headers, body: JSON.stringify({ success: false, error: 'Google Drive not configured. Set GOOGLE_SERVICE_ACCOUNT_KEY env var.' }) };
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const privateKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    return { statusCode: 503, headers, body: JSON.stringify({ success: false, error: 'Google Drive not configured. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY env vars.' }) };
   }
 
-  let keyJson: ServiceAccountKey;
-  try {
-    keyJson = JSON.parse(Buffer.from(keyEnv, 'base64').toString('utf8'));
-  } catch {
-    return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Invalid GOOGLE_SERVICE_ACCOUNT_KEY format' }) };
-  }
+  const keyJson: ServiceAccountKey = {
+    client_email: clientEmail,
+    private_key: privateKey.replace(/\\n/g, '\n'),
+  };
 
   const { clientName } = JSON.parse(event.body || '{}');
 
