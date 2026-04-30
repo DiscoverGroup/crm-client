@@ -134,12 +134,11 @@ export const handler: Handler = async (event) => {
     const sharedFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
     const rootFolderId = sharedFolderId || await ensureFolder('CRM-Backups', null, accessToken);
 
-    // Ensure route subfolder if routeName provided: root/{routeName}/
+    // Ensure route subfolder (always): root/{routeName}/  — defaults to "General" if no route given
     let parentFolderId = rootFolderId;
-    if (routeName) {
-      const safeRoute = (routeName as string).replace(/[<>:"/\\|?*]/g, '-').trim().slice(0, 100);
-      parentFolderId = await ensureFolder(safeRoute, rootFolderId, accessToken);
-    }
+    const effectiveRoute = (routeName as string | undefined)?.trim() || 'General';
+    const safeRoute = effectiveRoute.replace(/[<>:"/\\|?*]/g, '-').trim().slice(0, 100);
+    parentFolderId = await ensureFolder(safeRoute, rootFolderId, accessToken);
 
     // Ensure per-client subfolder: root/{routeName?}/{clientName}/
     let folderId = parentFolderId;

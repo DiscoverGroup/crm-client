@@ -64,8 +64,12 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
 
   // Current client context (when at client level)
   const [clientContext, setClientContext] = useState<{ id: string | null; name: string }>({ id: null, name: '' });
+  // Manual client override when auto-match fails
+  const [clientOverride, setClientOverride] = useState<string>('');
 
   const currentLevel: 'root' | 'route' | 'client' = breadcrumb.length === 0 ? 'root' : breadcrumb.length === 1 ? 'route' : 'client';
+  // The effective clientId to use for restore — manual override takes priority
+  const effectiveClientId = clientOverride || clientContext.id || null;
 
   const loadFolder = useCallback(async (folderId: string | null) => {
     setLoading(true);
@@ -106,13 +110,12 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
     const newBreadcrumb = [...breadcrumb, { id: folder.id, name: folder.name, level: newLevel }];
     setBreadcrumb(newBreadcrumb);
 
-    // If navigating into a client folder, try to find the matching client
-    if (newLevel === 'client') {
-      const match = clients.find(c =>
-        c.contactName?.toLowerCase().trim() === folder.name.toLowerCase().trim()
-      );
-      setClientContext({ id: match?.id || null, name: folder.name });
-    }
+    // Always try to find a matching client by folder name (handles both 2-level and 3-level structures)
+    const match = clients.find(c =>
+      c.contactName?.toLowerCase().trim() === folder.name.toLowerCase().trim()
+    );
+    setClientContext({ id: match?.id || null, name: folder.name });
+    setClientOverride('');
 
     loadFolder(folder.id);
   };
@@ -122,12 +125,17 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
       // Root
       setBreadcrumb([]);
       setClientContext({ id: null, name: '' });
+      setClientOverride('');
       loadFolder(null);
     } else {
       const newBreadcrumb = breadcrumb.slice(0, index + 1);
       setBreadcrumb(newBreadcrumb);
+      setClientOverride('');
       const item = newBreadcrumb[index];
-      if (item.level !== 'client') setClientContext({ id: null, name: '' });
+      const match = clients.find(c =>
+        c.contactName?.toLowerCase().trim() === item.name.toLowerCase().trim()
+      );
+      setClientContext({ id: match?.id || null, name: item.name });
       loadFolder(item.id);
     }
   };
@@ -168,7 +176,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
             fileId: file.id,
             fileName: file.name,
             mimeType: file.mimeType,
-            clientId: clientContext.id || clientContext.name || 'unknown',
+            clientId: effectiveClientId || clientContext.name || 'unknown',
           }),
         });
         const data = await res.json();
@@ -188,7 +196,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
             storagePlatform: 'r2' as const,
           },
           category: 'other' as const,
-          clientId: clientContext.id || undefined,
+          clientId: effectiveClientId || undefined,
           source: undefined,
         };
 
@@ -334,20 +342,45 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
 
               {!loading && !error && (
                 <>
-                  {/* Client context notice */}
-                  {currentLevel === 'client' && (
+                  {/* Client context notice — shown whenever files are present */}
+                  {files.length > 0 && breadcrumb.length > 0 && (
                     <div style={{
-                      padding: '10px 14px', background: '#f0fdf4', border: '1px solid #86efac',
-                      borderRadius: '10px', fontSize: '12px', color: '#166534',
-                      marginBottom: '12px', display: 'flex', gap: '8px', alignItems: 'flex-start',
+                      padding: '10px 14px', background: effectiveClientId ? '#f0fdf4' : '#fffbeb',
+                      border: `1px solid ${effectiveClientId ? '#86efac' : '#fcd34d'}`,
+                      borderRadius: '10px', fontSize: '12px',
+                      marginBottom: '12px',
                     }}>
-                      <span>ℹ️</span>
-                      <div>
-                        {clientContext.id
-                          ? <>Files will be restored and linked to client <strong>{clientContext.name}</strong>.</>
-                          : <>Client <strong>{clientContext.name}</strong> not found in system — files will be restored without a client link. You can reassign them manually.</>
-                        }
-                      </div>
+                      {effectiveClientId ? (
+                        <div style={{ color: '#166534', display: 'flex', gap: '8px' }}>
+                          <span>✅</span>
+                          <span>Files will be restored and linked to client <strong>{clients.find(c => c.id === effectiveClientId)?.contactName || clientContext.name}</strong>.</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ color: '#92400e', display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                            <span>⚠️</span>
+                            <span>Could not auto-match <strong>"{clientContext.name}"</strong> to a CRM client. Select one manually or restore without a client link.</span>
+                          </div>
+                          <select
+                            value={clientOverride}
+                            onChange={e => setClientOverride(e.target.value)}
+                            style={{
+                              width: '100%', padding: '6px 10px', borderRadius: '7px',
+                              border: '1px solid #fcd34d', fontSize: '12px',
+                              fontFamily: 'inherit', background: '#fff', color: '#1e293b',
+                            }}
+                          >
+                            <option value=''>— Restore without client link —</option>
+                            {clients
+                              .filter(c => c.contactName)
+                              .sort((a, b) => (a.contactName || '').localeCompare(b.contactName || ''))
+                              .map(c => (
+                                <option key={c.id} value={c.id}>{c.contactName}</option>
+                              ))
+                            }
+                          </select>
+                        </>
+                      )}
                     </div>
                   )}
 
@@ -385,8 +418,8 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
                     </div>
                   )}
 
-                  {/* Files list (only at client level) */}
-                  {currentLevel === 'client' && files.length > 0 && (
+                  {/* Files list — shown at any folder depth where files exist */}
+                  {files.length > 0 && (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -559,7 +592,7 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
               }}>
                 Cancel
               </button>
-              {currentLevel === 'client' && files.length > 0 && (
+              {files.length > 0 && (
                 <button
                   onClick={handleRestore}
                   disabled={selected.size === 0}
