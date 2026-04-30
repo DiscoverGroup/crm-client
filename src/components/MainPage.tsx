@@ -682,8 +682,13 @@ const ClientRecords: React.FC<{
           const clientAttachments = FileService.getFilesByClient(currentClientId);
           setAttachments(clientAttachments);
 
-          // Ensure bookingConfirmations has enough slots for every uploaded booking-confirmation file
-          const bcFiles = clientAttachments.filter(att => att.source === 'booking-confirmation');
+          // Ensure bookingConfirmations has enough slots for every REAL uploaded booking-confirmation file
+          // (filter out ghost entries with no valid file URL from broken/stale restores)
+          const bcFiles = clientAttachments.filter(att =>
+            att.source === 'booking-confirmation' &&
+            att.fileType?.match(/booking-confirmation-\d+/) &&
+            att.file?.data
+          );
           if (bcFiles.length > 0) {
             const maxIdx = bcFiles.reduce((max, att) => {
               const m = att.fileType?.match(/booking-confirmation-(\d+)/);

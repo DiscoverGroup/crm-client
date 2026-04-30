@@ -259,9 +259,10 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
           attachmentFileType = cfg.fileType;
           if (cfg.category) attachmentCategory = cfg.category;
         } else if (cfg.kind === 'auto-slot') {
-          // Find used slot numbers for THIS client+source only (not stale entries from other clients)
+          // Find used slot numbers for THIS client+source only (exclude ghost entries with no file URL)
           const clientAttachments = effectiveClientId
-            ? FileService.getFilesByClient(effectiveClientId).filter(a => a.source === restoreSource)
+            ? FileService.getFilesByClient(effectiveClientId)
+                .filter(a => a.source === restoreSource && a.file?.data)
             : [];
           const usedSlots = new Set(
             clientAttachments.map(a => {
