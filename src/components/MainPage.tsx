@@ -25,6 +25,7 @@ import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog }
 import { useWindowWidth } from '../hooks/useWindowWidth';
 import { backupFilesToDrive } from '../services/googleDriveService';
 import DriveBackupModal, { type DriveBackupModalProgress } from './DriveBackupModal';
+import DriveRestoreModal from './DriveRestoreModal';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
@@ -4659,6 +4660,7 @@ const MainPage: React.FC<MainPageProps> = ({
   const [batchDriveMessage, setBatchDriveMessage] = useState('');
   const [batchDriveModalVisible, setBatchDriveModalVisible] = useState(false);
   const [batchDriveProgress, setBatchDriveProgress] = useState<DriveBackupModalProgress | null>(null);
+  const [driveRestoreVisible, setDriveRestoreVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -4948,6 +4950,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewingForm(null);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -4994,6 +4997,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewProfile(false);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5049,6 +5053,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewDeleted(false);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5098,6 +5103,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewArchived(false);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5147,6 +5153,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewActivityLog(false);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5192,6 +5199,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewCalendar(true);
             }}
             onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5235,6 +5243,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewCalendar(false);
               setViewAdminPanel(true);
             } : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -5268,6 +5277,7 @@ const MainPage: React.FC<MainPageProps> = ({
               setViewCalendar(true);
             }}
             onNavigateToAdminPanel={isAdmin() ? () => setViewAdminPanel(true) : undefined}
+            onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
           />
@@ -6184,6 +6194,11 @@ const MainPage: React.FC<MainPageProps> = ({
       progress={batchDriveProgress}
       message={batchDriveMessage}
       onClose={() => { setBatchDriveModalVisible(false); setBatchDriveStatus('idle'); setBatchDriveMessage(''); }}
+    />
+    <DriveRestoreModal
+      visible={driveRestoreVisible}
+      onClose={() => setDriveRestoreVisible(false)}
+      clients={clients}
     />
   );
 };
