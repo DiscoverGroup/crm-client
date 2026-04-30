@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
-import type { ClientData } from '../types/client';
+import type { ClientData } from '../services/clientService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DriveFolder { id: string; name: string; }
@@ -65,7 +65,6 @@ const DriveRestoreModal: React.FC<DriveRestoreModalProps> = ({
   // Current client context (when at client level)
   const [clientContext, setClientContext] = useState<{ id: string | null; name: string }>({ id: null, name: '' });
 
-  const currentFolderId = breadcrumb.length > 0 ? breadcrumb[breadcrumb.length - 1].id : null;
   const currentLevel: 'root' | 'route' | 'client' = breadcrumb.length === 0 ? 'root' : breadcrumb.length === 1 ? 'route' : 'client';
 
   const loadFolder = useCallback(async (folderId: string | null) => {

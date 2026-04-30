@@ -19,7 +19,7 @@ const ClientAttachments: React.FC<ClientAttachmentsProps> = ({ clientId, clientN
   // Google Drive backup state
   const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [driveBackupMessage, setDriveBackupMessage] = useState('');
-  const [driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
+  const [_driveProgress, setDriveProgress] = useState<DriveProgress | null>(null);
   const [driveModalVisible, setDriveModalVisible] = useState(false);
   const [driveModalProgress, setDriveModalProgress] = useState<DriveBackupModalProgress | null>(null);
   

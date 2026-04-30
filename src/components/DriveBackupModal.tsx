@@ -22,10 +22,6 @@ interface Props {
 const DriveBackupModal: React.FC<Props> = ({ visible, status, progress, message, onClose }) => {
   if (!visible) return null;
 
-  const clientPct = progress
-    ? Math.round(((progress.clientIndex) / progress.totalClients) * 100)
-    : status === 'done' ? 100 : 0;
-
   const filePct = progress && progress.totalFiles > 0
     ? Math.round(((progress.fileIndex) / progress.totalFiles) * 100)
     : 0;
