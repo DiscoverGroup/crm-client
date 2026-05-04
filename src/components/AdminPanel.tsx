@@ -2334,55 +2334,116 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {/* Remove embedded base64 file data */}
               {(() => {
                 const b64Count = FileService.getBase64AttachmentCount();
-                if (b64Count === 0) return null;
                 return (
                   <>
+                    {b64Count > 0 && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const ok = await showConfirmDialog(
+                              'Migrate Embedded Files to Cloudflare R2',
+                              `${b64Count} file attachment(s) on THIS device are stored as embedded base64 data instead of in Cloudflare R2.\n\nThis will re-upload them to R2 (preserving their IDs so existing references stay intact) and free localStorage space. Files are uploaded 3 at a time.\n\nProceed?`,
+                              'info'
+                            );
+                            if (!ok) return;
+                            try {
+                              const result = await FileService.migrateBase64ToR2(
+                                (current, total, name) => {
+                                  console.log(`[Migration] ${current}/${total} — ${name}`);
+                                },
+                                3 // concurrency
+                              );
+                              const summary =
+                                `Migrated ${result.migrated} of ${result.totalCandidates} file(s) to R2.` +
+                                (result.failed > 0 ? ` ${result.failed} failed (see console).` : '');
+                              if (result.failed > 0) console.error('[Migration] errors:', result.errors);
+                              showSuccessToast(summary);
+                              setQuotaSettings({ ...quotaSettings });
+                            } catch (err) {
+                              console.error('[Migration] fatal error:', err);
+                              showSuccessToast('Migration failed — see console for details.');
+                            }
+                          }}
+                          style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}
+                        >
+                          ☁️ Migrate Embedded Files to R2 ({b64Count})
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const ok = await showConfirmDialog(
+                              'Remove Embedded File Data',
+                              `${b64Count} file attachment(s) have their binary data embedded directly in localStorage instead of Cloudflare R2. This is leftover from upload failures.\n\nRemoving the embedded data will free significant space. The file metadata (name, date, client) is kept so the record is not lost, but the file itself will no longer be downloadable from this device.\n\nProceed?`,
+                              'warning'
+                            );
+                            if (!ok) return;
+                            const { freed, base64Count } = FileService.pruneBase64DataFromStorage();
+                            showSuccessToast(`Removed embedded data from ${base64Count} file(s) — freed ~${Math.round(freed / 1024)} KB`);
+                            setQuotaSettings({ ...quotaSettings });
+                          }}
+                          style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
+                        >
+                          🗜️ Remove Embedded File Data ({b64Count} file{b64Count !== 1 ? 's' : ''})
+                        </button>
+                      </>
+                    )}
+
+                    {/* Server-side migration — scans ALL users' attachments in MongoDB,
+                        not just what is in this device's localStorage. Admin only. */}
                     <button
                       onClick={async () => {
-                        const ok = await showConfirmDialog(
-                          'Migrate Embedded Files to Cloudflare R2',
-                          `${b64Count} file attachment(s) are stored as embedded base64 data instead of in Cloudflare R2.\n\nThis will re-upload them to R2 (preserving their IDs so existing references stay intact) and free localStorage space.\n\nThis may take a moment depending on file sizes. Proceed?`,
-                          'info'
-                        );
-                        if (!ok) return;
                         try {
-                          const result = await FileService.migrateBase64ToR2((current, total, name) => {
-                            console.log(`[Migration] ${current}/${total} — ${name}`);
+                          const res = await fetch('/.netlify/functions/migrate-base64-attachments', {
+                            method: 'POST',
+                            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: 'scan' }),
                           });
-                          const summary =
-                            `Migrated ${result.migrated} of ${result.totalCandidates} file(s) to R2.` +
-                            (result.failed > 0 ? ` ${result.failed} failed (see console).` : '');
-                          if (result.failed > 0) {
-                            console.error('[Migration] errors:', result.errors);
-                            showSuccessToast(summary);
-                          } else {
-                            showSuccessToast(summary);
+                          if (!res.ok) {
+                            const txt = await res.text().catch(() => '');
+                            showSuccessToast(`Scan failed (HTTP ${res.status}). ${txt.slice(0, 200)}`);
+                            return;
                           }
-                          setQuotaSettings({ ...quotaSettings }); // trigger re-render
+                          const json = await res.json() as { totalCount?: number; samples?: any[] };
+                          const total = json.totalCount ?? 0;
+                          if (total === 0) {
+                            showSuccessToast('✅ Server scan: no embedded base64 attachments found in MongoDB.');
+                          } else {
+                            console.log('[Server scan] sample entries:', json.samples);
+                            const proceed = await showConfirmDialog(
+                              'Server-side Migration',
+                              `MongoDB contains ${total} attachment(s) still stored as embedded base64 (across all users).\n\nMigrate them to Cloudflare R2 now? This processes 3 files per batch and will continue until all are done. It may take a while if there are many files.\n\nSee browser console for per-batch progress.`,
+                              'info'
+                            );
+                            if (!proceed) return;
+                            try {
+                              const result = await FileService.migrateBase64ToR2OnServer(
+                                ({ processedSoFar, migratedSoFar, failedSoFar, remaining, lastBatchResults }) => {
+                                  console.log(
+                                    `[Server migration] processed=${processedSoFar} migrated=${migratedSoFar} failed=${failedSoFar} remaining=${remaining}`,
+                                    lastBatchResults
+                                  );
+                                },
+                                3 // batchSize
+                              );
+                              const summary =
+                                `Server migration done. Migrated ${result.migratedTotal}` +
+                                (result.failedTotal > 0 ? `, ${result.failedTotal} failed` : '') +
+                                (result.remaining > 0 ? `, ${result.remaining} still remaining (likely permanently failing — see console).` : '.');
+                              if (result.failedTotal > 0) console.error('[Server migration] errors:', result.errors);
+                              showSuccessToast(summary);
+                              setQuotaSettings({ ...quotaSettings });
+                            } catch (err) {
+                              console.error('[Server migration] fatal:', err);
+                              showSuccessToast(`Server migration failed: ${err instanceof Error ? err.message : String(err)}`);
+                            }
+                          }
                         } catch (err) {
-                          console.error('[Migration] fatal error:', err);
-                          showSuccessToast('Migration failed — see console for details.');
+                          console.error('[Server scan] error:', err);
+                          showSuccessToast('Scan failed — see console.');
                         }
                       }}
-                      style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}
+                      style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(14,165,233,0.3)' }}
                     >
-                      ☁️ Migrate Embedded Files to R2 ({b64Count})
-                    </button>
-                    <button
-                      onClick={async () => {
-                        const ok = await showConfirmDialog(
-                          'Remove Embedded File Data',
-                          `${b64Count} file attachment(s) have their binary data embedded directly in localStorage instead of Cloudflare R2. This is leftover from upload failures.\n\nRemoving the embedded data will free significant space. The file metadata (name, date, client) is kept so the record is not lost, but the file itself will no longer be downloadable from this device.\n\nProceed?`,
-                          'warning'
-                        );
-                        if (!ok) return;
-                        const { freed, base64Count } = FileService.pruneBase64DataFromStorage();
-                        showSuccessToast(`Removed embedded data from ${base64Count} file(s) — freed ~${Math.round(freed / 1024)} KB`);
-                        setQuotaSettings({ ...quotaSettings }); // trigger re-render
-                      }}
-                      style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
-                    >
-                      🗜️ Remove Embedded File Data ({b64Count} file{b64Count !== 1 ? 's' : ''})
+                      🌐 Scan & Migrate (Server-side, All Users)
                     </button>
                   </>
                 );

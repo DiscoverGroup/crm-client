@@ -651,11 +651,16 @@ export class FileService {
    * Persists progress after EACH file so a crash mid-migration doesn't lose
    * progress and so localStorage gets reclaimed incrementally.
    *
-   * @param onProgress optional callback invoked with (current, total, fileName)
+   * @param onProgress  optional callback invoked with (current, total, fileName)
+   * @param concurrency how many files to upload in parallel (default 3, max 6).
+   *                    Higher values speed up the migration when there are many
+   *                    small files but increase memory pressure and risk of
+   *                    triggering the R2 upload-URL rate limit (30/min).
    * @returns summary { migrated, failed, skipped, totalCandidates, errors }
    */
   static async migrateBase64ToR2(
-    onProgress?: (current: number, total: number, fileName: string) => void
+    onProgress?: (current: number, total: number, fileName: string) => void,
+    concurrency: number = 3
   ): Promise<{
     migrated: number;
     failed: number;
@@ -668,7 +673,7 @@ export class FileService {
     let failed = 0;
     let skipped = 0;
 
-    let attachments = this.getAllFileAttachments();
+    const attachments = this.getAllFileAttachments();
     const candidateIndices: number[] = [];
     attachments.forEach((att, idx) => {
       const data = att.file?.data ?? '';
@@ -678,33 +683,37 @@ export class FileService {
     });
 
     const totalCandidates = candidateIndices.length;
+    const safeConcurrency = Math.min(6, Math.max(1, Math.floor(concurrency) || 1));
+    let progressCounter = 0;
+    let aborted = false;
 
-    for (let i = 0; i < candidateIndices.length; i++) {
-      const idx = candidateIndices[i];
+    /** Process a single attachment index: upload + persist result. */
+    const processOne = async (idx: number): Promise<void> => {
+      if (aborted) return;
       const att = attachments[idx];
       const fileName = att.file.name || `file-${att.file.id}`;
 
-      onProgress?.(i + 1, totalCandidates, fileName);
+      progressCounter++;
+      onProgress?.(progressCounter, totalCandidates, fileName);
 
       try {
-        // Convert data URL → Blob → File
         const dataUrl = att.file.data;
         const res = await fetch(dataUrl);
         if (!res.ok) throw new Error(`Failed to decode data URL (status ${res.status})`);
         const blob = await res.blob();
-        const file = new File([blob], fileName, { type: att.file.type || blob.type || 'application/octet-stream' });
+        const file = new File([blob], fileName, {
+          type: att.file.type || blob.type || 'application/octet-stream',
+        });
 
-        // Determine target folder using the same logic as fresh uploads
         const folder = this.getFolderByCategory(att.category, att.source);
-
-        // Upload to R2 directly (bypass storage-config check — this is a recovery path)
         const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
         if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
           throw new Error(uploadResult.error || 'R2 upload returned no path/url');
         }
 
-        // Update attachment in place. Keep the original `id`, `uploadDate`, and
-        // all metadata so existing references in payments/clients still resolve.
+        // Mutate the in-memory attachment array. Persistence is batched after
+        // each concurrent group below, not after every file, to avoid races
+        // between parallel writes to the same localStorage key.
         attachments[idx] = {
           ...att,
           file: {
@@ -716,18 +725,7 @@ export class FileService {
           },
         };
 
-        // Persist after every successful migration so we reclaim quota incrementally.
-        try {
-          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(attachments));
-        } catch (storageErr) {
-          // If we still can't fit, abort — caller should run quota cleanup first.
-          console.error('[FileService] migration: localStorage write failed mid-migration:', storageErr);
-          errors.push({ id: att.file.id, name: fileName, error: 'localStorage quota exceeded mid-migration' });
-          failed++;
-          break;
-        }
-
-        // Best-effort: sync the updated attachment to MongoDB so it is durable
+        // Best-effort MongoDB sync (parallel-safe)
         this.saveAttachmentToMongoDB(attachments[idx]).catch(err => {
           console.warn('[FileService] migration: MongoDB sync failed for', fileName, err);
         });
@@ -739,9 +737,28 @@ export class FileService {
         errors.push({ id: att.file.id, name: fileName, error: msg });
         failed++;
       }
+    };
+
+    // Process in chunks of `safeConcurrency`. Persist after each chunk completes.
+    for (let i = 0; i < candidateIndices.length; i += safeConcurrency) {
+      const chunk = candidateIndices.slice(i, i + safeConcurrency);
+      await Promise.all(chunk.map(processOne));
+
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(attachments));
+      } catch (storageErr) {
+        console.error('[FileService] migration: localStorage write failed mid-migration:', storageErr);
+        errors.push({
+          id: '__storage__',
+          name: '(localStorage)',
+          error: 'localStorage quota exceeded mid-migration; aborting remaining work',
+        });
+        failed += candidateIndices.length - (i + chunk.length);
+        aborted = true;
+        break;
+      }
     }
 
-    // Anything that wasn't a candidate but is still non-R2 (e.g., empty data) is skipped.
     skipped = this.getAllFileAttachments().filter(
       a => !a.file.isR2 && !(a.file?.data ?? '').startsWith('data:')
     ).length;
@@ -751,5 +768,106 @@ export class FileService {
     }
 
     return { migrated, failed, skipped, totalCandidates, errors };
+  }
+
+  /**
+   * Server-side migration driver — invokes the `/migrate-base64-attachments`
+   * Netlify function repeatedly until no more base64 attachments remain in
+   * MongoDB. Useful when base64 entries exist on accounts other than the
+   * current device (i.e. they were uploaded by a different user/browser).
+   *
+   * Admin-only on the server. Each request processes a small batch (default 3
+   * docs) to fit Netlify's ~10 s timeout.
+   *
+   * @param onProgress callback invoked after each batch with running totals
+   * @param batchSize  documents per server request (default 3, max 10)
+   * @param maxBatches safety ceiling on total round-trips (default 200)
+   */
+  static async migrateBase64ToR2OnServer(
+    onProgress?: (info: {
+      processedSoFar: number;
+      migratedSoFar: number;
+      failedSoFar: number;
+      remaining: number;
+      lastBatchResults: Array<{ id: string; name: string; status: string; error?: string }>;
+    }) => void,
+    batchSize: number = 3,
+    maxBatches: number = 200
+  ): Promise<{
+    migratedTotal: number;
+    failedTotal: number;
+    skippedTotal: number;
+    batches: number;
+    remaining: number;
+    errors: Array<{ id: string; name: string; error: string }>;
+  }> {
+    const errors: Array<{ id: string; name: string; error: string }> = [];
+    let migratedTotal = 0;
+    let failedTotal = 0;
+    let skippedTotal = 0;
+    let processedSoFar = 0;
+    let batches = 0;
+    let remaining = 0;
+
+    for (let i = 0; i < maxBatches; i++) {
+      const res = await fetch('/.netlify/functions/migrate-base64-attachments', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'migrate', batchSize }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Server migration failed (HTTP ${res.status}): ${errText.slice(0, 300)}`);
+      }
+
+      const json = await res.json() as {
+        success: boolean;
+        processed?: number;
+        migrated?: number;
+        failed?: number;
+        skipped?: number;
+        remaining?: number;
+        results?: Array<{ id: string; name: string; status: string; error?: string }>;
+        error?: string;
+      };
+
+      if (!json.success) {
+        throw new Error(json.error || 'Server migration returned success=false');
+      }
+
+      batches++;
+      const batchProcessed = json.processed ?? 0;
+      processedSoFar += batchProcessed;
+      migratedTotal += json.migrated ?? 0;
+      failedTotal += json.failed ?? 0;
+      skippedTotal += json.skipped ?? 0;
+      remaining = json.remaining ?? 0;
+
+      (json.results || []).forEach(r => {
+        if (r.status === 'failed') {
+          errors.push({ id: r.id, name: r.name, error: r.error || 'unknown' });
+        }
+      });
+
+      onProgress?.({
+        processedSoFar,
+        migratedSoFar: migratedTotal,
+        failedSoFar: failedTotal,
+        remaining,
+        lastBatchResults: json.results || [],
+      });
+
+      // Stop conditions: no remaining work, or the server processed nothing
+      // (avoids infinite loops if a doc keeps failing).
+      if (remaining === 0) break;
+      if (batchProcessed === 0) break;
+    }
+
+    if (migratedTotal > 0) {
+      realtimeSync.signalChange('file_attachments');
+    }
+
+    return { migratedTotal, failedTotal, skippedTotal, batches, remaining, errors };
   }
 }
