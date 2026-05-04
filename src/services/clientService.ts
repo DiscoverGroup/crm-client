@@ -151,8 +151,8 @@ export class ClientService {
           // Strip MongoDB _id before storing — _id in localStorage would leak
           // into subsequent $set operations and cause MongoDB update failures.
           const cleanData = (result.data as any[]).map(({ _id, ...rest }: any) => rest);
-          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cleanData));
-          localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+          this.safeSetClients(JSON.stringify(cleanData));
+          try { localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString()); } catch { /* ignore quota on small key */ }
           window.dispatchEvent(new Event('syncSuccess'));
         } else {
           throw new Error(result.error || 'No data returned from MongoDB');
@@ -199,20 +199,57 @@ export class ClientService {
     }
   }
 
+  /** Strip heavy fields (base64 blobs, large attachment payloads) from clients payload.
+   *  MongoDB remains source of truth so the slim cache is still safe to use offline. */
+  private static slimClientsPayload(payload: string): string {
+    try {
+      const arr = JSON.parse(payload) as any[];
+      const HEAVY_FIELDS = ['depositSlip', 'receipt', 'attachments', 'files', 'paymentAttachments', 'bookingConfirmation'];
+      const slim = arr.map(c => {
+        const copy: any = { ...c };
+        for (const f of HEAVY_FIELDS) {
+          if (copy[f]) copy[f] = Array.isArray(copy[f]) ? [] : null;
+        }
+        // Strip any string field that looks like a base64 data URL or is huge
+        for (const k of Object.keys(copy)) {
+          const v = copy[k];
+          if (typeof v === 'string' && (v.startsWith('data:') || v.length > 5000)) {
+            copy[k] = '';
+          }
+        }
+        return copy;
+      });
+      return JSON.stringify(slim);
+    } catch {
+      return payload;
+    }
+  }
+
   /** Safe localStorage.setItem — on QuotaExceededError frees space and retries once */
   private static safeSetClients(payload: string) {
     try {
       localStorage.setItem(this.STORAGE_KEY, payload);
     } catch (e: any) {
-      if (e && e.name === 'QuotaExceededError') {
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+        console.warn('[ClientService] localStorage quota exceeded, attempting recovery. Payload size:', payload.length);
         this.freeStorageSpace();
         try {
           localStorage.setItem(this.STORAGE_KEY, payload);
-        } catch {
-          // Local cache write failed even after trimming — MongoDB save will still proceed
+          return;
+        } catch { /* still over quota, try slim */ }
+        try {
+          const slim = this.slimClientsPayload(payload);
+          localStorage.setItem(this.STORAGE_KEY, slim);
+          console.warn('[ClientService] cached slim clients payload (heavy fields stripped). Size:', slim.length);
+          return;
+        } catch (err) {
+          console.error('[ClientService] could not cache clients even after slimming. MongoDB remains source of truth.', err);
+          // Remove the stale cache so we don't keep mixing old/new data.
+          try { localStorage.removeItem(this.STORAGE_KEY); } catch { /* ignore */ }
         }
+      } else {
+        console.error('[ClientService] safeSetClients unexpected error:', e);
       }
-      // Any other error is also silently skipped; MongoDB is the source of truth
     }
   }
 
