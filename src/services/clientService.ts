@@ -157,8 +157,9 @@ export class ClientService {
         } else {
           throw new Error(result.error || 'No data returned from MongoDB');
         }
-      } catch {
-        window.dispatchEvent(new Event('syncError'));
+      } catch (err) {
+        console.error('[ClientService] syncFromMongoDB failed:', err);
+        window.dispatchEvent(new CustomEvent('syncError', { detail: { error: err instanceof Error ? err.message : String(err) } }));
       } finally {
         this.syncInProgress = false;
         this.syncPromise = null;
@@ -244,7 +245,8 @@ export class ClientService {
             updatedAt: new Date().toISOString()
           });
           realtimeSync.signalChange('clients');
-        } catch {
+        } catch (err) {
+          console.error('[ClientService] saveClient (update existing) MongoDB failed, will retry in 5s:', err);
           // One-shot retry after 5 s
           setTimeout(async () => {
             try {
@@ -253,7 +255,8 @@ export class ClientService {
                 updatedAt: new Date().toISOString()
               });
               realtimeSync.signalChange('clients');
-            } catch {
+            } catch (retryErr) {
+              console.error('[ClientService] saveClient (update existing) retry failed:', retryErr);
               window.dispatchEvent(new CustomEvent('showToast', {
                 detail: {
                   type: 'error',
@@ -284,13 +287,15 @@ export class ClientService {
         try {
           await MongoDBService.saveClient(newClient);
           realtimeSync.signalChange('clients');
-        } catch {
+        } catch (err) {
+          console.error('[ClientService] saveClient (new) MongoDB failed, will retry in 5s:', err);
           // One-shot retry after 5 s
           setTimeout(async () => {
             try {
               await MongoDBService.saveClient(newClient);
               realtimeSync.signalChange('clients');
-            } catch {
+            } catch (retryErr) {
+              console.error('[ClientService] saveClient (new) retry failed:', retryErr);
               window.dispatchEvent(new CustomEvent('showToast', {
                 detail: {
                   type: 'error',
@@ -304,7 +309,7 @@ export class ClientService {
         return { clientId, isNewClient: true };
       }
     } catch (error) {
-      // console.error('Error saving client:', error);
+      console.error('[ClientService] saveClient outer error:', error);
       throw new Error('Failed to save client data');
     }
   }
@@ -335,7 +340,8 @@ export class ClientService {
           updatedAt: new Date().toISOString()
         });
         realtimeSync.signalChange('clients');
-      } catch {
+      } catch (err) {
+        console.error('[ClientService] updateClient MongoDB failed, will retry in 5s:', err);
         // One-shot retry after 5 s
         setTimeout(async () => {
           try {
@@ -344,7 +350,8 @@ export class ClientService {
               updatedAt: new Date().toISOString()
             });
             realtimeSync.signalChange('clients');
-          } catch {
+          } catch (retryErr) {
+            console.error('[ClientService] updateClient retry failed:', retryErr);
             window.dispatchEvent(new CustomEvent('showToast', {
               detail: {
                 type: 'error',
@@ -365,7 +372,7 @@ export class ClientService {
       
       return { success: true, oldValues };
     } catch (error) {
-      // console.error('Error updating client:', error);
+      console.error('[ClientService] updateClient outer error:', error);
       throw new Error('Failed to update client data');
     }
   }

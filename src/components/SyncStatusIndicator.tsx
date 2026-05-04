@@ -9,6 +9,7 @@ interface SyncStatusIndicatorProps {
 const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ style }) => {
   const [status, setStatus] = useState<SyncStatus>('online');
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const [lastError, setLastError] = useState<string>('');
 
   useEffect(() => {
     // Listen for sync events
@@ -16,8 +17,15 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ style }) => {
     const handleSyncSuccess = () => {
       setStatus('online');
       setLastSyncTime(new Date().toLocaleTimeString());
+      setLastError('');
     };
-    const handleSyncError = () => setStatus('error');
+    const handleSyncError = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      const msg = detail?.error || 'Unknown error';
+      console.warn('[SyncStatusIndicator] sync error:', msg);
+      setLastError(msg);
+      setStatus('error');
+    };
     const handleOffline = () => setStatus('offline');
     const handleOnline = () => setStatus('online');
 
@@ -69,7 +77,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ style }) => {
           icon: '⚠️',
           text: 'Error',
           color: '#ff6b6b',
-          tooltip: 'Sync error - will retry automatically'
+          tooltip: lastError ? `Sync error: ${lastError}` : 'Sync error - will retry automatically'
         };
     }
   };
