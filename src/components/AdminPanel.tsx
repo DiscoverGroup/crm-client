@@ -2336,22 +2336,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 const b64Count = FileService.getBase64AttachmentCount();
                 if (b64Count === 0) return null;
                 return (
-                  <button
-                    onClick={async () => {
-                      const ok = await showConfirmDialog(
-                        'Remove Embedded File Data',
-                        `${b64Count} file attachment(s) have their binary data embedded directly in localStorage instead of Cloudflare R2. This is leftover from upload failures.\n\nRemoving the embedded data will free significant space. The file metadata (name, date, client) is kept so the record is not lost, but the file itself will no longer be downloadable from this device.\n\nProceed?`,
-                        'warning'
-                      );
-                      if (!ok) return;
-                      const { freed, base64Count } = FileService.pruneBase64DataFromStorage();
-                      showSuccessToast(`Removed embedded data from ${base64Count} file(s) — freed ~${Math.round(freed / 1024)} KB`);
-                      setQuotaSettings({ ...quotaSettings }); // trigger re-render
-                    }}
-                    style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
-                  >
-                    🗜️ Remove Embedded File Data ({b64Count} file{b64Count !== 1 ? 's' : ''})
-                  </button>
+                  <>
+                    <button
+                      onClick={async () => {
+                        const ok = await showConfirmDialog(
+                          'Migrate Embedded Files to Cloudflare R2',
+                          `${b64Count} file attachment(s) are stored as embedded base64 data instead of in Cloudflare R2.\n\nThis will re-upload them to R2 (preserving their IDs so existing references stay intact) and free localStorage space.\n\nThis may take a moment depending on file sizes. Proceed?`,
+                          'info'
+                        );
+                        if (!ok) return;
+                        try {
+                          const result = await FileService.migrateBase64ToR2((current, total, name) => {
+                            console.log(`[Migration] ${current}/${total} — ${name}`);
+                          });
+                          const summary =
+                            `Migrated ${result.migrated} of ${result.totalCandidates} file(s) to R2.` +
+                            (result.failed > 0 ? ` ${result.failed} failed (see console).` : '');
+                          if (result.failed > 0) {
+                            console.error('[Migration] errors:', result.errors);
+                            showSuccessToast(summary);
+                          } else {
+                            showSuccessToast(summary);
+                          }
+                          setQuotaSettings({ ...quotaSettings }); // trigger re-render
+                        } catch (err) {
+                          console.error('[Migration] fatal error:', err);
+                          showSuccessToast('Migration failed — see console for details.');
+                        }
+                      }}
+                      style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}
+                    >
+                      ☁️ Migrate Embedded Files to R2 ({b64Count})
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const ok = await showConfirmDialog(
+                          'Remove Embedded File Data',
+                          `${b64Count} file attachment(s) have their binary data embedded directly in localStorage instead of Cloudflare R2. This is leftover from upload failures.\n\nRemoving the embedded data will free significant space. The file metadata (name, date, client) is kept so the record is not lost, but the file itself will no longer be downloadable from this device.\n\nProceed?`,
+                          'warning'
+                        );
+                        if (!ok) return;
+                        const { freed, base64Count } = FileService.pruneBase64DataFromStorage();
+                        showSuccessToast(`Removed embedded data from ${base64Count} file(s) — freed ~${Math.round(freed / 1024)} KB`);
+                        setQuotaSettings({ ...quotaSettings }); // trigger re-render
+                      }}
+                      style={{ marginTop: '10px', marginLeft: '10px', padding: '10px 20px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 2px 8px rgba(220,38,38,0.3)' }}
+                    >
+                      🗜️ Remove Embedded File Data ({b64Count} file{b64Count !== 1 ? 's' : ''})
+                    </button>
+                  </>
                 );
               })()}
             </div>

@@ -119,7 +119,20 @@ export class FileService {
         isR2: true,
         storagePlatform: 'r2',
       };
-    } catch {
+    } catch (err) {
+      console.error('[FileService] R2 upload failed:', err);
+      // Only allow base64 fallback for tiny files (< 100 KB) to avoid blowing the
+      // localStorage quota. Larger files MUST succeed via R2 — surface the error
+      // so the user can retry or contact support.
+      const MAX_BASE64_FALLBACK_BYTES = 100 * 1024;
+      if (file.size > MAX_BASE64_FALLBACK_BYTES) {
+        throw new Error(
+          `File upload failed and the file is too large (${Math.round(file.size / 1024)} KB) ` +
+          `for the offline fallback. Please check your connection and try again. ` +
+          `(Original error: ${err instanceof Error ? err.message : String(err)})`
+        );
+      }
+      console.warn('[FileService] Falling back to base64 storage for small file:', file.name, file.size);
       return this.fileToBase64StoredFile(file);
     }
   }
@@ -626,5 +639,117 @@ export class FileService {
     } catch {
       return 0;
     }
+  }
+
+  /**
+   * Migrates legacy base64-encoded attachments to Cloudflare R2.
+   *
+   * Iterates every attachment whose `file.data` is a `data:` URL, converts it
+   * back into a `File`, uploads to R2, and updates the attachment in place
+   * with the resulting R2 URL/path. The original base64 payload is discarded.
+   *
+   * Persists progress after EACH file so a crash mid-migration doesn't lose
+   * progress and so localStorage gets reclaimed incrementally.
+   *
+   * @param onProgress optional callback invoked with (current, total, fileName)
+   * @returns summary { migrated, failed, skipped, totalCandidates, errors }
+   */
+  static async migrateBase64ToR2(
+    onProgress?: (current: number, total: number, fileName: string) => void
+  ): Promise<{
+    migrated: number;
+    failed: number;
+    skipped: number;
+    totalCandidates: number;
+    errors: Array<{ id: string; name: string; error: string }>;
+  }> {
+    const errors: Array<{ id: string; name: string; error: string }> = [];
+    let migrated = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    let attachments = this.getAllFileAttachments();
+    const candidateIndices: number[] = [];
+    attachments.forEach((att, idx) => {
+      const data = att.file?.data ?? '';
+      if (!att.file.isR2 && data.startsWith('data:')) {
+        candidateIndices.push(idx);
+      }
+    });
+
+    const totalCandidates = candidateIndices.length;
+
+    for (let i = 0; i < candidateIndices.length; i++) {
+      const idx = candidateIndices[i];
+      const att = attachments[idx];
+      const fileName = att.file.name || `file-${att.file.id}`;
+
+      onProgress?.(i + 1, totalCandidates, fileName);
+
+      try {
+        // Convert data URL → Blob → File
+        const dataUrl = att.file.data;
+        const res = await fetch(dataUrl);
+        if (!res.ok) throw new Error(`Failed to decode data URL (status ${res.status})`);
+        const blob = await res.blob();
+        const file = new File([blob], fileName, { type: att.file.type || blob.type || 'application/octet-stream' });
+
+        // Determine target folder using the same logic as fresh uploads
+        const folder = this.getFolderByCategory(att.category, att.source);
+
+        // Upload to R2 directly (bypass storage-config check — this is a recovery path)
+        const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
+        if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
+          throw new Error(uploadResult.error || 'R2 upload returned no path/url');
+        }
+
+        // Update attachment in place. Keep the original `id`, `uploadDate`, and
+        // all metadata so existing references in payments/clients still resolve.
+        attachments[idx] = {
+          ...att,
+          file: {
+            ...att.file,
+            data: uploadResult.url,
+            r2Path: uploadResult.path,
+            isR2: true,
+            storagePlatform: 'r2',
+          },
+        };
+
+        // Persist after every successful migration so we reclaim quota incrementally.
+        try {
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(attachments));
+        } catch (storageErr) {
+          // If we still can't fit, abort — caller should run quota cleanup first.
+          console.error('[FileService] migration: localStorage write failed mid-migration:', storageErr);
+          errors.push({ id: att.file.id, name: fileName, error: 'localStorage quota exceeded mid-migration' });
+          failed++;
+          break;
+        }
+
+        // Best-effort: sync the updated attachment to MongoDB so it is durable
+        this.saveAttachmentToMongoDB(attachments[idx]).catch(err => {
+          console.warn('[FileService] migration: MongoDB sync failed for', fileName, err);
+        });
+
+        migrated++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[FileService] migration failed for', fileName, msg);
+        errors.push({ id: att.file.id, name: fileName, error: msg });
+        failed++;
+      }
+    }
+
+    // Anything that wasn't a candidate but is still non-R2 (e.g., empty data) is skipped.
+    skipped = this.getAllFileAttachments().filter(
+      a => !a.file.isR2 && !(a.file?.data ?? '').startsWith('data:')
+    ).length;
+
+    if (migrated > 0) {
+      realtimeSync.signalChange('file_attachments');
+    }
+
+    return { migrated, failed, skipped, totalCandidates, errors };
   }
 }
