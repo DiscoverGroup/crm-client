@@ -353,19 +353,29 @@ export class ClientService {
 
   static async updateClient(clientId: string, clientData: Partial<ClientData>): Promise<{ success: boolean; oldValues?: Record<string, any> }> {
     try {
+      const updatedAt = new Date().toISOString();
       const clients = this.getAllClientsIncludingDeleted();
       const clientIndex = clients.findIndex(client => client.id === clientId);
       
+      let oldClient: Partial<ClientData> = {};
+
       if (clientIndex === -1) {
-        throw new Error('Client not found');
+        // Client not in localStorage cache (e.g. quota eviction). Skip the local
+        // mutation and go straight to MongoDB so the save still succeeds, then
+        // schedule a re-sync to rebuild the cache.
+        console.warn('[ClientService] updateClient: client not in localStorage cache, updating MongoDB directly and re-syncing.');
+        await MongoDBService.updateClient(clientId, { ...clientData, updatedAt });
+        realtimeSync.signalChange('clients');
+        this.syncFromMongoDB().catch(() => {});
+        return { success: true, oldValues: {} };
       }
 
-      const oldClient = { ...clients[clientIndex] };
+      oldClient = { ...clients[clientIndex] };
       
       clients[clientIndex] = {
         ...clients[clientIndex],
         ...clientData,
-        updatedAt: new Date().toISOString()
+        updatedAt,
       };
 
       this.safeSetClients(JSON.stringify(clients));
@@ -374,7 +384,7 @@ export class ClientService {
       try {
         await MongoDBService.updateClient(clientId, {
           ...clientData,
-          updatedAt: new Date().toISOString()
+          updatedAt,
         });
         realtimeSync.signalChange('clients');
       } catch (err) {
@@ -384,7 +394,7 @@ export class ClientService {
           try {
             await MongoDBService.updateClient(clientId, {
               ...clientData,
-              updatedAt: new Date().toISOString()
+              updatedAt,
             });
             realtimeSync.signalChange('clients');
           } catch (retryErr) {
