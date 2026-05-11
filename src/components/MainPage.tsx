@@ -4674,6 +4674,8 @@ const MainPage: React.FC<MainPageProps> = ({
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [viewMode, setViewMode] = useState<'table' | 'package-group'>('table');
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 25;
   
   // Navigation state for form view - restore from sessionStorage on page load
   const [viewingForm, setViewingForm] = useState<{clientId?: string, clientName?: string, isTestRecord?: boolean} | null>(() => {
@@ -4882,11 +4884,13 @@ const MainPage: React.FC<MainPageProps> = ({
   }, [loadClients]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
+     setSearchQuery(e.target.value);
+     setCurrentPage(1);
   };
 
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
+     setStatusFilter(e.target.value);
+     setCurrentPage(1);
   };
 
   const handleClientEdit = (client: ClientData) => {
@@ -5513,7 +5517,7 @@ const MainPage: React.FC<MainPageProps> = ({
               </label>
               <select
                 value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
+                onChange={(e) => { setSortOrder(e.target.value as 'newest' | 'oldest'); setCurrentPage(1); }}
                 style={{
                   width: '100%',
                   padding: '11px 14px',
@@ -5699,6 +5703,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 />
               </div>
             ) : (
+            <>
             <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
               <table style={{
                 width: '100%',
@@ -5810,7 +5815,7 @@ const MainPage: React.FC<MainPageProps> = ({
                     const dateA = new Date(a.createdAt).getTime();
                     const dateB = new Date(b.createdAt).getTime();
                     return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-                  }).map((client, index) => (
+                  }).slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((client, index) => (
                     <tr
                       key={client.id}
                       style={{
@@ -6022,6 +6027,68 @@ const MainPage: React.FC<MainPageProps> = ({
                 </tbody>
               </table>
             </div>
+              {/* ── Pagination controls ─────────────────────────────────── */}
+              {viewMode === 'table' && (() => {
+                const totalPages = Math.ceil(clients.length / PAGE_SIZE);
+                if (totalPages <= 1) return null;
+                const start = (currentPage - 1) * PAGE_SIZE + 1;
+                const end = Math.min(currentPage * PAGE_SIZE, clients.length);
+                return (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 20px',
+                    borderTop: '1px solid rgba(10, 45, 116, 0.1)',
+                    background: '#f8fafc',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '13px', color: '#64748b' }}>
+                      Showing {start}–{end} of {clients.length} clients
+                    </span>
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(1)}
+                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === 1 ? '#f1f5f9' : '#fff', color: currentPage === 1 ? '#94a3b8' : '#0A2D74', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
+                      >«</button>
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === 1 ? '#f1f5f9' : '#fff', color: currentPage === 1 ? '#94a3b8' : '#0A2D74', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
+                      >‹</button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                        .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                          if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((p, i) =>
+                          p === '...'
+                            ? <span key={`ellipsis-${i}`} style={{ padding: '5px 4px', color: '#94a3b8', fontSize: '13px' }}>…</span>
+                            : <button
+                                key={p}
+                                onClick={() => setCurrentPage(p as number)}
+                                style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === p ? '#0A2D74' : '#fff', color: currentPage === p ? '#fff' : '#0A2D74', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minWidth: '34px' }}
+                              >{p}</button>
+                        )}
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === totalPages ? '#f1f5f9' : '#fff', color: currentPage === totalPages ? '#94a3b8' : '#0A2D74', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
+                      >›</button>
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(totalPages)}
+                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === totalPages ? '#f1f5f9' : '#fff', color: currentPage === totalPages ? '#94a3b8' : '#0A2D74', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
+                      >»</button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
             )} {/* end table/package-group conditional */}
           </div>
         )}
