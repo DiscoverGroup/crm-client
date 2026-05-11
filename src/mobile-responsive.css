@@ -158,9 +158,16 @@
 
 /* Desktop styles for main content — sidebar is fixed/overlay, offset by collapsed width (80px) */
 @media (min-width: 1024px) {
+  .sidebar-container {
+    position: sticky !important;
+    top: 0 !important;
+    left: auto !important;
+    flex-shrink: 0;
+  }
+
   .main-content {
-    margin-left: 80px;
-    width: calc(100% - 80px);
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 }
 
