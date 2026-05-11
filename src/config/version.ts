@@ -32,9 +32,9 @@ export const VERSION_INFO: VersionInfo = {
   website: {
     major: 2,
     minor: 1,
-    patch: 0,
-    buildDate: '2026-02-11',
-    buildNumber: 'BUILD-20260211-001'
+    patch: 1,
+    buildDate: '2026-05-11',
+    buildNumber: 'BUILD-20260511-001'
   },
   security: {
     major: 1,
