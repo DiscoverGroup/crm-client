@@ -12,6 +12,7 @@
  */
 
 import type { Db } from 'mongodb';
+import { logWarn } from './logger';
 
 export interface RateLimitResult {
   limited: boolean;
@@ -64,6 +65,80 @@ export async function checkRateLimit(
 
   const count = result?.count ?? 1;
   const limited = count > maxRequests;
+
+  if (limited) {
+    logWarn({
+      fn: 'rateLimiter',
+      msg: 'Rate limit exceeded',
+      ip,
+      op: endpoint,
+      count,
+      maxRequests,
+      windowSeconds,
+    });
+  }
+
+  return {
+    limited,
+    count,
+    remaining: Math.max(0, maxRequests - count),
+    resetAfterSeconds: windowSeconds,
+  };
+}
+
+/**
+ * Per-user rate limit check. Keys on userId instead of IP so IP rotation
+ * cannot bypass user-scoped limits.
+ *
+ * @param db            Mongo Db instance
+ * @param userId        Authenticated user's ID (from JWT payload)
+ * @param endpoint      Short label, e.g. 'upload', 'send-message'
+ * @param maxRequests   Maximum allowed in window (default 20)
+ * @param windowSeconds Window length in seconds (default 60)
+ */
+export async function checkRateLimitByUser(
+  db: Db,
+  userId: string,
+  endpoint: string,
+  maxRequests = 20,
+  windowSeconds = 60
+): Promise<RateLimitResult> {
+  const col = db.collection(COLLECTION);
+  const key = `user:${userId}:${endpoint}`;
+  const now = new Date();
+
+  try {
+    await col.createIndex(
+      { createdAt: 1 },
+      { expireAfterSeconds: windowSeconds, background: true }
+    );
+  } catch {
+    // Index may already exist — fine
+  }
+
+  const result = await col.findOneAndUpdate(
+    { key },
+    {
+      $inc: { count: 1 },
+      $setOnInsert: { createdAt: now },
+    },
+    { upsert: true, returnDocument: 'after' }
+  );
+
+  const count = result?.count ?? 1;
+  const limited = count > maxRequests;
+
+  if (limited) {
+    logWarn({
+      fn: 'rateLimiter',
+      msg: 'User-scoped rate limit exceeded',
+      userId,
+      op: endpoint,
+      count,
+      maxRequests,
+      windowSeconds,
+    });
+  }
 
   return {
     limited,

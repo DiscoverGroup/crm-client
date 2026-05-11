@@ -22,7 +22,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
-import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { checkRateLimit, checkRateLimitByUser, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { validateFileUpload } from './middleware/fileUploadSecurity';
 
 // ── Server-side credentials (no VITE_ prefix — never sent to browser) ─────────
@@ -125,8 +125,16 @@ export const handler: Handler = async (event) => {
         await mongoClient.connect();
         const db = mongoClient.db(DB_NAME);
         const clientIP = getClientIP(event.headers);
-        const rateResult = await checkRateLimit(db, clientIP, 'get-upload-url', 30, 60);
-        if (rateResult.limited) {
+
+        // Layer 1: IP-based limit (catches unauthenticated floods)
+        const ipRateResult = await checkRateLimit(db, clientIP, 'get-upload-url', 30, 60);
+        if (ipRateResult.limited) {
+          return tooManyRequestsResponse(headers, 60);
+        }
+
+        // Layer 2: User-based limit (survives IP rotation / proxy bypass)
+        const userRateResult = await checkRateLimitByUser(db, auth.user!.userId, 'get-upload-url', 20, 60);
+        if (userRateResult.limited) {
           return tooManyRequestsResponse(headers, 60);
         }
       } catch {

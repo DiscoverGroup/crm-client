@@ -1,7 +1,9 @@
 import { Handler } from '@netlify/functions';
 import { S3Client, ListObjectsV2Command, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { MongoClient } from 'mongodb';
 import { verifyAuthToken } from './middleware/authMiddleware';
 import { getSecurityHeaders } from './utils/securityUtils';
+import { acquireJobLock, releaseJobLock, alreadyRunningResponse } from './utils/idempotency';
 import archiver from 'archiver';
 import { Readable } from 'stream';
 
@@ -47,7 +49,28 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  createZipBackup().catch(err => {
+  // Idempotency lock — prevents duplicate concurrent ZIP jobs on rate-limit bypass
+  const dateLabel = new Date().toISOString().slice(0, 10);
+  const lockId = `zip-backup:${dateLabel}`;
+  const mongoUri = process.env.MONGODB_URI || '';
+  let lockAcquired = false;
+  if (mongoUri) {
+    const lockDb = new MongoClient(mongoUri);
+    try {
+      await lockDb.connect();
+      const lock = await acquireJobLock(lockDb.db('dg_crm'), lockId, 900);
+      if (!lock.acquired) {
+        return alreadyRunningResponse({ ...getSecurityHeaders(), 'Content-Type': 'application/json' });
+      }
+      lockAcquired = true;
+    } catch {
+      // Lock check failed — proceed rather than block the job
+    } finally {
+      await lockDb.close().catch(() => {});
+    }
+  }
+
+  createZipBackup(lockAcquired ? lockId : null).catch(err => {
     console.error('Background ZIP creation failed:', err);
   });
 
@@ -58,7 +81,7 @@ export const handler: Handler = async (event) => {
   };
 };
 
-async function createZipBackup(): Promise<void> {
+async function createZipBackup(lockId: string | null): Promise<void> {
   const dateLabel = new Date().toISOString().slice(0, 10);
   const zipKey = `backups/${dateLabel}/all-files.zip`;
 
@@ -162,5 +185,17 @@ async function createZipBackup(): Promise<void> {
     await writeZipStatus(dateLabel, { state: 'error', error: msg });
     console.error('ZIP creation failed:', error);
     throw error;
+  } finally {
+    // Release lock so a retry is allowed after failure or completion
+    const mongoUri = process.env.MONGODB_URI || '';
+    if (lockId && mongoUri) {
+      const lockDb = new MongoClient(mongoUri);
+      try {
+        await lockDb.connect();
+        await releaseJobLock(lockDb.db('dg_crm'), lockId);
+      } catch { /* non-fatal */ } finally {
+        await lockDb.close().catch(() => {});
+      }
+    }
   }
 }

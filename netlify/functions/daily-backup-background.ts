@@ -25,6 +25,7 @@ import { MongoClient } from 'mongodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuthToken } from './middleware/authMiddleware';
 import { logInfo, logError, startTimer } from './utils/logger';
+import { acquireJobLock, releaseJobLock, alreadyRunningResponse } from './utils/idempotency';
 
 const MONGODB_URI   = process.env.MONGODB_URI              || '';
 const DB_NAME       = 'dg_crm';
@@ -53,7 +54,6 @@ export const handler: Handler = async (event) => {
   }
 
   if (!MONGODB_URI || !R2_ENDPOINT || !R2_ACCESS_KEY || !R2_SECRET_KEY) {
-    // Return before async work so the client gets a clear config error
     return {
       statusCode: 500,
       headers: jsonHeaders,
@@ -61,13 +61,28 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  // Background functions: Netlify sends 202 immediately after this handler is
-  // invoked and continues running the async work below for up to 15 minutes.
-  // The return value here is effectively ignored by Netlify for background fns —
-  // we still return 202 explicitly so the client knows to start polling.
-  //
+  // Idempotency lock — prevents duplicate concurrent backup runs triggered by
+  // rate-limit bypass or scheduler double-fire. Lock TTL matches max job duration.
+  const dateLabel = new Date().toISOString().slice(0, 10);
+  const lockId = `daily-backup:${dateLabel}`;
+  let lockDb: MongoClient | null = null;
+  let lockAcquired = false;
+  try {
+    lockDb = new MongoClient(MONGODB_URI);
+    await lockDb.connect();
+    const lock = await acquireJobLock(lockDb.db('dg_crm'), lockId, 900);
+    if (!lock.acquired) {
+      return alreadyRunningResponse(jsonHeaders);
+    }
+    lockAcquired = true;
+  } catch {
+    // If lock check fails, proceed — better to run twice than not at all for backup
+  } finally {
+    if (lockDb) { await lockDb.close(); lockDb = null; }
+  }
+
   // Fire-and-forget the actual backup — runs after 202 is sent.
-  runBackup().catch(() => {/* errors are written to the R2 status file */});
+  runBackup(lockAcquired ? lockId : null).catch(() => {/* errors written to R2 status file */});
 
   return {
     statusCode: 202,
@@ -76,7 +91,7 @@ export const handler: Handler = async (event) => {
   };
 };
 
-async function runBackup(): Promise<void> {
+async function runBackup(lockId: string | null): Promise<void> {
   const elapsed = startTimer();
   const dateLabel = new Date().toISOString().slice(0, 10);
   logInfo({ fn: 'daily-backup-background', msg: 'Background backup started', dateLabel });
@@ -172,5 +187,15 @@ async function runBackup(): Promise<void> {
     await writeStatus({ state: 'error', error: err.message || 'Unknown error', date: dateLabel });
   } finally {
     await mongo.close().catch(() => {});
+    // Release the idempotency lock so a subsequent manual retry is allowed
+    if (lockId && MONGODB_URI) {
+      const lockDb = new MongoClient(MONGODB_URI);
+      try {
+        await lockDb.connect();
+        await releaseJobLock(lockDb.db('dg_crm'), lockId);
+      } catch { /* non-fatal */ } finally {
+        await lockDb.close().catch(() => {});
+      }
+    }
   }
 }
