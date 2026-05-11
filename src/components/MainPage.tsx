@@ -5326,7 +5326,7 @@ const MainPage: React.FC<MainPageProps> = ({
           <div
             className="main-content dashboard-themed-content"
             style={{
-            padding: '24px 28px 36px',
+            padding: '24px 24px 64px',
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
@@ -5334,11 +5334,11 @@ const MainPage: React.FC<MainPageProps> = ({
             display: 'flex',
             flexDirection: 'column',
             width: '100%',
-            maxWidth: '1320px',
-            margin: '0 auto'
+            maxWidth: 'none',
+            margin: 0
           }}>
         {/* Header */}
-        <div style={{
+        <div className="dashboard-shell-header" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -5350,7 +5350,7 @@ const MainPage: React.FC<MainPageProps> = ({
           boxShadow: '0 10px 26px rgba(15, 23, 42, 0.08)',
           backdropFilter: 'blur(8px)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="dashboard-shell-title" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{
               width: '46px',
               height: '46px',
@@ -5396,7 +5396,7 @@ const MainPage: React.FC<MainPageProps> = ({
               </div>
             </div>
           </div>
-          <div className="dashboard-toolbar-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="dashboard-toolbar-actions dashboard-shell-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <Button
               onClick={handleAddNewClient}
               variant="secondary"
@@ -5441,7 +5441,7 @@ const MainPage: React.FC<MainPageProps> = ({
             backdropFilter: 'blur(8px)'
           }}
         >
-          <div style={{
+          <div className="dashboard-filter-grid" style={{
             display: 'grid',
             gridTemplateColumns: '2fr 1fr 1fr',
             gap: '16px',
@@ -5609,7 +5609,7 @@ const MainPage: React.FC<MainPageProps> = ({
                 {clients.length} {clients.length === 1 ? 'client' : 'clients'}
               </Badge>
               {/* View toggle + Batch Drive backup */}
-              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div className="dashboard-list-toolbar" style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Batch backup to Drive */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                   <Button
