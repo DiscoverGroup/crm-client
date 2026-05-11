@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ClientService, type ClientData } from '../services/clientService';
-import Sidebar from "./Sidebar";
+import Sidebar from "./SidebarPanel";
 
 // Inline fallback ClientRecords component to avoid missing module error.
 // This simple component matches the props used in this file and can be

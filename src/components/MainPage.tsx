@@ -9,7 +9,7 @@ import { useFieldTracking } from '../hooks/useFieldTracking';
 import { useSectionTracking } from '../hooks/useSectionTracking';
 import LogNoteComponent from './LogNoteComponent';
 import NotesThreadComponent from './NotesThreadComponent';
-import Sidebar from "./Sidebar";
+import Sidebar from "./SidebarPanel";
 import UserProfile from './UserProfile';
 import DeletedClients from './DeletedClients';
 import ArchivedClients from './ArchivedClients';
@@ -26,6 +26,14 @@ import { useWindowWidth } from '../hooks/useWindowWidth';
 import { backupFilesToDrive } from '../services/googleDriveService';
 import DriveBackupModal, { type DriveBackupModalProgress } from './DriveBackupModal';
 import DriveRestoreModal from './DriveRestoreModal';
+import NewUiTourModal from './NewUiTourModal';
+import Button from './ui/Button';
+import Card from './ui/Card';
+import Input from './ui/Input';
+import SectionLabel from './ui/SectionLabel';
+import Badge from './ui/Badge';
+import Pagination from './ui/Pagination';
+import { TableContainer, UITable, UITableHeadCell, UITableHeadRow } from './ui/Table';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
@@ -4661,6 +4669,7 @@ const MainPage: React.FC<MainPageProps> = ({
   isSidebarOpen = false,
   onCloseSidebar
 }) => {
+  const NEW_UI_MODAL_KEY = 'crm_ui_refresh_intro_seen_v1';
   const [clients, setClients] = useState<ClientData[]>([]);
   const [testClients, setTestClients] = useState<ClientData[]>([]);
   const [batchDriveStatus, setBatchDriveStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
@@ -4673,6 +4682,15 @@ const MainPage: React.FC<MainPageProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [viewMode, setViewMode] = useState<'table' | 'package-group'>('table');
+  const [isTestRecordsOpen, setIsTestRecordsOpen] = useState(true);
+  const [showNewUiModal, setShowNewUiModal] = useState<boolean>(() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      return localStorage.getItem(NEW_UI_MODAL_KEY) !== '1';
+    } catch {
+      return false;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 25;
@@ -4841,6 +4859,15 @@ const MainPage: React.FC<MainPageProps> = ({
     }
   };
 
+  const handleDismissNewUiModal = () => {
+    try {
+      localStorage.setItem(NEW_UI_MODAL_KEY, '1');
+    } catch {
+      // Ignore storage errors and just close the modal for this session.
+    }
+    setShowNewUiModal(false);
+  };
+
   const loadClients = useCallback(async () => {
     setLoading(true);
     try {
@@ -4934,7 +4961,7 @@ const MainPage: React.FC<MainPageProps> = ({
 
   return (
     <>
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div className="dashboard-theme-shell" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {viewingForm ? (
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <Sidebar 
@@ -4968,7 +4995,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
               flex: 1,
               minHeight: 0,
@@ -5015,7 +5042,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             flex: 1,
             minHeight: 0,
@@ -5071,7 +5098,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div 
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             padding: '20px',
             flex: 1,
@@ -5121,7 +5148,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div 
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             padding: '20px',
             flex: 1,
@@ -5171,7 +5198,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div 
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             padding: '20px',
             flex: 1,
@@ -5217,7 +5244,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             flex: 1,
             minHeight: 0,
@@ -5261,7 +5288,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
             flex: 1,
             minHeight: 0,
@@ -5295,15 +5322,18 @@ const MainPage: React.FC<MainPageProps> = ({
             onClose={onCloseSidebar}
           />
           <div
-            className="main-content"
+            className="main-content dashboard-themed-content"
             style={{
-            padding: '20px',
+            padding: '24px 28px 36px',
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
             background: 'transparent',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            width: '100%',
+            maxWidth: '1320px',
+            margin: '0 auto'
           }}>
         {/* Header */}
         <div style={{
@@ -5311,18 +5341,20 @@ const MainPage: React.FC<MainPageProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '24px',
-          background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)',
+          background: 'rgba(255, 255, 255, 0.88)',
           padding: '20px 28px',
-          borderRadius: '14px',
-          boxShadow: '0 4px 20px rgba(10, 45, 116, 0.25)'
+          borderRadius: '20px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 10px 26px rgba(15, 23, 42, 0.08)',
+          backdropFilter: 'blur(8px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{
               width: '46px',
               height: '46px',
-              borderRadius: '10px',
-              border: '2px solid rgba(255,255,255,0.4)',
-              background: '#fff',
+              borderRadius: '14px',
+              border: '1px solid #dbe4f5',
+              background: '#f8fbff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -5339,88 +5371,74 @@ const MainPage: React.FC<MainPageProps> = ({
             <div>
               <h1 style={{ 
                 margin: '0 0 4px 0',
-                color: '#ffffff',
-                fontSize: '22px',
-                fontWeight: '800',
-                fontFamily: "'Poppins', sans-serif",
-                letterSpacing: '0.05em'
+                color: '#0f172a',
+                fontSize: '24px',
+                fontWeight: '700',
+                fontFamily: 'var(--font-sans)',
+                letterSpacing: '-0.01em'
               }}>
                 Client Records
               </h1>
               <p style={{ 
                 margin: 0,
-                color: 'rgba(255,255,255,0.75)',
-                fontSize: '13px'
+                color: '#64748b',
+                fontSize: '13px',
+                fontWeight: '500'
               }}>
                 Manage and search through all client documents
               </p>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                <span className="dashboard-toolbar-chip">Total {clients.length}</span>
+                <span className="dashboard-toolbar-chip">Page {currentPage}</span>
+                <span className="dashboard-toolbar-chip">Limit {PAGE_SIZE}</span>
+              </div>
             </div>
           </div>
-          <button
-            onClick={handleAddNewClient}
-            style={{
-              padding: '11px 22px',
-              background: 'rgba(255,255,255,0.2)',
-              color: 'white',
-              border: '1.5px solid rgba(255,255,255,0.5)',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)',
-              whiteSpace: 'nowrap'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            + Add New Client
-          </button>
-          {isAdmin() && (
-            <button
-              onClick={handleAddTestRecord}
+          <div className="dashboard-toolbar-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              onClick={handleAddNewClient}
+              variant="secondary"
+              size="md"
               style={{
-                padding: '11px 22px',
-                background: 'rgba(245, 158, 11, 0.25)',
-                color: '#fde68a',
-                border: '1.5px solid rgba(245, 158, 11, 0.6)',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                transition: 'all 0.2s ease',
-                backdropFilter: 'blur(10px)',
+                background: 'var(--gradient-signature)',
+                color: '#fff',
+                borderColor: 'rgba(0, 82, 255, 0.5)',
                 whiteSpace: 'nowrap'
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.4)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
+            >
+              New Client
+            </Button>
+          {isAdmin() && (
+            <Button
+              onClick={handleAddTestRecord}
+              variant="warning"
+              size="md"
+              style={{
+                background: 'rgba(245, 158, 11, 0.12)',
+                color: '#92400e',
+                borderColor: 'rgba(245, 158, 11, 0.35)',
+                whiteSpace: 'nowrap'
               }}
             >
-              🧪 Add Test Record
-            </button>
+              Test Record
+            </Button>
           )}
+          </div>
         </div>
 
         {/* Search and Filter Section */}
-        <div style={{
-          background: '#ffffff',
-          padding: '20px 24px',
-          borderRadius: '14px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
-          border: '1px solid rgba(10, 45, 116, 0.1)'
-        }}>
+        <Card
+          variant="elevated"
+          style={{
+            padding: '22px 24px',
+            marginBottom: '20px',
+            borderRadius: '20px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)',
+            background: 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(8px)'
+          }}
+        >
           <div style={{
             display: 'grid',
             gridTemplateColumns: '2fr 1fr 1fr',
@@ -5433,37 +5451,21 @@ const MainPage: React.FC<MainPageProps> = ({
                 marginBottom: '8px',
                 fontWeight: '600',
                 fontSize: '12px',
-                color: '#0A2D74',
+                color: '#475569',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em'
+                letterSpacing: '0.08em'
               }}>
                 Search Clients
               </label>
-              <input
+              <Input
                 type="text"
                 placeholder="Search by name, email, client number, phone, or package..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 style={{
-                  width: '100%',
-                  padding: '11px 14px',
-                  border: '1.5px solid #d1dbe8',
-                  borderRadius: '10px',
                   fontSize: '14px',
                   background: '#f8fafc',
-                  color: '#1e293b',
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#28A2DC';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(40, 162, 220, 0.12)';
-                  e.target.style.background = '#ffffff';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#d1dbe8';
-                  e.target.style.boxShadow = 'none';
-                  e.target.style.background = '#f8fafc';
+                  border: '1px solid #dbe4f0'
                 }}
               />
             </div>
@@ -5473,23 +5475,25 @@ const MainPage: React.FC<MainPageProps> = ({
                 marginBottom: '8px',
                 fontWeight: '600',
                 fontSize: '12px',
-                color: '#0A2D74',
+                color: '#475569',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em'
+                letterSpacing: '0.08em'
               }}>
                 Filter by Status
               </label>
               <select
                 value={statusFilter}
                 onChange={handleStatusFilterChange}
+                className="ui-select-focus"
                 style={{
                   width: '100%',
-                  padding: '11px 14px',
-                  border: '1.5px solid #d1dbe8',
-                  borderRadius: '10px',
+                  height: '44px',
+                  padding: '0 14px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
                   fontSize: '14px',
                   background: '#f8fafc',
-                  color: '#1e293b',
+                  color: 'var(--foreground)',
                   cursor: 'pointer'
                 }}
               >
@@ -5509,23 +5513,25 @@ const MainPage: React.FC<MainPageProps> = ({
                 marginBottom: '8px',
                 fontWeight: '600',
                 fontSize: '12px',
-                color: '#0A2D74',
+                color: '#475569',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em'
+                letterSpacing: '0.08em'
               }}>
                 Sort by Date
               </label>
               <select
                 value={sortOrder}
                 onChange={(e) => { setSortOrder(e.target.value as 'newest' | 'oldest'); setCurrentPage(1); }}
+                className="ui-select-focus"
                 style={{
                   width: '100%',
-                  padding: '11px 14px',
-                  border: '1.5px solid #d1dbe8',
-                  borderRadius: '10px',
+                  height: '44px',
+                  padding: '0 14px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
                   fontSize: '14px',
                   background: '#f8fafc',
-                  color: '#1e293b',
+                  color: 'var(--foreground)',
                   cursor: 'pointer'
                 }}
               >
@@ -5534,99 +5540,79 @@ const MainPage: React.FC<MainPageProps> = ({
               </select>
             </div>
           </div>
-        </div>
+        </Card>
 
         {loading ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 40px',
-            background: '#ffffff',
-            borderRadius: '14px',
-            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
-            border: '1px solid rgba(10, 45, 116, 0.1)'
-          }}>
-            <p style={{ color: '#64748b', fontSize: '15px' }}>Loading clients...</p>
-          </div>
+          <Card
+            variant="elevated"
+            style={{
+              textAlign: 'center',
+              padding: '60px 40px',
+              borderRadius: '14px'
+            }}
+          >
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '15px' }}>Loading clients...</p>
+          </Card>
         ) : clients.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 40px',
-            background: '#ffffff',
-            borderRadius: '14px',
-            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
-            border: '1px solid rgba(10, 45, 116, 0.1)'
-          }}>
+          <Card
+            variant="elevated"
+            style={{
+              textAlign: 'center',
+              padding: '60px 40px',
+              borderRadius: '14px'
+            }}
+          >
             <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.4 }}>
               👥
             </div>
-            <h3 style={{ color: '#0A2D74', margin: '0 0 8px 0', fontWeight: '700' }}>
+            <h3 style={{ color: 'var(--foreground)', margin: '0 0 8px 0', fontWeight: '700', fontFamily: 'var(--font-display)' }}>
               {searchQuery || statusFilter ? 'No Clients Found' : 'No Clients Yet'}
             </h3>
-            <p style={{ color: '#94a3b8', margin: '0 0 20px 0', fontSize: '14px' }}>
+            <p style={{ color: 'var(--muted-foreground)', margin: '0 0 20px 0', fontSize: '14px' }}>
               {searchQuery || statusFilter 
                 ? 'Try adjusting your search criteria or filters.'
                 : 'Start by adding your first client to the system.'
               }
             </p>
             {!searchQuery && !statusFilter && (
-              <button
+              <Button
                 onClick={handleAddNewClient}
-                style={{
-                  padding: '12px 28px',
-                  background: 'linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  boxShadow: '0 4px 14px rgba(10, 45, 116, 0.3)'
-                }}
+                variant="primary"
+                size="md"
               >
                 + Add First Client
-              </button>
+              </Button>
             )}
-          </div>
+          </Card>
         ) : (
           <div style={{
             background: '#ffffff',
-            borderRadius: '14px',
-            boxShadow: '0 2px 12px rgba(10, 45, 116, 0.08)',
-            border: '1px solid rgba(10, 45, 116, 0.1)',
-            overflow: 'hidden',
+            borderRadius: '20px',
+            boxShadow: '0 14px 32px rgba(15, 23, 42, 0.08)',
+            border: '1px solid #e2e8f0',
+            overflow: 'visible',
             display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            minHeight: 0
+            flexDirection: 'column'
           }}>
             <div style={{
-              padding: '16px 24px',
-              borderBottom: '2px solid rgba(40, 162, 220, 0.2)',
-              background: 'linear-gradient(135deg, #f0f4ff 0%, #f8fafc 100%)',
+              padding: '16px 20px',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8fafc',
               display: 'flex',
               alignItems: 'center',
               gap: '10px'
             }}>
-              <span style={{ fontSize: '16px' }}>👥</span>
-              <h3 style={{ margin: 0, color: '#0A2D74', fontWeight: '700', fontSize: '15px' }}>
-                Client List
-              </h3>
-              <span style={{
-                marginLeft: '4px',
-                background: '#0A2D74',
-                color: '#fff',
-                borderRadius: '20px',
-                padding: '2px 10px',
-                fontSize: '12px',
-                fontWeight: '600'
-              }}>
+              <SectionLabel>Client List</SectionLabel>
+              <Badge variant="count" style={{ marginLeft: '4px' }}>
                 {clients.length} {clients.length === 1 ? 'client' : 'clients'}
-              </span>
+              </Badge>
               {/* View toggle + Batch Drive backup */}
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Batch backup to Drive */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                  <button
+                  <Button
+                    size="sm"
+                    variant="success"
                     disabled={batchDriveStatus === 'running'}
                     onClick={async () => {
                       const allClients = clients.filter(c => !c.isTestRecord);
@@ -5664,31 +5650,24 @@ const MainPage: React.FC<MainPageProps> = ({
                       setBatchDriveErrors(allErrors);
                       setBatchDriveProgress(null);
                     }}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: batchDriveStatus === 'running' ? 'not-allowed' : 'pointer',
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      background: batchDriveStatus === 'running' ? '#9ca3af' : '#16a34a',
-                      color: '#fff',
-                      whiteSpace: 'nowrap'
-                    }}
+                    className={batchDriveStatus === 'running' ? 'ui-button--ghost' : ''}
+                    style={{ whiteSpace: 'nowrap' }}
                   >
                     {batchDriveStatus === 'running' ? '⏳ Backing up…' : '📂 Backup All → Drive'}
-                  </button>
+                  </Button>
                 </div>
-                <button
+                <Button
+                  size="sm"
+                  variant={viewMode === 'table' ? 'primary' : 'secondary'}
                   onClick={() => setViewMode('table')}
                   title="Table view"
-                  style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', background: viewMode === 'table' ? '#0A2D74' : '#e2e8f0', color: viewMode === 'table' ? '#fff' : '#475569' }}
-                >☰ Table</button>
-                <button
+                >☰ Table</Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'package-group' ? 'primary' : 'secondary'}
                   onClick={() => setViewMode('package-group')}
                   title="Group by package"
-                  style={{ padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', background: viewMode === 'package-group' ? '#0A2D74' : '#e2e8f0', color: viewMode === 'package-group' ? '#fff' : '#475569' }}
-                >By Package</button>
+                >By Package</Button>
               </div>
             </div>
             {viewMode === 'package-group' ? (
@@ -5704,111 +5683,35 @@ const MainPage: React.FC<MainPageProps> = ({
               </div>
             ) : (
             <>
-            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', minHeight: 0 }}>
-              <table style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                minWidth: '650px'
-              }}>
+            <TableContainer>
+              <UITable minWidth="650px">
                 <thead>
-                  <tr style={{ background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 100%)' }}>
-                    <th style={{
-                      padding: '13px 20px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                  <UITableHeadRow>
+                    <UITableHeadCell>
                       Client No.
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                       Client name
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                       Status
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                       Email
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                       Phone
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                      Sales Agent
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'left',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell>
                       Package
-                    </th>
-                    <th style={{
-                      padding: '13px 16px',
-                      textAlign: 'center',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: 'rgba(255,255,255,0.85)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      whiteSpace: 'nowrap'
-                    }}>
+                    </UITableHeadCell>
+                    <UITableHeadCell align="center">
                       Actions
-                    </th>
-                  </tr>
+                    </UITableHeadCell>
+                  </UITableHeadRow>
                 </thead>
                 <tbody>
                   {[...clients].sort((a, b) => {
@@ -5818,14 +5721,23 @@ const MainPage: React.FC<MainPageProps> = ({
                   }).slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((client, index) => (
                     <tr
                       key={client.id}
+                      className="ui-table-row"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Open client ${client.contactName || client.clientNo || ''}`}
                       style={{
-                        borderBottom: '1px solid rgba(10, 45, 116, 0.07)',
                         background: index % 2 === 0 ? '#ffffff' : '#f8faff',
-                        transition: 'background 0.15s ease',
-                        cursor: 'pointer'
                       }}
                       onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(40, 162, 220, 0.07)')}
                       onMouseOut={(e) => (e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#f8faff')}
+                      onFocus={(e) => (e.currentTarget.style.background = 'rgba(40, 162, 220, 0.07)')}
+                      onBlur={(e) => (e.currentTarget.style.background = index % 2 === 0 ? '#ffffff' : '#f8faff')}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleClientEdit(client);
+                        }
+                      }}
                       onClick={() => handleClientEdit(client)}
                     >
                         <td style={{
@@ -5845,18 +5757,9 @@ const MainPage: React.FC<MainPageProps> = ({
                         {client.contactName}
                       </td>
                       <td style={{ padding: '15px 16px' }}>
-                        <span style={{
-                          padding: '4px 12px',
-                          backgroundColor: getStatusColor(client.status || 'unknown'),
-                          color: 'white',
-                          borderRadius: '20px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          display: 'inline-block',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
-                        }}>
+                        <Badge variant="status" color={getStatusColor(client.status || 'unknown')}>
                           {client.status}
-                        </span>
+                        </Badge>
                       </td>
                       <td style={{
                         padding: '15px 16px',
@@ -5885,7 +5788,7 @@ const MainPage: React.FC<MainPageProps> = ({
                         fontSize: '13px'
                       }}>
                         {client.packageName
-                          ? <span style={{ padding: '3px 10px', background: '#e0f2fe', color: '#0369a1', borderRadius: '20px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>{client.packageName}</span>
+                          ? <Badge variant="package">{client.packageName}</Badge>
                           : <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>—</span>}
                       </td>
                       <td style={{
@@ -5895,35 +5798,19 @@ const MainPage: React.FC<MainPageProps> = ({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
                           {/* Action buttons row */}
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                            <button
+                            <Button
+                              size="sm"
+                              variant="primary"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleClientEdit(client);
                               }}
-                              style={{
-                                padding: '5px 12px',
-                                background: 'linear-gradient(135deg, #28A2DC 0%, #1a85bd 100%)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 2px 6px rgba(40, 162, 220, 0.3)'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(40, 162, 220, 0.45)';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(40, 162, 220, 0.3)';
-                              }}
                             >
                               ✏️ Edit
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="warning"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 const confirmed = await showConfirmDialog(
@@ -5948,30 +5835,12 @@ const MainPage: React.FC<MainPageProps> = ({
                                   loadClients();
                                 }
                               }}
-                              style={{
-                                padding: '5px 12px',
-                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.45)';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(245, 158, 11, 0.3)';
-                              }}
                             >
                               🗃️ Archive
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="danger"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 const confirmed = await showConfirmDialog(
@@ -5996,96 +5865,27 @@ const MainPage: React.FC<MainPageProps> = ({
                                   loadClients();
                                 }
                               }}
-                              style={{
-                                padding: '5px 12px',
-                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                fontWeight: '600',
-                                transition: 'all 0.2s ease',
-                                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.3)'
-                              }}
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(239, 68, 68, 0.45)';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(239, 68, 68, 0.3)';
-                              }}
                             >
                               🗑️ Delete
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            </div>
+              </UITable>
+            </TableContainer>
               {/* ── Pagination controls ─────────────────────────────────── */}
               {viewMode === 'table' && (() => {
-                const totalPages = Math.ceil(clients.length / PAGE_SIZE);
-                if (totalPages <= 1) return null;
-                const start = (currentPage - 1) * PAGE_SIZE + 1;
-                const end = Math.min(currentPage * PAGE_SIZE, clients.length);
                 return (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 20px',
-                    borderTop: '1px solid rgba(10, 45, 116, 0.1)',
-                    background: '#f8fafc',
-                    flexWrap: 'wrap',
-                    gap: '8px'
-                  }}>
-                    <span style={{ fontSize: '13px', color: '#64748b' }}>
-                      Showing {start}–{end} of {clients.length} clients
-                    </span>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <button
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(1)}
-                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === 1 ? '#f1f5f9' : '#fff', color: currentPage === 1 ? '#94a3b8' : '#0A2D74', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
-                      >«</button>
-                      <button
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(p => p - 1)}
-                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === 1 ? '#f1f5f9' : '#fff', color: currentPage === 1 ? '#94a3b8' : '#0A2D74', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
-                      >‹</button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
-                        .reduce<(number | '...')[]>((acc, p, i, arr) => {
-                          if (i > 0 && (p as number) - (arr[i - 1] as number) > 1) acc.push('...');
-                          acc.push(p);
-                          return acc;
-                        }, [])
-                        .map((p, i) =>
-                          p === '...'
-                            ? <span key={`ellipsis-${i}`} style={{ padding: '5px 4px', color: '#94a3b8', fontSize: '13px' }}>…</span>
-                            : <button
-                                key={p}
-                                onClick={() => setCurrentPage(p as number)}
-                                style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === p ? '#0A2D74' : '#fff', color: currentPage === p ? '#fff' : '#0A2D74', cursor: 'pointer', fontSize: '13px', fontWeight: '600', minWidth: '34px' }}
-                              >{p}</button>
-                        )}
-                      <button
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(p => p + 1)}
-                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === totalPages ? '#f1f5f9' : '#fff', color: currentPage === totalPages ? '#94a3b8' : '#0A2D74', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
-                      >›</button>
-                      <button
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(totalPages)}
-                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #d1dbe8', background: currentPage === totalPages ? '#f1f5f9' : '#fff', color: currentPage === totalPages ? '#94a3b8' : '#0A2D74', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '13px', fontWeight: '600' }}
-                      >»</button>
-                    </div>
-                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalItems={clients.length}
+                    pageSize={PAGE_SIZE}
+                    onPageChange={setCurrentPage}
+                    itemLabel="clients"
+                  />
                 );
               })()}
             </>
@@ -6098,17 +5898,17 @@ const MainPage: React.FC<MainPageProps> = ({
           <div style={{ marginTop: '32px' }}>
             <div style={{
               background: '#ffffff',
-              borderRadius: '14px',
-              boxShadow: '0 2px 12px rgba(180, 83, 9, 0.1)',
-              border: '1.5px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '20px',
+              boxShadow: '0 12px 28px rgba(15, 23, 42, 0.08)',
+              border: '1px solid #f1ddbf',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column'
             }}>
               <div style={{
-                padding: '16px 24px',
-                borderBottom: '2px solid rgba(245, 158, 11, 0.25)',
-                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                padding: '16px 20px',
+                borderBottom: '1px solid #f3e3c7',
+                background: '#fffbf2',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px'
@@ -6136,8 +5936,17 @@ const MainPage: React.FC<MainPageProps> = ({
                 }}>
                   Visible to admins only — not counted in Client List
                 </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setIsTestRecordsOpen((prev) => !prev)}
+                  aria-expanded={isTestRecordsOpen}
+                  style={{ marginLeft: '8px', whiteSpace: 'nowrap' }}
+                >
+                  {isTestRecordsOpen ? 'Close' : 'Open'}
+                </Button>
               </div>
-              {testClients.length === 0 ? (
+              {isTestRecordsOpen && (testClients.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: '#b45309', opacity: 0.6 }}>
                   No test records yet. Click "🧪 Add Test Record" to create one.
                 </div>
@@ -6261,7 +6070,7 @@ const MainPage: React.FC<MainPageProps> = ({
                     </tbody>
                   </table>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         )}
@@ -6276,6 +6085,10 @@ const MainPage: React.FC<MainPageProps> = ({
       message={batchDriveMessage}
       errors={batchDriveErrors}
       onClose={() => { setBatchDriveModalVisible(false); setBatchDriveStatus('idle'); setBatchDriveMessage(''); setBatchDriveErrors([]); }}
+    />
+    <NewUiTourModal
+      isOpen={showNewUiModal}
+      onFinish={handleDismissNewUiModal}
     />
     <DriveRestoreModal
       visible={driveRestoreVisible}

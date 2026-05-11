@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { PaymentService, type PaymentData } from "../payments/paymentService";
 import type { PaymentDetail } from "../types/payment";
 import { ClientService, type ClientData } from "../services/clientService";
-import Sidebar from "./Sidebar";
+import Sidebar from "./SidebarPanel";
 
 // Utility for modern UI
 const modernInput = {
