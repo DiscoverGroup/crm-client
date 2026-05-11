@@ -34,6 +34,7 @@ import SectionLabel from './ui/SectionLabel';
 import Badge from './ui/Badge';
 import Pagination from './ui/Pagination';
 import { TableContainer, UITable, UITableHeadCell, UITableHeadRow } from './ui/Table';
+import { VERSION_INFO, getFullVersion } from '../config/version';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
@@ -4669,7 +4670,8 @@ const MainPage: React.FC<MainPageProps> = ({
   isSidebarOpen = false,
   onCloseSidebar
 }) => {
-  const NEW_UI_MODAL_KEY = 'crm_ui_refresh_intro_seen_v1';
+  const releaseTag = `${getFullVersion()}-${VERSION_INFO.website.buildNumber}`;
+  const NEW_UI_MODAL_KEY = `crm_whats_new_seen_${releaseTag}`;
   const [clients, setClients] = useState<ClientData[]>([]);
   const [testClients, setTestClients] = useState<ClientData[]>([]);
   const [batchDriveStatus, setBatchDriveStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
@@ -5801,16 +5803,18 @@ const MainPage: React.FC<MainPageProps> = ({
                             <Button
                               size="sm"
                               variant="primary"
+                              className="ui-row-action-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleClientEdit(client);
                               }}
                             >
-                              ✏️ Edit
+                              Edit
                             </Button>
                             <Button
                               size="sm"
                               variant="warning"
+                              className="ui-row-action-btn"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 const confirmed = await showConfirmDialog(
@@ -5836,11 +5840,12 @@ const MainPage: React.FC<MainPageProps> = ({
                                 }
                               }}
                             >
-                              🗃️ Archive
+                              Archive
                             </Button>
                             <Button
                               size="sm"
                               variant="danger"
+                              className="ui-row-action-btn"
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 const confirmed = await showConfirmDialog(
@@ -5866,7 +5871,7 @@ const MainPage: React.FC<MainPageProps> = ({
                                 }
                               }}
                             >
-                              🗑️ Delete
+                              Delete
                             </Button>
                           </div>
                         </div>
@@ -6021,22 +6026,18 @@ const MainPage: React.FC<MainPageProps> = ({
                           </td>
                           <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                              <button
+                              <Button
+                                size="sm"
+                                variant="warning"
+                                className="ui-row-action-btn"
                                 onClick={(e) => { e.stopPropagation(); handleClientEdit(client); }}
-                                style={{
-                                  padding: '5px 12px',
-                                  background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '8px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  fontWeight: '600'
-                                }}
                               >
-                                ✏️ Edit
-                              </button>
-                              <button
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger"
+                                className="ui-row-action-btn"
                                 onClick={async (e) => {
                                   e.stopPropagation();
                                   const confirmed = await showConfirmDialog(
@@ -6050,19 +6051,9 @@ const MainPage: React.FC<MainPageProps> = ({
                                     loadClients();
                                   }
                                 }}
-                                style={{
-                                  padding: '5px 12px',
-                                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '8px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  fontWeight: '600'
-                                }}
                               >
-                                🗑️ Delete
-                              </button>
+                                Delete
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -6089,6 +6080,7 @@ const MainPage: React.FC<MainPageProps> = ({
     <NewUiTourModal
       isOpen={showNewUiModal}
       onFinish={handleDismissNewUiModal}
+      releaseLabel={releaseTag}
     />
     <DriveRestoreModal
       visible={driveRestoreVisible}

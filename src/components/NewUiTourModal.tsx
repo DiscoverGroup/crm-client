@@ -9,9 +9,10 @@ interface TourStep {
 interface NewUiTourModalProps {
   isOpen: boolean;
   onFinish: () => void;
+  releaseLabel?: string;
 }
 
-const NewUiTourModal: React.FC<NewUiTourModalProps> = ({ isOpen, onFinish }) => {
+const NewUiTourModal: React.FC<NewUiTourModalProps> = ({ isOpen, onFinish, releaseLabel }) => {
   const [stepIndex, setStepIndex] = useState(0);
 
   const steps: TourStep[] = useMemo(
@@ -118,7 +119,7 @@ const NewUiTourModal: React.FC<NewUiTourModalProps> = ({ isOpen, onFinish }) => 
                 marginBottom: '6px',
               }}
             >
-              New UI Guided Tour
+              {releaseLabel ? `What's New • ${releaseLabel}` : 'New UI Guided Tour'}
             </div>
             <h3 style={{ margin: 0, fontSize: '22px', color: '#0f172a', letterSpacing: '-0.02em' }}>
               {current.title}
