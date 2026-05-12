@@ -31,6 +31,11 @@ function travelDateLabel(client: ClientData): string {
   return formatDate(s) || formatDate(e);
 }
 
+// Total persons = clients + all companions
+function totalPax(arr: ClientData[]): number {
+  return arr.reduce((sum, c) => sum + 1 + (c.companions?.length || 0), 0);
+}
+
 // Sort travel date groups: "No Travel Date" last, then chronological
 function sortTravelKey(key: string): number {
   if (key === '||') return Infinity;
@@ -92,7 +97,7 @@ export default function PackageGroupView({ clients, onClientClick }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {grouped.map(([pkg, dateMap]) => {
         const isPkgOpen = expandedPackages.has(pkg);
-        const totalClients = [...dateMap.values()].reduce((s, arr) => s + arr.length, 0);
+        const totalClients = [...dateMap.values()].reduce((s, arr) => s + totalPax(arr), 0);
 
         // Sort date groups chronologically
         const sortedDates = [...dateMap.entries()].sort(([a], [b]) => sortTravelKey(a) - sortTravelKey(b));
@@ -120,7 +125,7 @@ export default function PackageGroupView({ clients, onClientClick }: Props) {
                 {pkg}
               </span>
               <span style={{ background: 'rgba(255,255,255,0.18)', color: '#fff', borderRadius: '20px', padding: '2px 12px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                {totalClients} {totalClients === 1 ? 'client' : 'clients'}
+                {totalClients} {totalClients === 1 ? 'person' : 'persons'}
               </span>
             </div>
 
@@ -158,7 +163,7 @@ export default function PackageGroupView({ clients, onClientClick }: Props) {
                           {label}
                         </span>
                         <span style={{ background: '#dbeafe', color: '#1e40af', borderRadius: '20px', padding: '2px 10px', fontSize: '11px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                          {groupClients.length} {groupClients.length === 1 ? 'client' : 'clients'}
+                          {totalPax(groupClients)} {totalPax(groupClients) === 1 ? 'person' : 'persons'}
                         </span>
                       </div>
 
@@ -166,17 +171,21 @@ export default function PackageGroupView({ clients, onClientClick }: Props) {
                       {isDateOpen && (
                         <div>
                           {/* Sub-table header */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr', background: '#1e293b', padding: '7px 28px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr auto', background: '#1e293b', padding: '7px 28px' }}>
                             <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.07em' }}>#</span>
                             <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Client Name</span>
+                            <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Companions</span>
                           </div>
-                          {groupClients.map((client, idx) => (
+                          {groupClients.map((client, idx) => {
+                            const companionCount = client.companions?.length || 0;
+                            return (
                             <div
                               key={client.id}
                               onClick={() => onClientClick(client)}
                               style={{
                                 display: 'grid',
-                                gridTemplateColumns: '44px 1fr',
+                                gridTemplateColumns: '44px 1fr auto',
+                                alignItems: 'center',
                                 padding: '11px 28px',
                                 borderTop: '1px solid rgba(10,45,116,0.06)',
                                 background: idx % 2 === 0 ? '#ffffff' : '#f8faff',
@@ -195,8 +204,20 @@ export default function PackageGroupView({ clients, onClientClick }: Props) {
                                   {client.clientNo || '—'}
                                 </div>
                               </div>
+                              <span style={{
+                                background: companionCount > 0 ? '#dbeafe' : '#f1f5f9',
+                                color: companionCount > 0 ? '#1e40af' : '#94a3b8',
+                                borderRadius: '20px',
+                                padding: '2px 10px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {companionCount > 0 ? `+${companionCount} companion${companionCount === 1 ? '' : 's'}` : 'no companions'}
+                              </span>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
