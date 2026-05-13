@@ -269,9 +269,10 @@ export class NotificationService {
   /**
    * Create a notification for every user except the one who triggered the event.
    * fromUserId / fromUserName = the acting user.
+   * targetUserId is stored as fullName to match getUserNotifications lookup.
    */
   private static broadcastToAllUsers(params: {
-    type: 'new_sale' | 'new_bc';
+    type: 'new_sale' | 'new_bc' | 'client_update';
     title: string;
     message: string;
     fromUserId: string;
@@ -281,14 +282,14 @@ export class NotificationService {
   }): void {
     const users = this.getAllUsers();
     for (const user of users) {
-      const targetId = user.id ?? user.email ?? user.fullName ?? '';
+      // Use fullName as targetUserId — matches getUserNotifications(currentUser.fullName)
       const targetName = user.fullName ?? user.username ?? '';
-      if (!targetId || targetId === params.fromUserId) continue;
+      if (!targetName || targetName === params.fromUserName) continue;
       this.addNotification({
         type: params.type,
         title: params.title,
         message: params.message,
-        targetUserId: targetId,
+        targetUserId: targetName,
         targetUserName: targetName,
         fromUserId: params.fromUserId,
         fromUserName: params.fromUserName,
@@ -330,6 +331,25 @@ export class NotificationService {
       type: 'new_bc',
       title: '📄 New BC Uploaded',
       message: `New BC for ${params.clientName} has been uploaded by ${params.fromUserName}`,
+      fromUserId: params.fromUserId,
+      fromUserName: params.fromUserName,
+      clientId: params.clientId,
+      clientName: params.clientName,
+    });
+  }
+
+  /** Broadcast "Client updated" to all users for any section save/edit */
+  static createClientUpdateNotification(params: {
+    fromUserId: string;
+    fromUserName: string;
+    clientId: string;
+    clientName: string;
+    section: string;
+  }): void {
+    this.broadcastToAllUsers({
+      type: 'client_update',
+      title: '📝 Client Updated',
+      message: `${params.fromUserName} updated ${params.section} for ${params.clientName}`,
       fromUserId: params.fromUserId,
       fromUserName: params.fromUserName,
       clientId: params.clientId,

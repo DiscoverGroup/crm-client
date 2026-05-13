@@ -1078,6 +1078,7 @@ const ClientRecords: React.FC<{
         // Save section changes to log
         saveSection('payment-terms-schedule', 'Payment Terms & Schedule');
         showSuccessToast('Payment details saved successfully!');
+        try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Payment Details' }); } catch { /* non-critical */ }
       } else {
         logSectionAction(
           'payment-terms-schedule',
@@ -1384,6 +1385,8 @@ const ClientRecords: React.FC<{
               : 'Client information updated',
             changes: changedFields.length > 0 ? clientChanges : undefined,
           });
+          // Broadcast edit notification to all other users
+          try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: savedClientId, clientName: contactName || 'Unknown', section: 'Client Information' }); } catch { /* non-critical */ }
         }
       } catch {
         // Activity log write failed (e.g. localStorage quota) — non-critical, save already succeeded
@@ -1535,6 +1538,7 @@ const ClientRecords: React.FC<{
       saveSection('package-information', 'Package & Companions');
       
       showSuccessToast('Package & companions information saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Package & Companions' }); } catch { /* non-critical */ }
       
       // Trigger client list refresh
       window.dispatchEvent(new Event('clientDataUpdated'));
@@ -1564,6 +1568,7 @@ const ClientRecords: React.FC<{
       });
       saveSection('account-relations', 'Account Relations');
       showSuccessToast('Account relations saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Account Relations' }); } catch { /* non-critical */ }
     } catch (error) {
       showErrorToast('An error occurred while saving account relations.');
     } finally {
@@ -1578,6 +1583,7 @@ const ClientRecords: React.FC<{
       await ClientService.updateClient(currentClientId, { afterSalesSCDate, afterSalesSCReport, afterSalesSCReportBy });
       saveSection('after-sales-sc', 'After Sales SC');
       showSuccessToast('After Sales SC saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'After Sales SC' }); } catch { /* non-critical */ }
     } catch (error) {
       showErrorToast('An error occurred while saving After Sales SC.');
     } finally {
@@ -1592,6 +1598,7 @@ const ClientRecords: React.FC<{
       await ClientService.updateClient(currentClientId, { afterVisaSCDate, afterVisaSCReport, afterVisaSCReportBy });
       saveSection('after-visa-sc', 'After Visa SC');
       showSuccessToast('After Visa SC saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'After Visa SC' }); } catch { /* non-critical */ }
     } catch (error) {
       showErrorToast('An error occurred while saving After Visa SC.');
     } finally {
@@ -1613,6 +1620,7 @@ const ClientRecords: React.FC<{
       });
       saveSection('pre-departure-sc', 'Pre-Departure SC');
       showSuccessToast('Pre-Departure SC saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Pre-Departure SC' }); } catch { /* non-critical */ }
     } catch (error) {
       showErrorToast('An error occurred while saving Pre-Departure SC.');
     } finally {
@@ -1634,6 +1642,7 @@ const ClientRecords: React.FC<{
       });
       saveSection('post-departure-sc', 'Post-Departure SC');
       showSuccessToast('Post-Departure SC saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Post-Departure SC' }); } catch { /* non-critical */ }
     } catch (error) {
       showErrorToast('An error occurred while saving Post-Departure SC.');
     } finally {
@@ -1656,6 +1665,7 @@ const ClientRecords: React.FC<{
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Visa Information' }); } catch { /* non-critical */ }
     } catch (error) {
       // console.error('Error saving visa info:', error);
       showErrorToast('An error occurred while saving visa information.');
@@ -1678,6 +1688,7 @@ const ClientRecords: React.FC<{
       // Save section changes to log
       saveSection('embassy-information', 'Embassy Information');
       showSuccessToast('Embassy information saved successfully!');
+      try { NotificationService.createClientUpdateNotification({ fromUserId: currentUserId, fromUserName: currentUserName, clientId: currentClientId, clientName: contactName || 'Unknown', section: 'Embassy Information' }); } catch { /* non-critical */ }
     } catch (error) {
       // console.error('Error saving embassy info:', error);
       logSectionAction(
