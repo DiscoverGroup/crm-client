@@ -50,29 +50,7 @@ const modernInput: React.CSSProperties = {
   fontFamily: "'Poppins', sans-serif"
 };
 
-// modernInputFocus removed because it was unused
-
-const modernCheckbox = {
-  width: "18px",
-  height: "18px",
-  accentColor: "#28A2DC",
-  transform: "scale(1.2)",
-  cursor: "pointer"
-};
-
-const checkboxLabel = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  padding: "11px 16px",
-  background: "#f8fafc",
-  borderRadius: "8px",
-  border: "1.5px solid #e2e8f0",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  fontWeight: 500,
-  color: "#1e293b"
-};
+// modernInputFocus, modernCheckbox, checkboxLabel removed — no longer used
 
 const sectionStyle = (w: number): React.CSSProperties => ({
   background: "#ffffff",
@@ -309,6 +287,12 @@ const ClientRecords: React.FC<{
           setPassportNames(Array.from({ length: paxCount }, (_, i) =>
             (existingClient.passportNames || [])[i] || ''
           ));
+          setPassportVisaPayments(Array.from({ length: paxCount }, (_, i) =>
+            (existingClient.passportVisaPayments || [])[i] || ''
+          ));
+          setPassportPaymentDates(Array.from({ length: paxCount }, (_, i) =>
+            (existingClient.passportPaymentDates || [])[i] || ''
+          ));
           // Visa & embassy fields
           setVisaService(existingClient.visaService || false);
           setInsuranceService(existingClient.insuranceService || false);
@@ -474,6 +458,16 @@ const ClientRecords: React.FC<{
       }
       return prev.slice(0, value);
     });
+    setPassportVisaPayments(prev => {
+      if (prev.length === value) return prev;
+      if (prev.length < value) return [...prev, ...Array.from({ length: value - prev.length }, () => "")];
+      return prev.slice(0, value);
+    });
+    setPassportPaymentDates(prev => {
+      if (prev.length === value) return prev;
+      if (prev.length < value) return [...prev, ...Array.from({ length: value - prev.length }, () => "")];
+      return prev.slice(0, value);
+    });
     setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
   };
   
@@ -595,19 +589,21 @@ const ClientRecords: React.FC<{
 
 
   // Visa section states
-  const [visaFOC, setVisaFOC] = useState(false);
-  const [insuranceFOC, setInsuranceFOC] = useState(false);
+  const [visaFOC, _setVisaFOC] = useState(false);
+  const [insuranceFOC, _setInsuranceFOC] = useState(false);
   const [visaService, setVisaService] = useState(false);
   const [insuranceService, setInsuranceService] = useState(false);
   const [eta, setEta] = useState(false);
   
   // Service amount states
-  const [visaAmount, setVisaAmount] = useState("");
-  const [insuranceAmount, setInsuranceAmount] = useState("");
-  const [etaAmount, setEtaAmount] = useState("");
+  const [visaAmount, _setVisaAmount] = useState("");
+  const [insuranceAmount, _setInsuranceAmount] = useState("");
+  const [etaAmount, _setEtaAmount] = useState("");
   
   // Passport names — one per pax (dynamic)
   const [passportNames, setPassportNames] = useState<string[]>([""]);
+  const [passportVisaPayments, setPassportVisaPayments] = useState<string[]>([""]);
+  const [passportPaymentDates, setPassportPaymentDates] = useState<string[]>([""]);
   
   // Embassy information
   const [embassyName, setEmbassyName] = useState("");
@@ -644,23 +640,7 @@ const ClientRecords: React.FC<{
   const [travelFundTotalAmount, setTravelFundTotalAmount] = useState("");
   const [travelFundPayments, setTravelFundPayments] = useState<{ date: string; amount: string }[]>([{ date: "", amount: "" }]);
 
-  // Visa payment state
-  type VisaPayment = {
-    date: string;
-    depositSlip: File | null;
-    receipt: File | null;
-  };
-  const [visaPayments, setVisaPayments] = useState<VisaPayment[]>([
-    { date: "", depositSlip: null, receipt: null }
-  ]);
 
-  // Insurance and ETA payment states
-  const [insurancePayments, setInsurancePayments] = useState<VisaPayment[]>([
-    { date: "", depositSlip: null, receipt: null }
-  ]);
-  const [etaPayments, setEtaPayments] = useState<VisaPayment[]>([
-    { date: "", depositSlip: null, receipt: null }
-  ]);
 
   // Booking/Voucher section states
   const [_intlFlight, setIntlFlight] = useState<File | null>(null);
@@ -1490,6 +1470,8 @@ const ClientRecords: React.FC<{
         clientRequest: sanitizeText(clientRequest || '', 2000),
         companions: cleanCompanions,
         passportNames,
+        passportVisaPayments,
+        passportPaymentDates,
       };
 
       // Save to ClientService
@@ -1708,232 +1690,7 @@ const ClientRecords: React.FC<{
     } catch { /* non-fatal */ }
   };
 
-  // Visa payment handlers
-  const handleVisaPaymentChange = async (
-    idx: number,
-    field: "date" | "depositSlip" | "receipt",
-    value: string | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (field === "date") {
-      setVisaPayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, date: value as string };
-        })
-      );
-      return;
-    }
-
-    const event = value as React.ChangeEvent<HTMLInputElement>;
-    const file = event?.target?.files?.[0];
-    
-    if (file) {
-      const validationError = validateUploadFile(file);
-      if (validationError) {
-        showErrorToast(validationError);
-        event.target.value = '';
-        return;
-      }
-      try {
-        // Save file to FileService with client ID for visa payments
-        const currentClientId = clientId || tempClientId;
-        const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "visa-service", currentUserName);
-        
-        // Log the file attachment
-        logAttachment(
-          'visa-service',
-          'uploaded',
-          file.name,
-          field === "depositSlip" ? "visa deposit slip" : "visa receipt"
-        );
-        
-        // Update local state
-        setVisaPayments(prev =>
-          prev.map((row, i) => {
-            if (i !== idx) return row;
-            return { ...row, [field]: file };
-          })
-        );
-        
-        // Refresh attachments
-        const clientAttachments = FileService.getFilesByClient(currentClientId);
-        setAttachments(clientAttachments);
-        
-        // Trigger file update event
-        window.dispatchEvent(new Event('fileAttachmentUpdated'));
-      } catch (error) {
-        // console.error('Error uploading visa payment file:', error);
-        showErrorToast('Failed to upload file. Please try again.');
-      }
-    } else {
-      // Clear file
-      setVisaPayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, [field]: null };
-        })
-      );
-    }
-  };
-
-  const handleAddVisaPayment = () => {
-    setVisaPayments(prev => [...prev, { date: "", depositSlip: null, receipt: null }]);
-  };
-
-  const handleRemoveVisaPayment = (idx: number) => {
-    if (visaPayments.length > 1) {
-      setVisaPayments(prev => prev.filter((_, i) => i !== idx));
-    }
-  };
-
-  // Insurance payment handlers
-  const handleInsurancePaymentChange = async (
-    idx: number,
-    field: "date" | "depositSlip" | "receipt",
-    value: string | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (field === "date") {
-      setInsurancePayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, date: value as string };
-        })
-      );
-      return;
-    }
-
-    const event = value as React.ChangeEvent<HTMLInputElement>;
-    const file = event?.target?.files?.[0];
-    
-    if (file) {
-      const validationError = validateUploadFile(file);
-      if (validationError) {
-        showErrorToast(validationError);
-        event.target.value = '';
-        return;
-      }
-      try {
-        const currentClientId = clientId || tempClientId;
-        const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "insurance-service", currentUserName);
-        
-        // Log the file attachment
-        logAttachment(
-          'insurance-service',
-          'uploaded',
-          file.name,
-          field === "depositSlip" ? "insurance deposit slip" : "insurance receipt"
-        );
-        
-        setInsurancePayments(prev =>
-          prev.map((row, i) => {
-            if (i !== idx) return row;
-            return { ...row, [field]: file };
-          })
-        );
-        
-        const clientAttachments = FileService.getFilesByClient(currentClientId);
-        setAttachments(clientAttachments);
-        window.dispatchEvent(new Event('fileAttachmentUpdated'));
-      } catch (error) {
-        // console.error('Error uploading insurance payment file:', error);
-        showErrorToast('Failed to upload file. Please try again.');
-      }
-    } else {
-      setInsurancePayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, [field]: null };
-        })
-      );
-    }
-  };
-
-  const handleAddInsurancePayment = () => {
-    setInsurancePayments(prev => [...prev, { date: "", depositSlip: null, receipt: null }]);
-  };
-
-  const handleRemoveInsurancePayment = (idx: number) => {
-    if (insurancePayments.length > 1) {
-      setInsurancePayments(prev => prev.filter((_, i) => i !== idx));
-    }
-  };
-
-  // ETA payment handlers
-  const handleEtaPaymentChange = async (
-    idx: number,
-    field: "date" | "depositSlip" | "receipt",
-    value: string | React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (field === "date") {
-      setEtaPayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, date: value as string };
-        })
-      );
-      return;
-    }
-
-    const event = value as React.ChangeEvent<HTMLInputElement>;
-    const file = event?.target?.files?.[0];
-    
-    if (file) {
-      const validationError = validateUploadFile(file);
-      if (validationError) {
-        showErrorToast(validationError);
-        event.target.value = '';
-        return;
-      }
-      try {
-        const currentClientId = clientId || tempClientId;
-        const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "other", "eta-service", currentUserName);
-        
-        // Log the file attachment
-        logAttachment(
-          'eta-service',
-          'uploaded',
-          file.name,
-          field === "depositSlip" ? "ETA deposit slip" : "ETA receipt"
-        );
-        
-        setEtaPayments(prev =>
-          prev.map((row, i) => {
-            if (i !== idx) return row;
-            return { ...row, [field]: file };
-          })
-        );
-        
-        const clientAttachments = FileService.getFilesByClient(currentClientId);
-        setAttachments(clientAttachments);
-        window.dispatchEvent(new Event('fileAttachmentUpdated'));
-      } catch (error) {
-        // console.error('Error uploading ETA payment file:', error);
-        showErrorToast('Failed to upload file. Please try again.');
-      }
-    } else {
-      setEtaPayments(prev =>
-        prev.map((row, i) => {
-          if (i !== idx) return row;
-          return { ...row, [field]: null };
-        })
-      );
-    }
-  };
-
-  const handleAddEtaPayment = () => {
-    setEtaPayments(prev => [...prev, { date: "", depositSlip: null, receipt: null }]);
-  };
-
-  const handleRemoveEtaPayment = (idx: number) => {
-    if (etaPayments.length > 1) {
-      setEtaPayments(prev => prev.filter((_, i) => i !== idx));
-    }
-  };
-
-
+  // Visa/Insurance/ETA payment handlers removed — UI replaced by per-passport dropdown
 
   // Handlers
   function handleCompanionChange(idx: number, field: keyof Companion, value: string) {
@@ -3642,513 +3399,6 @@ const ClientRecords: React.FC<{
               />
             </div>
 
-            {/* Visa FOC (Free of Charge) Checkbox */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{
-                ...checkboxLabel,
-                background: visaFOC ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.7)",
-                border: visaFOC ? "2px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(147, 197, 253, 0.2)",
-              }}>
-                <input
-                  type="checkbox"
-                  style={modernCheckbox}
-                  checked={visaFOC}
-                  onChange={e => { trackSectionField('payment-terms-schedule', 'visaFOC', visaFOC, 'Visa FOC'); setVisaFOC(e.target.checked); trackSectionField('payment-terms-schedule', 'visaFOC', e.target.checked, 'Visa FOC'); }}
-                />
-                <span style={{ fontSize: "15px", color: visaFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
-                  Visa FOC (Free of Charge)
-                </span>
-                {visaFOC && (
-                  <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
-                    — Promo applied, visa services hidden
-                  </span>
-                )}
-              </label>
-            </div>
-
-            {/* Insurance FOC (Free of Charge) Checkbox */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={{
-                ...checkboxLabel,
-                background: insuranceFOC ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.7)",
-                border: insuranceFOC ? "2px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(147, 197, 253, 0.2)",
-              }}>
-                <input
-                  type="checkbox"
-                  style={modernCheckbox}
-                  checked={insuranceFOC}
-                  onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceFOC', insuranceFOC, 'Insurance FOC'); setInsuranceFOC(e.target.checked); trackSectionField('payment-terms-schedule', 'insuranceFOC', e.target.checked, 'Insurance FOC'); }}
-                />
-                <span style={{ fontSize: "15px", color: insuranceFOC ? "#065f46" : "#1e293b", fontWeight: 600 }}>
-                  Insurance FOC (Free of Charge)
-                </span>
-                {insuranceFOC && (
-                  <span style={{ fontSize: "12px", color: "#059669", fontStyle: "italic", marginLeft: 8 }}>
-                    — Promo applied, insurance services hidden
-                  </span>
-                )}
-              </label>
-            </div>
-
-            {/* Visa Service Options (hidden when FOC is checked) */}
-            {!visaFOC && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
-                  <input
-                    type="checkbox"
-                    style={modernCheckbox}
-                    checked={visaService}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'visaService', visaService, 'Visa Service'); setVisaService(e.target.checked); trackSectionField('payment-terms-schedule', 'visaService', e.target.checked, 'Visa Service'); }}
-                  />
-                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Visa Service</span>
-                </label>
-                {visaService && (
-                  <input
-                    type="text"
-                    placeholder="Amount"
-                    value={visaAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'visaAmount', visaAmount, 'Visa Amount'); setVisaAmount(val); trackSectionField('payment-terms-schedule', 'visaAmount', val, 'Visa Amount'); }}
-                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
-                  />
-                )}
-                {visaService && (() => { const v = parseFloat(visaAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
-                  <input
-                    type="checkbox"
-                    style={modernCheckbox}
-                    checked={insuranceService}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'insuranceService', insuranceService, 'Insurance Service'); setInsuranceService(e.target.checked); trackSectionField('payment-terms-schedule', 'insuranceService', e.target.checked, 'Insurance Service'); }}
-                  />
-                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>Insurance Service</span>
-                </label>
-                {insuranceService && (
-                  <input
-                    type="text"
-                    placeholder="Amount"
-                    value={insuranceAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'insuranceAmount', insuranceAmount, 'Insurance Amount'); setInsuranceAmount(val); trackSectionField('payment-terms-schedule', 'insuranceAmount', val, 'Insurance Amount'); }}
-                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
-                  />
-                )}
-                {insuranceService && (() => { const v = parseFloat(insuranceAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <label style={{ ...checkboxLabel, flex: "0 0 auto" }}>
-                  <input
-                    type="checkbox"
-                    style={modernCheckbox}
-                    checked={eta}
-                    onChange={e => { trackSectionField('payment-terms-schedule', 'eta', eta, 'ETA'); setEta(e.target.checked); trackSectionField('payment-terms-schedule', 'eta', e.target.checked, 'ETA'); }}
-                  />
-                  <span style={{ fontSize: "15px", color: "#1e293b", fontWeight: 600 }}>ETA</span>
-                </label>
-                {eta && (
-                  <input
-                    type="text"
-                    placeholder="Amount"
-                    value={etaAmount}
-                    onChange={e => { const val = e.target.value.replace(/[^0-9.,]/g, ''); trackSectionField('payment-terms-schedule', 'etaAmount', etaAmount, 'ETA Amount'); setEtaAmount(val); trackSectionField('payment-terms-schedule', 'etaAmount', val, 'ETA Amount'); }}
-                    style={{ ...modernInput, margin: 0, width: 160, textAlign: "right", fontWeight: 600, fontSize: 14 }}
-                  />
-                )}
-                {eta && (() => { const v = parseFloat(etaAmount.replace(/,/g, '')) || 0; return v > 0 ? <span style={{ fontSize: 13, fontWeight: 600, color: "#059669" }}>₱{v.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span> : null; })()}
-              </div>
-            </div>
-            )}
-
-            {/* Visa Service Payment Form (shown when Visa Service is checked and NOT FOC) */}
-            {!visaFOC && visaService && (
-              <div style={{ marginTop: 20, marginBottom: 20 }}>
-                <h4 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
-                  Visa Service Payments
-                </h4>
-                
-                {visaPayments.map((payment, idx) => (
-                  <div key={idx} style={{ 
-                    marginBottom: 16, 
-                    padding: 16, 
-                    backgroundColor: "#f8f9fa", 
-                    borderRadius: 8,
-                    border: "1px solid #e9ecef"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h5 style={{ margin: 0, color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                        Visa Payment {idx + 1}
-                      </h5>
-                      {visaPayments.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVisaPayment(idx)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Payment Date</label>
-                        <input
-                          style={modernInput}
-                          type="date"
-                          value={payment.date}
-                          onChange={e => handleVisaPaymentChange(idx, "date", e.target.value)}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Deposit Slip</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleVisaPaymentChange(idx, "depositSlip", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'deposit-slip' &&
-                            att.source === 'visa-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Receipt</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleVisaPaymentChange(idx, "receipt", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'receipt' &&
-                            att.source === 'visa-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={handleAddVisaPayment}
-                  style={{
-                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "transform 0.2s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Add Visa Payment
-                </button>
-              </div>
-            )}
-
-            {/* Insurance Service Payment Form (shown when Insurance Service is checked and NOT FOC) */}
-            {!insuranceFOC && insuranceService && (
-              <div style={{ marginTop: 20, marginBottom: 20 }}>
-                <h4 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
-                  Insurance Service Payments
-                </h4>
-                
-                {insurancePayments.map((payment, idx) => (
-                  <div key={idx} style={{ 
-                    marginBottom: 16, 
-                    padding: 16, 
-                    backgroundColor: "#e8f5e8", 
-                    borderRadius: 8,
-                    border: "1px solid #c3e6c3"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h5 style={{ margin: 0, color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                        Insurance Payment {idx + 1}
-                      </h5>
-                      {insurancePayments.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveInsurancePayment(idx)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Payment Date</label>
-                        <input
-                          style={modernInput}
-                          type="date"
-                          value={payment.date}
-                          onChange={e => handleInsurancePaymentChange(idx, "date", e.target.value)}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Deposit Slip</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleInsurancePaymentChange(idx, "depositSlip", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'deposit-slip' &&
-                            att.source === 'insurance-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Receipt</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleInsurancePaymentChange(idx, "receipt", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'receipt' &&
-                            att.source === 'insurance-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={handleAddInsurancePayment}
-                  style={{
-                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "transform 0.2s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Add Insurance Payment
-                </button>
-              </div>
-            )}
-
-            {/* ETA Payment Form (shown when ETA is checked) */}
-            {eta && (
-              <div style={{ marginTop: 20, marginBottom: 20 }}>
-                <h4 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
-                  ETA Payments
-                </h4>
-                
-                {etaPayments.map((payment, idx) => (
-                  <div key={idx} style={{ 
-                    marginBottom: 16, 
-                    padding: 16, 
-                    backgroundColor: "#fff3cd", 
-                    borderRadius: 8,
-                    border: "1px solid #ffeaa7"
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <h5 style={{ margin: 0, color: "#333", fontSize: "14px", fontWeight: "600" }}>
-                        ETA Payment {idx + 1}
-                      </h5>
-                      {etaPayments.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveEtaPayment(idx)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            cursor: "pointer"
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Payment Date</label>
-                        <input
-                          style={modernInput}
-                          type="date"
-                          value={payment.date}
-                          onChange={e => handleEtaPaymentChange(idx, "date", e.target.value)}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Deposit Slip</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleEtaPaymentChange(idx, "depositSlip", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'deposit-slip' &&
-                            att.source === 'eta-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.depositSlip) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.depositSlip.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label style={label}>Receipt</label>
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx"
-                          onChange={e => handleEtaPaymentChange(idx, "receipt", e)}
-                          style={{ fontSize: "14px" }}
-                        />
-                        {(() => {
-                          const uploadedFile = attachments.find(att =>
-                            att.category === 'receipt' &&
-                            att.source === 'eta-service' &&
-                            att.paymentIndex === idx
-                          );
-                          if (uploadedFile) {
-                            return (
-                              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
-                                <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                              </div>
-                            );
-                          }
-                          if (payment.receipt) {
-                            return <div style={{ marginTop: 4, fontSize: "12px", color: "#059669" }}>✓ {payment.receipt.name}</div>;
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                
-                <button
-                  type="button"
-                  onClick={handleAddEtaPayment}
-                  style={{
-                    background: "linear-gradient(135deg, #0A2D74 0%, #28A2DC 100%)",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 16px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "transform 0.2s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Add ETA Payment
-                </button>
-              </div>
-            )}
-
             {/* Passport Information — dynamic count based on No. of Pax */}
             <h4 style={{ margin: "20px 0 12px 0", color: "#333", fontSize: "16px", fontWeight: "600" }}>
               Passport Information
@@ -4157,19 +3407,27 @@ const ClientRecords: React.FC<{
               </span>
             </h4>
 
-            {Array.from({ length: numberOfPax }, (_, idx) => (
+            {Array.from({ length: numberOfPax }, (_, idx) => {
+              const autoName = idx === 0
+                ? contactName
+                : [companions[idx - 1]?.firstName, companions[idx - 1]?.lastName].filter(Boolean).join(' ');
+              const visaPayVal = passportVisaPayments[idx] || '';
+              const needsPayment = ['Visa Assistance (Full Payment)', 'Travel Insurance (Full Payment)', 'Visa Assistance (50% Discount)', 'Travel Insurance (50% Discount)'].includes(visaPayVal);
+              const depositSlipFile = attachments.find(att => att.category === 'deposit-slip' && att.source === 'passport-visa-payment' && att.paymentIndex === idx);
+              const receiptFile = attachments.find(att => att.category === 'receipt' && att.source === 'passport-visa-payment' && att.paymentIndex === idx);
+              return (
               <div key={idx} style={{ marginBottom: 16, padding: 16, backgroundColor: "#f8f9fa", borderRadius: 8 }}>
                 <h5 style={{ margin: "0 0 12px 0", color: "#333", fontSize: "14px", fontWeight: "600" }}>
                   Passport {idx + 1}{idx === 0 ? ' (Main Client)' : ` (Companion ${idx})`}
                 </h5>
-                <div style={{ display: "flex", gap: 16, alignItems: "end" }}>
-                  <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", gap: 16, alignItems: "end", flexWrap: "wrap" }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
                     <label style={label}>Name</label>
                     <input
                       style={modernInput}
                       type="text"
-                      placeholder="Passport holder name"
-                      value={passportNames[idx] || ''}
+                      placeholder={autoName || "Passport holder name"}
+                      value={passportNames[idx] || autoName || ''}
                       onChange={e => {
                         const updated = [...passportNames];
                         updated[idx] = e.target.value;
@@ -4179,7 +3437,29 @@ const ClientRecords: React.FC<{
                       }}
                     />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label style={label}>Visa Payment</label>
+                    <select
+                      style={{ ...modernInput, margin: 0 }}
+                      value={visaPayVal}
+                      onChange={e => {
+                        const updated = [...passportVisaPayments];
+                        updated[idx] = e.target.value;
+                        setPassportVisaPayments(updated);
+                      }}
+                    >
+                      <option value="">— Select —</option>
+                      <option value="Visa Assistance (FOC)">Visa Assistance (FOC)</option>
+                      <option value="Travel Insurance (FOC)">Travel Insurance (FOC)</option>
+                      <option value="Visa Assistance (Full Payment)">Visa Assistance (Full Payment)</option>
+                      <option value="Travel Insurance (Full Payment)">Travel Insurance (Full Payment)</option>
+                      <option value="Visa Assistance (50% Discount)">Visa Assistance (50% Discount)</option>
+                      <option value="Travel Insurance (50% Discount)">Travel Insurance (50% Discount)</option>
+                      <option value="Own Account">Own Account</option>
+                      <option value="Exempted">Exempted</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 180 }}>
                     <label style={label}>Passport Attachment</label>
                     <input
                       type="file"
@@ -4201,23 +3481,16 @@ const ClientRecords: React.FC<{
                       if (uploadedFile) {
                         return (
                           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: "12px", color: "#059669" }}>
-                              ✓ {uploadedFile.file.name}
-                            </span>
+                            <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                             <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                            <button
-                              type="button"
-                              onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-attachment`, 'passport-info')}
-                              style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                              title="Remove file"
-                            >✕</button>
+                            <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-attachment`, 'passport-info')} style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }} title="Remove file">✕</button>
                           </div>
                         );
                       }
                       return null;
                     })()}
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
                     <label style={label}>Visa</label>
                     <input
                       type="file"
@@ -4239,16 +3512,9 @@ const ClientRecords: React.FC<{
                       if (uploadedFile) {
                         return (
                           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: "12px", color: "#059669" }}>
-                              ✓ {uploadedFile.file.name}
-                            </span>
+                            <span style={{ fontSize: "12px", color: "#059669" }}>✓ {uploadedFile.file.name}</span>
                             <R2DownloadButton r2Path={uploadedFile.file.r2Path} className="" />
-                            <button
-                              type="button"
-                              onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-visa`, 'passport-info')}
-                              style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}
-                              title="Remove file"
-                            >✕</button>
+                            <button type="button" onClick={() => handleGenericFileRemove(uploadedFile.file.id, `passport-${idx + 1}-visa`, 'passport-info')} style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }} title="Remove file">✕</button>
                           </div>
                         );
                       }
@@ -4256,8 +3522,70 @@ const ClientRecords: React.FC<{
                     })()}
                   </div>
                 </div>
+
+                {/* Per-person payment fields — only for paid options */}
+                {needsPayment && (
+                  <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #e2e8f0", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <label style={label}>Payment Date</label>
+                      <input
+                        style={{ ...modernInput, margin: 0 }}
+                        type="date"
+                        value={passportPaymentDates[idx] || ''}
+                        onChange={e => {
+                          const updated = [...passportPaymentDates];
+                          updated[idx] = e.target.value;
+                          setPassportPaymentDates(updated);
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <label style={label}>Deposit Slip</label>
+                      {depositSlipFile ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4 }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>✓ {depositSlipFile.file.name}</span>
+                          <R2DownloadButton r2Path={depositSlipFile.file.r2Path} className="" />
+                          <button type="button" onClick={() => handleGenericFileRemove(depositSlipFile.file.id, `passport-${idx + 1}-deposit-slip`, 'passport-visa-payment')} style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}>✕</button>
+                        </div>
+                      ) : (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 10, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginTop: 4 }}>
+                          <span style={{ fontSize: 18 }}>📎</span>
+                          <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 600 }}>Choose file</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>max 10 MB</span>
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) await FileService.saveFileAttachment(file, 'deposit-slip', clientId || tempClientId, idx, undefined, 'passport-visa-payment', currentUserName).then(() => { const cl = FileService.getFilesByClient(clientId || tempClientId); setAttachments(cl); });
+                            }} />
+                        </label>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <label style={label}>Receipt</label>
+                      {receiptFile ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4 }}>
+                          <span style={{ fontSize: "12px", color: "#059669" }}>✓ {receiptFile.file.name}</span>
+                          <R2DownloadButton r2Path={receiptFile.file.r2Path} className="" />
+                          <button type="button" onClick={() => handleGenericFileRemove(receiptFile.file.id, `passport-${idx + 1}-receipt`, 'passport-visa-payment')} style={{ fontSize: "14px", color: "#ef4444", background: "transparent", border: "1px solid #ef4444", borderRadius: "4px", padding: "2px 6px", cursor: "pointer" }}>✕</button>
+                        </div>
+                      ) : (
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 10, background: 'rgba(239,246,255,0.7)', cursor: 'pointer', marginTop: 4 }}>
+                          <span style={{ fontSize: 18 }}>📎</span>
+                          <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 600 }}>Choose file</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>max 10 MB</span>
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) await FileService.saveFileAttachment(file, 'receipt', clientId || tempClientId, idx, undefined, 'passport-visa-payment', currentUserName).then(() => { const cl = FileService.getFilesByClient(clientId || tempClientId); setAttachments(cl); });
+                            }} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
 
             {/* Legacy Passport Files (uploaded before field tracking) */}
             {(() => {

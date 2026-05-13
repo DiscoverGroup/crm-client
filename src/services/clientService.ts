@@ -32,6 +32,8 @@ export interface ClientData {
     occupation?: string; // legacy
   }>;
   passportNames?: string[];
+  passportVisaPayments?: string[];
+  passportPaymentDates?: string[];
   // Visa & Additional Services
   visaService?: boolean;
   insuranceService?: boolean;
