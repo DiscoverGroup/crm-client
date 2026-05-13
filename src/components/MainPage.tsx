@@ -188,6 +188,10 @@ const ClientRecords: React.FC<{
   const [travelEndDate, setTravelEndDate] = useState("");
   const [numberOfPax, setNumberOfPax] = useState<number>(0);
   const [bookingConfirmations, setBookingConfirmations] = useState<string[]>([""]);
+  // Upload progress (0-100) and error per upload key (e.g. 'bc-0', 'bc-1', or any fileType)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [uploadError, setUploadError] = useState<Record<string, string>>({});
+  const [pendingUploadFiles, setPendingUploadFiles] = useState<Record<string, File>>({});
   
   // Generate temporary client ID for new clients
   const [tempClientId] = useState(() => clientId || `temp_${Date.now()}`);
@@ -484,12 +488,29 @@ const ClientRecords: React.FC<{
       e.target.value = '';
       return;
     }
-    await handleGenericFileUpload(file, 'other', `booking-confirmation-${index + 1}`, 'booking-confirmation');
-    const updated = [...bookingConfirmations];
-    updated[index] = file.name;
-    trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
-    setBookingConfirmations(updated);
-    setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
+    const key = `bc-${index}`;
+    setPendingUploadFiles(prev => ({ ...prev, [key]: file }));
+    await _runBookingConfirmationUpload(index, file, key);
+  };
+
+  const _runBookingConfirmationUpload = async (index: number, file: File, key: string) => {
+    setUploadProgress(prev => ({ ...prev, [key]: 0 }));
+    setUploadError(prev => { const n = { ...prev }; delete n[key]; return n; });
+    try {
+      await handleGenericFileUpload(file, 'other', `booking-confirmation-${index + 1}`, 'booking-confirmation',
+        (pct) => setUploadProgress(prev => ({ ...prev, [key]: pct }))
+      );
+      const updated = [...bookingConfirmations];
+      updated[index] = file.name;
+      trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
+      setBookingConfirmations(updated);
+      setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setUploadError(prev => ({ ...prev, [key]: msg }));
+    } finally {
+      setUploadProgress(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
   };
 
   const handleAddBookingConfirmation = () => {
@@ -953,7 +974,8 @@ const ClientRecords: React.FC<{
     file: File,
     category: 'other',
     fileType: string,
-    section: string
+    section: string,
+    onProgress?: (percent: number) => void
   ) => {
     try {
       // Validation: File size and type
@@ -964,7 +986,7 @@ const ClientRecords: React.FC<{
       }
 
       const currentClientId = clientId || tempClientId;
-      await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName, fileType);
+      await FileService.saveFileAttachment(file, category, currentClientId, undefined, undefined, section as any, currentUserName, fileType, onProgress);
       
       logAttachment(section, 'uploaded', file.name, fileType);
       
@@ -974,7 +996,9 @@ const ClientRecords: React.FC<{
       window.dispatchEvent(new Event('fileAttachmentUpdated'));
     } catch (error) {
       // console.error('Error uploading file:', error);
-      showErrorToast('Failed to upload file. Please try again.');
+      const msg = error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
+      showErrorToast(msg);
+      throw error; // re-throw so callers can show per-slot error UI
     }
   };
 
@@ -2565,13 +2589,64 @@ const ClientRecords: React.FC<{
                           onMouseEnter={e => (e.currentTarget.style.borderColor = '#3b82f6')}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(147,197,253,0.6)')}
                           >
-                            <span style={{ fontSize: 20 }}>📎</span>
-                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>
-                              Choose file to upload
-                            </span>
-                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
-                              PDF, DOCX, Image (max 10 MB)
-                            </span>
+                            {(() => {
+                              const key = `bc-${idx}`;
+                              const pct = uploadProgress[key];
+                              const err = uploadError[key];
+                              const pending = pendingUploadFiles[key];
+
+                              if (pct !== undefined) {
+                                // Uploading — show progress bar
+                                return (
+                                  <div style={{ width: '100%', pointerEvents: 'none' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                      <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 600 }}>Uploading…</span>
+                                      <span style={{ fontSize: 13, color: '#3b82f6', fontWeight: 700 }}>{pct}%</span>
+                                    </div>
+                                    <div style={{ background: '#dbeafe', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                                      <div style={{
+                                        height: '100%',
+                                        width: `${pct}%`,
+                                        background: 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                                        borderRadius: 99,
+                                        transition: 'width 0.15s ease',
+                                      }} />
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              if (err) {
+                                // Failed — show error + retry
+                                return (
+                                  <div style={{ width: '100%', pointerEvents: 'none' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontSize: 13, color: '#ef4444', flex: 1 }}>⚠ {err}</span>
+                                      {pending && (
+                                        <button
+                                          type="button"
+                                          style={{ pointerEvents: 'all', fontSize: 12, color: '#fff', background: '#3b82f6', border: 'none', borderRadius: 6, padding: '3px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                          onClick={(e) => { e.preventDefault(); _runBookingConfirmationUpload(idx, pending, `bc-${idx}`); }}
+                                        >↺ Retry</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Idle — normal upload prompt
+                              return (
+                                <>
+                                  <span style={{ fontSize: 20 }}>📎</span>
+                                  <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>
+                                    Choose file to upload
+                                  </span>
+                                  <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>
+                                    PDF, DOCX, Image (max 10 MB)
+                                  </span>
+                                </>
+                              );
+                            })()}
                             <input
                               type="file"
                               accept="image/*,.pdf,.doc,.docx"

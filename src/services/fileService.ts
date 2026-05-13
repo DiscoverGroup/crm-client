@@ -79,7 +79,7 @@ export class FileService {
   }
 
   // Convert File to StoredFile — routes to R2 or Mac server based on admin config
-  static async fileToStoredFile(file: File, folder: string = 'general'): Promise<StoredFile> {
+  static async fileToStoredFile(file: File, folder: string = 'general', onProgress?: (percent: number) => void): Promise<StoredFile> {
     const config = await this.getStorageConfig();
 
     if (config.mode === 'local-mac' && config.localMac?.ip) {
@@ -104,7 +104,7 @@ export class FileService {
 
     // ── Cloudflare R2 (default) ───────────────────────────────────────────────
     try {
-      const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder);
+      const uploadResult = await uploadFileToR2(file, this.R2_BUCKET, folder, onProgress);
       if (!uploadResult.success || !uploadResult.path || !uploadResult.url) {
         throw new Error(uploadResult.error || 'Failed to upload to R2');
       }
@@ -167,12 +167,13 @@ export class FileService {
     paymentType?: FileAttachment['paymentType'],
     source?: FileAttachment['source'],
     currentUser?: string,
-    fileType?: string
+    fileType?: string,
+    onProgress?: (percent: number) => void
   ): Promise<string> {
     // Determine folder based on category
     const folder = this.getFolderByCategory(category, source);
     
-    const storedFile = await this.fileToStoredFile(file, folder);
+    const storedFile = await this.fileToStoredFile(file, folder, onProgress);
     const attachment: FileAttachment = {
       file: storedFile,
       category,

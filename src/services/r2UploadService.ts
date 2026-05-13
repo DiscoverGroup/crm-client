@@ -30,49 +30,96 @@ function getPublicBaseUrl(): string {
 /**
  * Upload a file via the server-side presigned URL flow.
  * Credentials never leave the server.
+ *
+ * @param onProgress - Called with 0-100 as bytes are transferred to R2.
+ * @param maxRetries - Number of full retry attempts (get new presigned URL + re-PUT) on failure.
  */
 export async function uploadFileToR2(
   file: File,
   bucket: string,
-  folder: string = ''
+  folder: string = '',
+  onProgress?: (percent: number) => void,
+  maxRetries: number = 3
 ): Promise<UploadResponse> {
-  try {
-    if (!file) return { success: false, error: 'No file selected' };
+  if (!file) return { success: false, error: 'No file selected' };
 
-    // Step 1: Ask the server for a short-lived presigned PUT URL
-    const urlRes = await fetch(`${API_BASE}/get-upload-url`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fileName: file.name, contentType: file.type, folder, bucket }),
-    });
+  let lastError = '';
 
-    if (!urlRes.ok) {
-      const err = await urlRes.json().catch(() => ({})) as { error?: string };
-      return { success: false, error: err.error || `Failed to get upload URL (${urlRes.status})` };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Step 1: Get a fresh presigned PUT URL from the server
+      const urlRes = await fetch(`${API_BASE}/get-upload-url`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: file.name, contentType: file.type, folder, bucket }),
+      });
+
+      if (!urlRes.ok) {
+        const err = await urlRes.json().catch(() => ({})) as { error?: string };
+        lastError = err.error || `Failed to get upload URL (${urlRes.status})`;
+        // Auth / permission errors — don't retry
+        if (urlRes.status === 401 || urlRes.status === 403) {
+          return { success: false, error: lastError };
+        }
+        if (attempt < maxRetries) await _backoff(attempt);
+        continue;
+      }
+
+      const { presignedUrl, path, url } = await urlRes.json() as {
+        presignedUrl: string;
+        path: string;
+        url: string;
+      };
+
+      // Step 2: PUT the file directly to R2 using XHR so we can report progress.
+      const uploadResult = await _xhrPut(presignedUrl, file, onProgress);
+
+      if (!uploadResult.ok) {
+        lastError = `Upload failed: ${uploadResult.status}`;
+        if (attempt < maxRetries) await _backoff(attempt);
+        continue;
+      }
+
+      return { success: true, path, url };
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'Unknown error';
+      if (attempt < maxRetries) await _backoff(attempt);
     }
-
-    const { presignedUrl, path, url } = await urlRes.json() as {
-      presignedUrl: string;
-      path: string;
-      url: string;
-    };
-
-    // Step 2: PUT the file directly to MinIO — no credentials in this request,
-    //         the presigned URL signature acts as a time-limited capability token.
-    const uploadRes = await fetch(presignedUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file,
-    });
-
-    if (!uploadRes.ok) {
-      return { success: false, error: `Upload failed: ${uploadRes.status} ${uploadRes.statusText}` };
-    }
-
-    return { success: true, path, url };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+
+  return { success: false, error: lastError };
+}
+
+/** PUT a file via XMLHttpRequest so we get upload progress events. */
+function _xhrPut(
+  url: string,
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<{ ok: boolean; status: number }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', file.type);
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.addEventListener('load', () => resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status }));
+    xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+    xhr.send(file);
+  });
+}
+
+/** Exponential backoff: 1s, 2s, 4s, … capped at 8s */
+function _backoff(attempt: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, Math.min(1000 * 2 ** (attempt - 1), 8000)));
 }
 
 /**
