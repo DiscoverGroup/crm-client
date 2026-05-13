@@ -11,43 +11,72 @@ let _audioBuffer: AudioBuffer | null = null;
 function getAudioCtx(): AudioContext | null {
   try {
     if (!_audioCtx) {
-      _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctor) {
+        console.error('[SOUND] AudioContext not supported in this browser');
+        return null;
+      }
+      _audioCtx = new Ctor();
+      console.log('[SOUND] AudioContext created, state:', _audioCtx.state);
     }
     return _audioCtx;
-  } catch {
+  } catch (e) {
+    console.error('[SOUND] Failed to create AudioContext:', e);
     return null;
   }
 }
 
 async function loadSoundBuffer(): Promise<void> {
-  if (_audioBuffer) return;
+  if (_audioBuffer) {
+    console.log('[SOUND] Buffer already loaded, skipping fetch');
+    return;
+  }
   const ctx = getAudioCtx();
-  if (!ctx) return;
+  if (!ctx) { console.error('[SOUND] loadSoundBuffer: no AudioContext'); return; }
   try {
+    console.log('[SOUND] Fetching /sounds/notification.mp3 ...');
     const res = await fetch('/sounds/notification.mp3');
+    if (!res.ok) {
+      console.error('[SOUND] Fetch failed:', res.status, res.statusText);
+      return;
+    }
     const buf = await res.arrayBuffer();
+    console.log('[SOUND] Fetched', buf.byteLength, 'bytes, decoding...');
     _audioBuffer = await ctx.decodeAudioData(buf);
-  } catch { /* ignore */ }
+    console.log('[SOUND] Buffer decoded OK, duration:', _audioBuffer.duration.toFixed(2), 's');
+  } catch (e) {
+    console.error('[SOUND] loadSoundBuffer error:', e);
+  }
 }
 
 // Unlock AudioContext and pre-load sound on first user interaction
 function unlockAndLoad(): void {
+  console.log('[SOUND] unlockAndLoad triggered');
   const ctx = getAudioCtx();
-  if (!ctx) return;
+  if (!ctx) { console.error('[SOUND] unlockAndLoad: no AudioContext'); return; }
+  console.log('[SOUND] AudioContext state before resume:', ctx.state);
   if (ctx.state === 'suspended') {
-    ctx.resume().then(() => loadSoundBuffer()).catch(() => {});
+    ctx.resume()
+      .then(() => { console.log('[SOUND] AudioContext resumed OK'); return loadSoundBuffer(); })
+      .catch((e) => console.error('[SOUND] resume failed:', e));
   } else {
-    loadSoundBuffer().catch(() => {});
+    loadSoundBuffer().catch((e) => console.error('[SOUND] loadSoundBuffer failed:', e));
   }
 }
 document.addEventListener('click', unlockAndLoad, { once: true });
 document.addEventListener('keydown', unlockAndLoad, { once: true });
 
 function playNotificationSound(): void {
+  console.log('[SOUND] playNotificationSound called');
   const ctx = getAudioCtx();
-  if (!ctx || !_audioBuffer) return;
+  if (!ctx) { console.error('[SOUND] play: no AudioContext'); return; }
+  if (!_audioBuffer) { console.error('[SOUND] play: buffer not loaded yet — was unlockAndLoad called?'); return; }
+  console.log('[SOUND] AudioContext state at play time:', ctx.state);
   try {
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    if (ctx.state === 'suspended') {
+      console.warn('[SOUND] Context suspended at play time — resuming first');
+      ctx.resume().catch((e) => console.error('[SOUND] resume at play time failed:', e));
+    }
     const src = ctx.createBufferSource();
     src.buffer = _audioBuffer;
     const gainNode = ctx.createGain();
@@ -55,7 +84,10 @@ function playNotificationSound(): void {
     src.connect(gainNode);
     gainNode.connect(ctx.destination);
     src.start(0);
-  } catch { /* ignore */ }
+    console.log('[SOUND] BufferSource started OK');
+  } catch (e) {
+    console.error('[SOUND] play error:', e);
+  }
 }
 
 interface NotificationDropdownProps {
@@ -80,11 +112,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
     
     // Only trigger toast+sound for genuinely new notifications (not on first load)
     if (previousCountRef.current !== -1 && newUnreadCount > previousCountRef.current && userNotifs.length > 0) {
+      console.log('[NOTIF] New notification detected — prev:', previousCountRef.current, '→ now:', newUnreadCount);
       const latestUnread = userNotifs.find(n => !n.isRead);
       if (latestUnread) {
         setToastNotification(latestUnread);
         playNotificationSound();
+      } else {
+        console.warn('[NOTIF] No unread notification found despite count increase');
       }
+    } else if (previousCountRef.current === -1) {
+      console.log('[NOTIF] Initial load — skipping toast. Unread count:', newUnreadCount);
     }
     
     previousCountRef.current = newUnreadCount;
