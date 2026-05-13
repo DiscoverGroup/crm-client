@@ -3021,7 +3021,7 @@ const ClientRecords: React.FC<{
               const insAmt = (!insuranceFOC && insuranceService) ? (parseFloat(insuranceAmount.replace(/,/g, '')) || 0) : 0;
               const etaAmt = eta ? (parseFloat(etaAmount.replace(/,/g, '')) || 0) : 0;
               const overallTotal = packageAmt + visaAmt + insAmt + etaAmt;
-              const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0), 0);
+              const paid = paymentDetails.slice(0, paymentBoxes.length).reduce((sum, d) => d.completed ? sum + (parseFloat((d.amount || '').replace(/,/g, '')) || 0) : sum, 0);
               const remaining = overallTotal - paid;
               const hasServices = visaAmt > 0 || insAmt > 0 || etaAmt > 0;
               return (
