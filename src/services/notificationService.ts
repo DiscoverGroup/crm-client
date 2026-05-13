@@ -156,6 +156,7 @@ export class NotificationService {
     this.syncInProgress = true;
 
     try {
+      console.log('[NOTIF-SYNC] Fetching notifications from MongoDB...');
       const response = await fetch(DB_API, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -170,6 +171,7 @@ export class NotificationService {
       const result = await response.json();
 
       if (result.success && Array.isArray(result.data)) {
+        console.log('[NOTIF-SYNC] MongoDB returned', result.data.length, 'notifications');
         const mongoNotifications: Notification[] = result.data.map((d: any) => ({
           id: d.id,
           type: d.type,
@@ -202,9 +204,10 @@ export class NotificationService {
 
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+        console.log('[NOTIF-SYNC] Merged', merged.length, 'total notifications into localStorage');
       }
-    } catch {
-      // Network error — keep localStorage data
+    } catch (e) {
+      console.error('[NOTIF-SYNC] syncFromMongoDB failed:', e);
     } finally {
       this.syncInProgress = false;
     }
@@ -281,6 +284,7 @@ export class NotificationService {
     clientName?: string;
   }): void {
     const users = this.getAllUsers();
+    console.log('[NOTIF-BROADCAST] Broadcasting', params.type, '— users in crm_users:', users.length, users.map(u => u.fullName ?? u.username));
     for (const user of users) {
       // Use fullName as targetUserId — matches getUserNotifications(currentUser.fullName)
       const targetName = user.fullName ?? user.username ?? '';

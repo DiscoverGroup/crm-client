@@ -70,8 +70,8 @@ export const handler = async (event: any) => {
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
     const ip = getClientIP(event.headers);
-    const rl = await checkRateLimit(db, ip, 'sync-signal', 20, 900);
-    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+    const rl = await checkRateLimit(db, ip, 'sync-signal', 200, 60);
+    if (rl.limited) return tooManyRequestsResponse(headers, 60);
 
     const now = new Date().toISOString();
 
