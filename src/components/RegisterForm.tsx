@@ -68,6 +68,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -156,7 +157,7 @@ const generateStrongPassword = (): string => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Sanitise inputs before validation
@@ -188,15 +189,20 @@ const generateStrongPassword = (): string => {
       return;
     }
 
-    onRegister({
-      username: cleanUsername,
-      email: cleanEmail,
-      password: cleanPassword,
-      fullName: cleanFullName,
-      department,
-      position,
-      profileImage,
-    });
+    setIsSubmitting(true);
+    try {
+      await onRegister({
+        username: cleanUsername,
+        email: cleanEmail,
+        password: cleanPassword,
+        fullName: cleanFullName,
+        department,
+        position,
+        profileImage,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -601,33 +607,44 @@ const generateStrongPassword = (): string => {
 
         <button 
           type="submit"
+          disabled={isSubmitting || uploading}
           style={{
             width: '100%',
             padding: windowWidth < 640 ? '16px' : '14px',
-            background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
+            background: (isSubmitting || uploading) ? '#6b7280' : 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
             fontSize: windowWidth < 640 ? '14px' : '15px',
             fontWeight: '600',
-            cursor: 'pointer',
+            cursor: (isSubmitting || uploading) ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)',
             touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
+            WebkitTapHighlightColor: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(13, 71, 161, 0.4)';
+            if (!isSubmitting && !uploading) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(13, 71, 161, 0.4)'; }
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(13, 71, 161, 0.3)';
           }}
         >
-          Sign Up
+          {isSubmitting ? (
+            <>
+              <svg style={{ animation: 'spin 1s linear infinite' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              Creating Account...
+            </>
+          ) : 'Sign Up'}
         </button>
 
         {/* Auth0 divider + button */}

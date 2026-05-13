@@ -4,7 +4,7 @@ import RegisterForm from './RegisterForm';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface AuthContainerProps {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string) => void | Promise<void>;
   onRegister: (form: { username: string; email: string; password: string; fullName: string; department: string; position: string }) => Promise<void> | void;
   onAuth0Register?: () => void;
   onAuth0Login?: () => void;

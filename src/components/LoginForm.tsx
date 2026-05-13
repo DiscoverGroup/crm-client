@@ -13,7 +13,7 @@ import {
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface LoginFormProps {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string) => void | Promise<void>;
   onSignUp?: () => void;
   onAuth0Login?: () => void;
 }
@@ -32,6 +32,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
   const [resetToken, setResetToken] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
     // Check if URL has a password reset token
   React.useEffect(() => {
@@ -47,7 +50,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const cleanEmail    = sanitizeEmail(email);
@@ -64,7 +67,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       return;
     }
 
-    onLogin(cleanEmail, cleanPassword);
+    setIsLoggingIn(true);
+    try {
+      await onLogin(cleanEmail, cleanPassword);
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -76,6 +84,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       return;
     }
 
+    setIsSendingReset(true);
     try {
       const response = await fetch('/.netlify/functions/send-reset-email', {
         method: 'POST',
@@ -94,6 +103,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       }
     } catch {
       showErrorToast('An error occurred. Please try again later.');
+    } finally {
+      setIsSendingReset(false);
     }
   };
 
@@ -114,6 +125,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       return;
     }
 
+    setIsResettingPassword(true);
     try {
       const response = await fetch('/.netlify/functions/reset-password', {
         method: 'POST',
@@ -135,6 +147,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
       }
     } catch {
       showErrorToast('An error occurred. Please try again.');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -301,33 +315,44 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
 
         <button 
           type="submit"
+          disabled={isLoggingIn}
           style={{
             width: '100%',
             padding: windowWidth < 640 ? '16px' : '14px',
-            background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
+            background: isLoggingIn ? '#6b7280' : 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
             fontSize: windowWidth < 640 ? '14px' : '15px',
             fontWeight: '600',
-            cursor: 'pointer',
+            cursor: isLoggingIn ? 'not-allowed' : 'pointer',
             transition: 'all 0.2s ease',
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             boxShadow: '0 4px 12px rgba(13, 71, 161, 0.3)',
             touchAction: 'manipulation',
-            WebkitTapHighlightColor: 'transparent'
+            WebkitTapHighlightColor: 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(13, 71, 161, 0.4)';
+            if (!isLoggingIn) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(13, 71, 161, 0.4)'; }
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = 'translateY(0)';
             e.currentTarget.style.boxShadow = '0 4px 12px rgba(13, 71, 161, 0.3)';
           }}
         >
-          Sign In
+          {isLoggingIn ? (
+            <>
+              <svg style={{ animation: 'spin 1s linear infinite' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+              Signing In...
+            </>
+          ) : 'Sign In'}
         </button>
 
         {/* Auth0 divider + button */}
@@ -468,20 +493,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSendingReset}
                   style={{
                     flex: 1,
                     padding: '12px',
-                    background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
+                    background: isSendingReset ? '#6b7280' : 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '10px',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase'
+                    cursor: isSendingReset ? 'not-allowed' : 'pointer',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
                   }}
                 >
-                  Send Link
+                  {isSendingReset ? (
+                    <><svg style={{ animation: 'spin 1s linear infinite' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Sending...</>
+                  ) : 'Send Link'}
                 </button>
               </div>
             </form>
@@ -662,20 +694,27 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
                 </button>
                 <button
                   type="submit"
+                  disabled={isResettingPassword}
                   style={{
                     flex: 1,
                     padding: '12px',
-                    background: 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
+                    background: isResettingPassword ? '#6b7280' : 'linear-gradient(135deg, #071f55 0%, #0A2D74 50%, #28A2DC 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '10px',
                     fontSize: '14px',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    textTransform: 'uppercase'
+                    cursor: isResettingPassword ? 'not-allowed' : 'pointer',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
                   }}
                 >
-                  Reset Password
+                  {isResettingPassword ? (
+                    <><svg style={{ animation: 'spin 1s linear infinite' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Resetting...</>
+                  ) : 'Reset Password'}
                 </button>
               </div>
             </form>

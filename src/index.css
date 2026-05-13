@@ -3,6 +3,12 @@
 
 /* Inter / Calistoga / JetBrains Mono are loaded in index.html */
 
+/* Spinner keyframe used by loading buttons */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Global box-sizing and viewport constraints */
 *, *::before, *::after {
   box-sizing: border-box;
