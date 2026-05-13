@@ -28,6 +28,7 @@ import {
   isAdmin,
 } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI         = process.env.MONGODB_URI          || '';
@@ -99,7 +100,12 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── Auth: admin only ──────────────────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid || !auth.user) {

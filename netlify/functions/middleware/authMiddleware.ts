@@ -79,7 +79,7 @@ export function generateAuthToken(userId: string, email: string, role: 'admin' |
   return jwt.sign(
     { userId, email, role, ...(fullName ? { fullName } : {}) },
     JWT_SECRET,
-    { expiresIn: '24h', algorithm: 'HS256' }
+    { expiresIn: '1h', algorithm: 'HS256' }
   );
 }
 

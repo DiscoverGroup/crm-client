@@ -124,7 +124,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   // identifiers: fullName, username, email local-part, and first name.
   const getClientCountForUser = (user: User): number => {
     try {
-      const raw = localStorage.getItem('crm_clients_data');
+      const raw = sessionStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
 
       // Build a set of lower-case identifiers for this user
@@ -160,15 +160,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   // Count clients with no agent assigned (unassigned)
   const getUnassignedClientCount = (): number => {
     try {
-      const raw = localStorage.getItem('crm_clients_data');
+      const raw = sessionStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
       return all.filter(c => !c.isDeleted && !c.isTestRecord && !(c.agent || '').trim()).length;
     } catch { return 0; }
   };
 
-  // Get current admin user from localStorage
+  // Get current admin user from sessionStorage
   const getCurrentAdmin = (): string => {
-    const currentUserData = localStorage.getItem('crm_current_user');
+    const currentUserData = sessionStorage.getItem('crm_current_user');
     if (currentUserData) {
       try {
         const userData = JSON.parse(currentUserData);
@@ -187,8 +187,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   }, []);
 
   const loadUsers = async () => {
-    // First load from localStorage immediately (offline fallback)
-    const usersData = localStorage.getItem('crm_users');
+    // First load from sessionStorage immediately (offline fallback)
+    const usersData = sessionStorage.getItem('crm_users');
     if (usersData) {
       try {
         const parsedUsers = JSON.parse(usersData);
@@ -206,8 +206,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         const data = await res.json();
         if (data.success && Array.isArray(data.users)) {
           setUsers(data.users);
-          // Keep localStorage in sync so mention autocomplete works
-          localStorage.setItem('crm_users', JSON.stringify(data.users));
+          // Keep sessionStorage in sync so mention autocomplete works
+          sessionStorage.setItem('crm_users', JSON.stringify(data.users));
         }
       }
     } catch {
@@ -226,7 +226,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   };
 
   const saveUsers = (updatedUsers: User[]) => {
-    localStorage.setItem('crm_users', JSON.stringify(updatedUsers));
+    sessionStorage.setItem('crm_users', JSON.stringify(updatedUsers));
     setUsers(updatedUsers);
   };
 

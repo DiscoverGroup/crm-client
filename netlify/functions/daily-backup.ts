@@ -21,6 +21,7 @@ import { MongoClient } from 'mongodb';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuthToken } from './middleware/authMiddleware';
 import { logInfo, logError, startTimer } from './utils/logger';
+import { extractCSRFToken, validateCSRFToken } from './utils/csrfProtection';
 
 const MONGODB_URI   = process.env.MONGODB_URI   || '';
 const DB_NAME       = 'dg_crm';
@@ -59,6 +60,15 @@ async function runBackup(event: Parameters<Handler>[0]): Promise<{ statusCode: n
   if (!isScheduled) {
     if (event.httpMethod !== 'POST') {
       return { statusCode: 405, headers: jsonHeaders, body: JSON.stringify({ error: 'Method not allowed' }) };
+    }
+    // Validate CSRF token for manual HTTP triggers
+    const csrfToken = extractCSRFToken(event);
+    if (!csrfToken) {
+      return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ error: 'Missing CSRF token' }) };
+    }
+    const csrfResult = validateCSRFToken(csrfToken);
+    if (!csrfResult.valid) {
+      return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ error: csrfResult.error || 'Invalid CSRF token' }) };
     }
     // Validate JWT — admin must be logged in to trigger a manual backup
     const auth = verifyAuthToken(event.headers['authorization']);

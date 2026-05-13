@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse, forbiddenResponse, isAdmin } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'dg_crm';
@@ -20,7 +22,12 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── Admin-only JWT Authentication ─────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) return unauthorizedResponse(headers, auth.error);
@@ -41,6 +48,11 @@ export const handler: Handler = async (event) => {
 
     dbClient = await MongoClient.connect(MONGODB_URI);
     const db = dbClient.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'migrate-to-mongodb', 5, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
 
     // Migrate users
     if (localStorageData.crm_users) {

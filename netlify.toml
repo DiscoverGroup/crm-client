@@ -66,9 +66,9 @@
     # Force HTTPS for 1 year
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     # Allow Auth0 popup to communicate back to opener window
-    Cross-Origin-Opener-Policy = "unsafe-none"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
     # Content Security Policy
     # http: in connect-src and img-src is required for local MinIO storage (LAN, HTTP only).
     # If ever deployed to HTTPS hosting, MinIO would also need HTTPS — this does not weaken
     # security for remote users since local MinIO is unreachable from the public internet.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.auth0.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; frame-src https://*.auth0.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdn.auth0.com https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: http:; connect-src 'self' https: http:; font-src 'self' data: https://fonts.gstatic.com; frame-src https://*.auth0.com https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"

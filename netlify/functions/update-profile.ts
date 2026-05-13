@@ -3,6 +3,8 @@ import { MongoClient, ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { parseRequestBody } from './middleware/validation';
 import { getSecurityHeaders, getCORSHeaders, isValidEmail, isValidPassword, isValidUsername, sanitizeInput } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
@@ -27,7 +29,12 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── Auth ─────────────────────────────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid || !auth.user) return unauthorizedResponse(headers);
@@ -118,6 +125,12 @@ export const handler: Handler = async (event) => {
 
   try {
     const db = client.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'update-profile', 20, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
     const usersCollection = db.collection('users');
 
     // Fetch current user record (by JWT userId)

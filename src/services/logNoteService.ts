@@ -14,10 +14,10 @@ export class LogNoteService {
     }));
   }
 
-  // Load from localStorage
+  // Load from sessionStorage
   private static loadFromStorage(): Map<string, LogNote[]> {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
+      const stored = sessionStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const data = JSON.parse(stored);
         // Convert dates back to Date objects
@@ -36,11 +36,11 @@ export class LogNoteService {
     return new Map();
   }
 
-  // Save to localStorage
+  // Save to sessionStorage
   private static saveToStorage(logNotes: Map<string, LogNote[]>): void {
     try {
       const data = Object.fromEntries(logNotes);
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+      sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
       // console.error('Error saving log notes to storage:', error);
     }

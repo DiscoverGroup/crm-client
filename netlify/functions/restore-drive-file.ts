@@ -11,6 +11,7 @@ import type { Handler } from '@netlify/functions';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const SCOPES = ['https://www.googleapis.com/auth/drive'];
@@ -94,6 +95,13 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
 
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) return unauthorizedResponse(headers, auth.error);

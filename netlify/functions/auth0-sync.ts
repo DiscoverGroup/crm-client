@@ -11,6 +11,8 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { generateAuthToken } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || '';
@@ -29,6 +31,13 @@ export const handler: Handler = async (event) => {
 
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
   }
 
   if (!AUTH0_DOMAIN) {
@@ -105,6 +114,12 @@ export const handler: Handler = async (event) => {
   try {
     await client.connect();
     const db = client.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'auth0-sync', 10, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
     const users = db.collection('users');
 
     let user = await users.findOne({ email: auth0User.email.toLowerCase() });

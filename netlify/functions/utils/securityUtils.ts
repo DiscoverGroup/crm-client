@@ -191,7 +191,10 @@ export function getSecurityHeaders(): Record<string, string> {
  * Returns CORS headers (restricted)
  */
 export function getCORSHeaders(allowedOrigin?: string): Record<string, string> {
-  const origin = allowedOrigin || process.env.ALLOWED_ORIGIN || 'http://localhost:3000';
+  const origin = allowedOrigin || process.env.ALLOWED_ORIGIN;
+  if (!origin) {
+    throw new Error('ALLOWED_ORIGIN environment variable is not set');
+  }
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

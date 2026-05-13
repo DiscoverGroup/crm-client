@@ -206,24 +206,14 @@ const App: React.FC = () => {
       // MongoDB connectivity check intentionally removed — the full-collection scan
       // on every page load caused 504 Gateway Timeouts when Atlas was cold-starting.
 
-      // Check Cloudflare R2 configuration
-      const r2AccountId = import.meta.env.VITE_R2_ACCOUNT_ID;
-      const r2AccessKey = import.meta.env.VITE_R2_ACCESS_KEY_ID;
-      const r2SecretKey = import.meta.env.VITE_R2_SECRET_ACCESS_KEY;
+      // Check Cloudflare R2 public configuration (no secrets on client)
       const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
       const r2Bucket = import.meta.env.VITE_R2_BUCKET_NAME;
 
-      if (r2AccountId && r2AccessKey && r2SecretKey && r2PublicUrl && r2Bucket) {
+      if (r2PublicUrl && r2Bucket) {
         // console.log('✅ Cloudflare R2: Configured');
         // console.log(`   • Bucket: ${r2Bucket}`);
         // console.log(`   • Public URL: ${r2PublicUrl}`);
-      } else {
-        // console.log('❌ Cloudflare R2: Not configured or missing credentials');
-        // if (!r2AccountId) console.log('   • Missing: VITE_R2_ACCOUNT_ID');
-        // if (!r2AccessKey) console.log('   • Missing: VITE_R2_ACCESS_KEY_ID');
-        // if (!r2SecretKey) console.log('   • Missing: VITE_R2_SECRET_ACCESS_KEY');
-        // if (!r2PublicUrl) console.log('   • Missing: VITE_R2_PUBLIC_URL');
-        // if (!r2Bucket) console.log('   • Missing: VITE_R2_BUCKET_NAME');
       }
       
       // console.log('─────────────────────────────────────');
@@ -332,11 +322,15 @@ const App: React.FC = () => {
     if (savedAuth) {
       try {
         const authData = JSON.parse(savedAuth);
-        const now = Date.now();
-        const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        
-        // Check if session is still valid (within 24 hours) and JWT token is present
-        if (authData.isLoggedIn && authData.currentUser && authData.timestamp && (now - authData.timestamp < sessionDuration) && getAuthToken()) {
+        const token = getAuthToken();
+        let jwtValid = false;
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            jwtValid = typeof payload.exp === 'number' && Date.now() < payload.exp * 1000;
+          } catch { /* malformed token — treat as expired */ }
+        }
+        if (authData.isLoggedIn && authData.currentUser && jwtValid) {
           setIsLoggedIn(true);
           setCurrentUser(authData.currentUser);
         } else {

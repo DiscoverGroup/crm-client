@@ -22,6 +22,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 import { checkRateLimit, checkRateLimitByUser, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { validateFileUpload } from './middleware/fileUploadSecurity';
 
@@ -65,7 +66,12 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── 1. JWT authentication ──────────────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) {

@@ -10,6 +10,7 @@ import type { Handler } from '@netlify/functions';
 import { S3Client, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { verifyAuthToken } from './middleware/authMiddleware';
 import { getCORSHeaders, getSecurityHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 
 const R2_ENDPOINT   = process.env.R2_ENDPOINT          || '';
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID     || '';
@@ -29,6 +30,13 @@ export const handler: Handler = async (event) => {
     }
     if (event.httpMethod !== 'DELETE') {
       return { statusCode: 405, headers: jsonHeaders, body: JSON.stringify({ error: 'Method not allowed' }) };
+    }
+
+    // ── CSRF validation ────────────────────────────────────────────────────────
+    const csrfToken = extractCSRFToken(event);
+    const csrfResult = validateCSRFToken(csrfToken ?? '');
+    if (!csrfResult.valid) {
+      return { statusCode: 403, headers: jsonHeaders, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
     }
 
     // Admin-only — regular users must never be able to delete backups

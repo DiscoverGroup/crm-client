@@ -1,6 +1,8 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -18,6 +20,13 @@ export const handler = async (event: any) => {
 
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
   }
 
   const auth = verifyAuthToken(event.headers['authorization']);
@@ -69,6 +78,12 @@ export const handler = async (event: any) => {
     });
 
     const db = client.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers);
+    const rl = await checkRateLimit(db, ip, 'update-log-note-status', 20, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
     const result = await db.collection('log_notes').updateOne(
       { _id: new ObjectId(logNoteId) },
       { $set: updateFields }

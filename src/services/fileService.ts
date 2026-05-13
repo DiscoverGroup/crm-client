@@ -57,16 +57,16 @@ export class FileService {
         if (json.success && json.data) {
           this._configCache = json.data as StorageSettings;
           this._configCacheExpiry = Date.now() + this.CONFIG_TTL_MS;
-          localStorage.setItem(this.CONFIG_CACHE_KEY, JSON.stringify(json.data));
+          sessionStorage.setItem(this.CONFIG_CACHE_KEY, JSON.stringify(json.data));
           return this._configCache;
         }
       }
     } catch {
       // Network failure — fall through to local cache
     }
-    // Fallback: try localStorage cache
+    // Fallback: try sessionStorage cache
     try {
-      const raw = localStorage.getItem(this.CONFIG_CACHE_KEY);
+      const raw = sessionStorage.getItem(this.CONFIG_CACHE_KEY);
       if (raw) return JSON.parse(raw) as StorageSettings;
     } catch {}
     return DEFAULT_STORAGE_SETTINGS;
@@ -186,7 +186,7 @@ export class FileService {
     const existingAttachments = this.getAllFileAttachments();
     existingAttachments.push(attachment);
     
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
+    sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(existingAttachments));
     
     // Fire-and-forget sync to MongoDB
     this.saveAttachmentToMongoDB(attachment).then(() => {
@@ -195,7 +195,7 @@ export class FileService {
     
     // Helper function to get current user's profile image R2 path
     const getUserProfileImagePath = (userName: string): string | undefined => {
-      const users = localStorage.getItem('crm_users');
+      const users = sessionStorage.getItem('crm_users');
       if (users) {
         const userList = JSON.parse(users);
         const user = userList.find((u: any) => u.fullName === userName);
@@ -251,7 +251,7 @@ export class FileService {
   // Get all file attachments
   static getAllFileAttachments(): FileAttachment[] {
     try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
+      const data = sessionStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (error) {
       // console.error('Error loading file attachments:', error);
@@ -296,8 +296,8 @@ export class FileService {
       const filteredAttachments = attachments.filter(att => att.file.id !== fileId);
       // console.log('📦 Total attachments after filtering:', filteredAttachments.length);
       // console.log('💾 Saving to localStorage...');
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
-      // console.log('✅ localStorage updated');
+      sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(filteredAttachments));
+      // console.log('✅ sessionStorage updated')
       
       // Delete from MongoDB
       this.deleteAttachmentFromMongoDB(fileId).then(() => {
@@ -305,7 +305,7 @@ export class FileService {
       }).catch(() => {});
       
       // Verify the save
-      const verification = localStorage.getItem(this.STORAGE_KEY);
+      const verification = sessionStorage.getItem(this.STORAGE_KEY);
       JSON.parse(verification || '[]');
       // console.log('✓ Verification - attachments in storage:', verifiedAttachments.length);
 
@@ -336,7 +336,7 @@ export class FileService {
         
         // Helper function to get current user's profile image R2 path
         const getUserProfileImagePath = (userName: string): string | undefined => {
-          const users = localStorage.getItem('crm_users');
+          const users = sessionStorage.getItem('crm_users');
           if (users) {
             const userList = JSON.parse(users);
             const user = userList.find((u: any) => u.fullName === userName);
@@ -373,7 +373,7 @@ export class FileService {
         }
         return att;
       });
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+      sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
       
       // Fire-and-forget sync updated IDs to MongoDB
       this.updateClientIdInMongoDB(tempClientId, realClientId).catch(() => {});
@@ -439,7 +439,7 @@ export class FileService {
       });
 
       if (fixed > 0) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+        sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
       }
     } catch (error) {
       // console.error('Error fixing R2 URLs:', error);
@@ -469,7 +469,7 @@ export class FileService {
       });
 
       if (migrated > 0) {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
+        sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedAttachments));
       }
       
       return migrated;
@@ -496,7 +496,7 @@ export class FileService {
   static addRestoredAttachment(attachment: FileAttachment): void {
     const existing = this.getAllFileAttachments();
     existing.push(attachment);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(existing));
+    sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(existing));
     this.saveAttachmentToMongoDB(attachment).then(() => {
       realtimeSync.signalChange('file_attachments');
     }).catch(() => {});
@@ -542,8 +542,8 @@ export class FileService {
         }
 
         const merged = [...mongoAttachments, ...localOnly];
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
-        localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+        sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+        sessionStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
       }
     } catch {
       // Network error — keep using localStorage data

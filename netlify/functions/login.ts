@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { generateAuthToken } from './middleware/authMiddleware';
 import { validateLoginRequest, parseRequestBody } from './middleware/validation';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
@@ -40,6 +41,13 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
   }
 
   // Check if MongoDB URI is configured

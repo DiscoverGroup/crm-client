@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
-import { showSuccessToast, showErrorToast, showWarningToast, showInfoToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast, showWarningToast} from '../utils/toast';
 import {
   validateLoginForm,
   validateForgotPasswordForm,
@@ -32,94 +32,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
-  // Check if URL has reset token or verification token
+    // Check if URL has a password reset token
   React.useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const resetToken = urlParams.get('reset');
-    const verifyToken = urlParams.get('verify');
     const emailParam = urlParams.get('email');
-    
+
     if (resetToken && emailParam) {
       setResetUserEmail(emailParam);
       setResetToken(resetToken);
       setShowResetPassword(true);
-      // Clean URL
-      window.history.replaceState({}, '', '/');
-    } else if (verifyToken && emailParam) {
-      // Handle email verification
-      handleEmailVerification(verifyToken, emailParam);
-      // Clean URL
       window.history.replaceState({}, '', '/');
     }
   }, []);
-
-  const handleEmailVerification = (token: string, email: string) => {
-    const usersData = localStorage.getItem('crm_users');
-    if (!usersData) {
-      showErrorToast('Verification failed: User not found');
-      return;
-    }
-
-    try {
-      const users = JSON.parse(usersData);
-      const userIndex = users.findIndex((u: any) => u.email === email);
-      
-      if (userIndex === -1) {
-        showErrorToast('Verification failed: User not found');
-        return;
-      }
-
-      const user = users[userIndex];
-
-      // Check if already verified
-      if (user.isVerified) {
-        showInfoToast('Your email is already verified! You can now login.');
-        return;
-      }
-
-      // Check if token matches
-      if (user.verificationToken !== token) {
-        showErrorToast('Verification failed: Invalid verification link');
-        return;
-      }
-
-      // Check if token expired
-      if (Date.now() > user.verificationTokenExpiry) {
-        showErrorToast('Verification failed: This link has expired. Please contact support.');
-        return;
-      }
-
-      // Verify the user
-      users[userIndex].isVerified = true;
-      users[userIndex].verificationToken = null;
-      users[userIndex].verificationTokenExpiry = null;
-      users[userIndex].verifiedAt = new Date().toISOString();
-      
-      localStorage.setItem('crm_users', JSON.stringify(users));
-
-      // Persist verification to MongoDB
-      fetch('/.netlify/functions/database', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          collection: 'users',
-          operation: 'updateOne',
-          filter: { email },
-          update: {
-            isVerified: true,
-            verificationToken: null,
-            verificationTokenExpiry: null,
-            verifiedAt: users[userIndex].verifiedAt
-          }
-        })
-      }).catch(() => { /* non-critical - localStorage already updated */ });
-      
-      showSuccessToast('Email verified successfully! You can now login to your account.');
-    } catch (error) {
-      // console.error('Error verifying email:', error);
-      showErrorToast('An error occurred during verification. Please try again.');
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -287,6 +212,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
             placeholder="Password"
             value={password}
             required
+            autoComplete="current-password"
             onChange={e => setPassword(e.target.value)}
             style={{
               width: '100%',

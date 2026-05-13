@@ -21,6 +21,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI      = process.env.MONGODB_URI    || '';
 const DB_NAME          = 'dg_crm';
@@ -45,6 +46,8 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
+
+  const ip = getClientIP(event.headers);
 
   // ── Secret guard ────────────────────────────────────────────────────────────
   if (!SETUP_SECRET) {
@@ -92,6 +95,10 @@ export const handler: Handler = async (event) => {
 
   try {
     const db    = dbClient.db(DB_NAME);
+
+    const rateLimit = await checkRateLimit(db, ip, 'seed-admin', 5, 900);
+    if (rateLimit.limited) return tooManyRequestsResponse(headers);
+
     const users = db.collection('users');
 
     const hashedPassword = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_ROUNDS);

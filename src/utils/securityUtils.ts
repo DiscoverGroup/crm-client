@@ -20,11 +20,19 @@ export function isValidEmail(email: string): boolean {
  * Validates password strength
  * - Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
  */
+// export function isValidPassword(password: string): boolean {
+//   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+//   return typeof password === 'string' && passwordRegex.test(password);
+// }
 export function isValidPassword(password: string): boolean {
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-  return typeof password === 'string' && passwordRegex.test(password);
+  if(typeof password !== 'string') return false;
+  if(password.length < 12 || password.length >128) return false;
+  if(!/[a-z]/.test(password)) return false;
+  if(!/[A-Z]/.test(password)) return false;
+  if (!/\d/.test(password)) return false;
+  if (!/[!@#$%^&*()\-_=+\[\]{};:'",.<>?/\\|`~]/.test(password)) return false;
+  return true;
 }
-
 /**
  * Validates username format
  * - 3-30 chars, alphanumeric, underscore, hyphen only

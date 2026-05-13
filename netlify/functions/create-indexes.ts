@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse, forbiddenResponse, isAdmin } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -17,7 +19,12 @@ export const handler: Handler = async (event) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── Admin-only JWT Authentication ─────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) return unauthorizedResponse(headers, auth.error);
@@ -45,6 +52,12 @@ export const handler: Handler = async (event) => {
     });
 
     const db = client.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'create-indexes', 5, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
     const results = [];
 
     // ── Messages collection ───────────────────────────────────────────────────

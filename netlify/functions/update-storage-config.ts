@@ -2,6 +2,8 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse, forbiddenResponse, isAdmin } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import type { StorageMode } from '../../src/types/storage';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
@@ -22,7 +24,12 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
-
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
+  }
   // ── Admin-only ─────────────────────────────────────────────────────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   if (!auth.valid) return unauthorizedResponse(headers, auth.error);
@@ -63,7 +70,14 @@ export const handler: Handler = async (event) => {
     });
     await client.connect();
 
-    await client.db(DB_NAME).collection('settings').updateOne(
+    const db = client.db(DB_NAME);
+
+    // ── Rate limiting ─────────────────────────────────────────────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'update-storage-config', 20, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
+    await db.collection('settings').updateOne(
       { key: 'storage_config' },
       {
         $set: {

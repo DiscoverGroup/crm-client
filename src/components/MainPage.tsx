@@ -95,7 +95,7 @@ const sectionHeader: React.CSSProperties = {
 
 const label: React.CSSProperties = {
   fontWeight: 600,
-  color: "#0A2D74",
+  color: "#0A2D74", 
   marginBottom: "6px",
   display: "block",
   fontSize: "13px",

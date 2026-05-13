@@ -234,7 +234,7 @@ export function validateEmail(value: string): string | null {
 }
 
 export function validatePasswordStrength(value: string): string | null {
-  if (value.length < 8) return 'Password must be at least 8 characters';
+  if (value.length < 12) return 'Password must be at least 12 characters';
   if (value.length > 128) return 'Password must not exceed 128 characters';
   if (!/[A-Z]/.test(value)) return 'Password must include an uppercase letter';
   if (!/[a-z]/.test(value)) return 'Password must include a lowercase letter';

@@ -43,10 +43,10 @@ class WorkflowService {
     };
   }
 
-  // Load workflows from localStorage
+  // Load workflows from sessionStorage
   private loadWorkflows(): void {
     try {
-      const stored = localStorage.getItem(this.STORAGE_KEY);
+      const stored = sessionStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const workflows: Workflow[] = JSON.parse(stored);
         workflows.forEach(workflow => {
@@ -58,20 +58,20 @@ class WorkflowService {
     }
   }
 
-  // Save workflows to localStorage
+  // Save workflows to sessionStorage
   private saveWorkflows(): void {
     try {
       const workflows = Array.from(this.workflows.values());
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(workflows));
+      sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(workflows));
     } catch (error) {
       console.warn('Failed to save workflows:', error);
     }
   }
 
-  // Load executions from localStorage
+  // Load executions from sessionStorage
   private loadExecutions(): void {
     try {
-      const stored = localStorage.getItem(this.EXECUTIONS_KEY);
+      const stored = sessionStorage.getItem(this.EXECUTIONS_KEY);
       if (stored) {
         const executions: WorkflowExecution[] = JSON.parse(stored);
         executions.forEach(execution => {
@@ -89,7 +89,7 @@ class WorkflowService {
       const executions = Array.from(this.executions.values());
       // Keep only last 100 executions
       const recent = executions.slice(-100);
-      localStorage.setItem(this.EXECUTIONS_KEY, JSON.stringify(recent));
+      sessionStorage.setItem(this.EXECUTIONS_KEY, JSON.stringify(recent));
     } catch (error) {
       console.warn('Failed to save executions:', error);
     }
@@ -367,8 +367,8 @@ class WorkflowService {
 
   private async sendNotification(config: any): Promise<any> {
     // console.log('Sending notification:', config);
-    // Create notification in localStorage
-    const notifications = JSON.parse(localStorage.getItem('crm_notifications') || '[]');
+    // Create notification in sessionStorage
+    const notifications = JSON.parse(sessionStorage.getItem('crm_notifications') || '[]');
     notifications.push({
       id: this.generateId(),
       title: config.notificationTitle,
@@ -377,7 +377,7 @@ class WorkflowService {
       createdAt: new Date(),
       read: false
     });
-    localStorage.setItem('crm_notifications', JSON.stringify(notifications));
+    sessionStorage.setItem('crm_notifications', JSON.stringify(notifications));
     return { success: true, message: 'Notification created' };
   }
 

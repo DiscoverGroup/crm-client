@@ -75,25 +75,36 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register
     type: 'success' | 'error' | 'warning' | 'info';
   }>({ isOpen: false, title: '', message: '', type: 'info' });
 
-  const generateStrongPassword = (): string => {
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const symbols = '!@#$%^&*()-_=+[]{}|;:,.<>?';
-    const allChars = uppercase + lowercase + numbers + symbols;
-    
-    let pwd = '';
-    pwd += uppercase[Math.floor(Math.random() * uppercase.length)];
-    pwd += lowercase[Math.floor(Math.random() * lowercase.length)];
-    pwd += numbers[Math.floor(Math.random() * numbers.length)];
-    pwd += symbols[Math.floor(Math.random() * symbols.length)];
-    
-    for (let i = pwd.length; i < 16; i++) {
-      pwd += allChars[Math.floor(Math.random() * allChars.length)];
-    }
-    
-    return pwd.split('').sort(() => Math.random() - 0.5).join('');
+const generateStrongPassword = (): string => {
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const symbols = '!@#$%^&*()-_=+[]{}|;:,.<>?';
+  const allChars = uppercase + lowercase + numbers + symbols;
+
+  const randomIndex = (max: number): number => {
+    const bytes = new Uint32Array(1);
+    crypto.getRandomValues(bytes);
+    return bytes[0] % max;
   };
+
+  let pwd = '';
+  pwd += uppercase[randomIndex(uppercase.length)];
+  pwd += lowercase[randomIndex(lowercase.length)];
+  pwd += numbers[randomIndex(numbers.length)];
+  pwd += symbols[randomIndex(symbols.length)];
+
+  for (let i = pwd.length; i < 16; i++) {
+    pwd += allChars[randomIndex(allChars.length)];
+  }
+
+  const arr = pwd.split('');
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randomIndex(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.join('');
+};
 
   const handleGeneratePassword = () => {
     const newPassword = generateStrongPassword();
@@ -329,6 +340,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register
               placeholder="Password"
               value={password}
               required
+              autoComplete="new-password"
               onChange={e => setPassword(e.target.value)}
               style={{
                 width: '100%',
@@ -414,6 +426,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onAuth0Register
             placeholder="Confirm Password"
             value={confirm}
             required
+            autoComplete="new-password"
             onChange={e => setConfirm(e.target.value)}
             style={{
               width: '100%',
