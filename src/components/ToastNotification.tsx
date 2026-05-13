@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Notification } from '../types/notification';
 
 interface ToastNotificationProps {
@@ -8,24 +8,13 @@ interface ToastNotificationProps {
 
 const ToastNotification: React.FC<ToastNotificationProps> = ({ notification, onClose }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (notification) {
       setIsVisible(true);
-
-      // Auto-hide after 5 seconds
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-        closeTimerRef.current = setTimeout(onClose, 300); // Wait for animation to complete
-      }, 5000);
-
-      return () => {
-        clearTimeout(timer);
-        if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      };
+      // No auto-dismiss — stays until user closes it
     }
-  }, [notification, onClose]);
+  }, [notification]);
 
   if (!notification) return null;
 

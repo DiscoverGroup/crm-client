@@ -1,16 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
 import ToastNotification from './ToastNotification';
 
-// Notification sound — place your sound file at public/sounds/notification.mp3
+// Notification sound
 const NOTIFICATION_SOUND_URL = '/sounds/notification.mp3';
+
+// Pre-load audio so it's ready to play (needed for autoplay policy)
+const notificationAudio = new Audio(NOTIFICATION_SOUND_URL);
+notificationAudio.volume = 0.6;
+notificationAudio.preload = 'auto';
+
+// Track if user has interacted with the page (required for autoplay)
+let userHasInteracted = false;
+const unlockAudio = () => {
+  if (!userHasInteracted) {
+    userHasInteracted = true;
+    // Play + immediately pause to "unlock" the audio context
+    notificationAudio.play().then(() => {
+      notificationAudio.pause();
+      notificationAudio.currentTime = 0;
+    }).catch(() => {});
+  }
+};
+document.addEventListener('click', unlockAudio, { once: false });
+document.addEventListener('keydown', unlockAudio, { once: false });
 
 function playNotificationSound() {
   try {
-    const audio = new Audio(NOTIFICATION_SOUND_URL);
-    audio.volume = 0.6;
-    audio.play().catch(() => {}); // silently ignore autoplay policy blocks
+    notificationAudio.currentTime = 0;
+    notificationAudio.play().catch(() => {});
   } catch {
     // ignore
   }
@@ -28,16 +47,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastNotification, setToastNotification] = useState<Notification | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const previousCountRef = useRef<number>(0);
+  // -1 = not yet initialized (skip toast on first load)
+  const previousCountRef = useRef<number>(-1);
 
   // Load notifications
-  const loadNotifications = () => {
+  const loadNotifications = useCallback(() => {
     const userNotifs = NotificationService.getUserNotifications(currentUser.fullName);
     const newUnreadCount = NotificationService.getUnreadCount(currentUser.fullName);
     
-    // Check if there's a new notification
-    if (newUnreadCount > previousCountRef.current && userNotifs.length > 0) {
-      // Show toast for the most recent unread notification
+    // Only trigger toast+sound for genuinely new notifications (not on first load)
+    if (previousCountRef.current !== -1 && newUnreadCount > previousCountRef.current && userNotifs.length > 0) {
       const latestUnread = userNotifs.find(n => !n.isRead);
       if (latestUnread) {
         setToastNotification(latestUnread);
@@ -48,20 +67,24 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
     previousCountRef.current = newUnreadCount;
     setNotifications(userNotifs);
     setUnreadCount(newUnreadCount);
-  };
+  }, [currentUser.fullName]);
 
   useEffect(() => {
-    // Sync from MongoDB first, then load
+    // Sync from MongoDB first, record baseline (no toast), then start polling
     NotificationService.syncFromMongoDB().then(() => {
       loadNotifications();
     }).catch(() => {
       loadNotifications();
     });
     
-    // Refresh notifications every 30 seconds
-    const interval = setInterval(loadNotifications, 30000);
+    // Poll every 5 seconds for near-real-time updates
+    const interval = setInterval(() => {
+      NotificationService.syncFromMongoDB().then(() => {
+        loadNotifications();
+      }).catch(() => {});
+    }, 5000);
 
-    // Listen for real-time sync events
+    // Also listen for instant same-browser sync events
     const onSync = () => {
       NotificationService.syncFromMongoDB().then(() => {
         loadNotifications();
@@ -72,7 +95,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       clearInterval(interval);
       window.removeEventListener('sync:notifications', onSync);
     };
-  }, [currentUser.fullName]);
+  }, [currentUser.fullName, loadNotifications]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
