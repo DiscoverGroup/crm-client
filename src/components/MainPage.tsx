@@ -530,6 +530,7 @@ const ClientRecords: React.FC<{
   const [totalAmount, setTotalAmount] = useState("");
   const [selectedPaymentBox, setSelectedPaymentBox] = useState<number | null>(null);
   const [paymentModalIdx, setPaymentModalIdx] = useState<number | null>(null);
+  const [paymentUploadProgress, setPaymentUploadProgress] = useState<Record<string, number>>({});
   const [companionModalIdx, setCompanionModalIdx] = useState<number | null>(null);
   const [customMaxTerms, setCustomMaxTerms] = useState<number | null>(null);
   const [isEditingMaxTerms, setIsEditingMaxTerms] = useState(false);
@@ -676,6 +677,7 @@ const ClientRecords: React.FC<{
 
   // Voucher modal state: null = closed, 'international-flight'|'tour-voucher'|'hotel-voucher'|'other-files'|'local-flight-N'
   const [voucherModalType, setVoucherModalType] = useState<string | null>(null);
+  const [voucherUploadProgress, setVoucherUploadProgress] = useState<number | null>(null);
   // File attachment state
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [driveBackupStatus, setDriveBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
@@ -865,7 +867,12 @@ const ClientRecords: React.FC<{
         // Save file to FileService with client ID
         const currentClientId = clientId || tempClientId;
         const category = field === "depositSlip" ? "deposit-slip" : "receipt";
-        await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms", currentUserName);
+        const progressKey = `${idx}_${field}`;
+        setPaymentUploadProgress(prev => ({ ...prev, [progressKey]: 0 }));
+        await FileService.saveFileAttachment(file, category, currentClientId, idx, "regular", "payment-terms", currentUserName, undefined, (percent) => {
+          setPaymentUploadProgress(prev => ({ ...prev, [progressKey]: percent }));
+        });
+        setPaymentUploadProgress(prev => { const next = { ...prev }; delete next[progressKey]; return next; });
         
         // Log the file attachment
         logAttachment(
@@ -3259,12 +3266,20 @@ const ClientRecords: React.FC<{
                           </div>
                         );
                       }
+                      const depositProgress = paymentUploadProgress[`${paymentModalIdx}_depositSlip`];
                       return (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
-                          <span style={{ fontSize: 20 }}>📎</span>
-                          <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
-                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} />
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: depositProgress !== undefined ? 'default' : 'pointer', opacity: depositProgress !== undefined ? 0.85 : 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 20 }}>📎</span>
+                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>{depositProgress !== undefined ? `Uploading… ${depositProgress}%` : 'Choose file to upload'}</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          </div>
+                          {depositProgress !== undefined && (
+                            <div style={{ width: '100%', height: 4, background: '#dbeafe', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${depositProgress}%`, background: '#3b82f6', borderRadius: 2, transition: 'width 0.2s ease' }} />
+                            </div>
+                          )}
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "depositSlip", e)} style={{ display: 'none' }} disabled={depositProgress !== undefined} />
                         </label>
                       );
                     })()}
@@ -3286,12 +3301,20 @@ const ClientRecords: React.FC<{
                           </div>
                         );
                       }
+                      const receiptProgress = paymentUploadProgress[`${paymentModalIdx}_receipt`];
                       return (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
-                          <span style={{ fontSize: 20 }}>📎</span>
-                          <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
-                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} />
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: receiptProgress !== undefined ? 'default' : 'pointer', opacity: receiptProgress !== undefined ? 0.85 : 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 20 }}>📎</span>
+                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>{receiptProgress !== undefined ? `Uploading… ${receiptProgress}%` : 'Choose file to upload'}</span>
+                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                          </div>
+                          {receiptProgress !== undefined && (
+                            <div style={{ width: '100%', height: 4, background: '#dbeafe', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${receiptProgress}%`, background: '#3b82f6', borderRadius: 2, transition: 'width 0.2s ease' }} />
+                            </div>
+                          )}
+                          <input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e => handlePaymentDetailChange(paymentModalIdx, "receipt", e)} style={{ display: 'none' }} disabled={receiptProgress !== undefined} />
                         </label>
                       );
                     })()}
@@ -4476,12 +4499,19 @@ const ClientRecords: React.FC<{
                               style={{ fontSize: 13, color: '#ef4444', background: 'transparent', border: '1px solid #ef4444', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>✕</button>
                           </div>
                         ) : (
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: 'pointer' }}>
-                            <span style={{ fontSize: 20 }}>📎</span>
-                            <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>Choose file to upload</span>
-                            <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
-                            <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }}
-                              onChange={async (e) => { const file = e.target.files?.[0]; if (file) { await handleGenericFileUpload(file, 'other', fileType, 'booking-voucher'); onFileSet(file); } }} />
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 16px', border: '2px dashed rgba(147,197,253,0.6)', borderRadius: 12, background: 'rgba(239,246,255,0.7)', cursor: voucherUploadProgress !== null ? 'default' : 'pointer', opacity: voucherUploadProgress !== null ? 0.85 : 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: 20 }}>📎</span>
+                              <span style={{ fontSize: 14, color: '#3b82f6', fontWeight: 600 }}>{voucherUploadProgress !== null ? `Uploading… ${voucherUploadProgress}%` : 'Choose file to upload'}</span>
+                              <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 'auto' }}>PDF, DOCX, Image (max 10 MB)</span>
+                            </div>
+                            {voucherUploadProgress !== null && (
+                              <div style={{ width: '100%', height: 4, background: '#dbeafe', borderRadius: 2, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${voucherUploadProgress}%`, background: '#3b82f6', borderRadius: 2, transition: 'width 0.2s ease' }} />
+                              </div>
+                            )}
+                            <input type="file" accept="image/*,.pdf,.doc,.docx" style={{ display: 'none' }} disabled={voucherUploadProgress !== null}
+                              onChange={async (e) => { const file = e.target.files?.[0]; if (file) { setVoucherUploadProgress(0); try { await handleGenericFileUpload(file, 'other', fileType, 'booking-voucher', (pct) => setVoucherUploadProgress(pct)); onFileSet(file); } finally { setVoucherUploadProgress(null); } } }} />
                           </label>
                         )}
                       </div>
