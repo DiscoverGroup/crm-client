@@ -1,6 +1,7 @@
 export type PaymentDetail = {
   dueDate: string;
   date: string;
+  paymentMethod?: string;
   completed?: boolean;
   amount?: string;
   depositSlip?: File | null;

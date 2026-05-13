@@ -370,6 +370,7 @@ const ClientRecords: React.FC<{
               setPaymentDetails(savedPayment.paymentDetails.map((d: any) => ({
                 dueDate: (d.dueDate as string) || '',
                 date: (d.date as string) || '',
+                paymentMethod: (d.paymentMethod as string) || '',
                 completed: !!(d.completed),
                 amount: (d.amount as string) || '',
                 depositSlip: null,
@@ -542,7 +543,7 @@ const ClientRecords: React.FC<{
   // Payment Details Table for terms
   const initialPaymentCount = paymentOptions[0].value === "installment" ? termCount : paymentOptions[0].terms;
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetail[]>(
-    Array.from({ length: initialPaymentCount }, () => ({ dueDate: "", date: "", completed: false, amount: "", depositSlip: null, receipt: null }))
+    Array.from({ length: initialPaymentCount }, () => ({ dueDate: "", date: "", paymentMethod: "", completed: false, amount: "", depositSlip: null, receipt: null }))
   );
 
   // Additional payment states
@@ -696,7 +697,7 @@ const ClientRecords: React.FC<{
     setPaymentDetails(prev => {
       const next = [...prev];
       if (next.length < actualPaymentCount) {
-        for (let i = next.length; i < actualPaymentCount; i++) next.push({ dueDate: "", date: "", completed: false, amount: "", depositSlip: null, receipt: null });
+        for (let i = next.length; i < actualPaymentCount; i++) next.push({ dueDate: "", date: "", paymentMethod: "", completed: false, amount: "", depositSlip: null, receipt: null });
       } else if (next.length > actualPaymentCount) {
         next.length = actualPaymentCount;
       }
@@ -765,11 +766,11 @@ const ClientRecords: React.FC<{
 
   const handlePaymentDetailChange = async (
     idx: number,
-    field: "dueDate" | "date" | "completed" | "depositSlip" | "receipt" | "amount",
+    field: "dueDate" | "date" | "paymentMethod" | "completed" | "depositSlip" | "receipt" | "amount",
     value: string | boolean | React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (field === "dueDate" || field === "date") {
-      const label = field === "dueDate" ? "Due Date" : "Payment Date";
+    if (field === "dueDate" || field === "date" || field === "paymentMethod") {
+      const label = field === "dueDate" ? "Due Date" : field === "date" ? "Payment Date" : "Payment Method";
       const currentVal = paymentDetails[idx]?.[field] || "";
       trackSectionField('payment-terms-schedule', `payment${idx + 1}_${field}`, currentVal, `Payment ${idx + 1} ${label}`);
       setPaymentDetails(pd =>
@@ -3238,7 +3239,22 @@ const ClientRecords: React.FC<{
                     />
                   </div>
 
-                  {/* Amount */}
+                  {/* Payment Method */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ ...label, display: "block", marginBottom: 6 }}>Payment Method</label>
+                    <select
+                      value={paymentDetails[paymentModalIdx]?.paymentMethod || ""}
+                      onChange={e => handlePaymentDetailChange(paymentModalIdx, "paymentMethod", e.target.value)}
+                      style={{ ...modernInput, margin: 0 }}
+                    >
+                      <option value="">Select payment method</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank transfer">Bank transfer</option>
+                      <option value="Cheque">Cheque</option>
+                      <option value="CC">CC</option>
+                      <option value="Travel fund">Travel fund</option>
+                    </select>
+                  </div>
                   <div style={{ marginBottom: 16 }}>
                     <label style={{ ...label, display: "block", marginBottom: 6 }}>Amount</label>
                     <input
