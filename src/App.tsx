@@ -388,6 +388,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
         },
         body: JSON.stringify({
           email: username.trim(),
