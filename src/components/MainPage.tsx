@@ -129,7 +129,7 @@ function validateUploadFile(file: File): string | null {
 }
 
 const paymentOptions = [
-  { value: "full_cash", label: "Full Cash (1 time payment)", terms: 1 },
+  { value: "full_cash", label: "Full Cash (up to 4 terms)", terms: 4 },
   { value: "installment", label: "Installment (up to 20 terms)", terms: 20 },
   { value: "down_payment", label: "Down Payment (2 time payment)", terms: 2 }
 ];
@@ -668,7 +668,7 @@ const ClientRecords: React.FC<{
 
   // PaymentTerm-driven behavior
   const currentOption = paymentOptions.find(opt => opt.value === paymentTerm) ?? paymentOptions[0];
-  const showTermCount = paymentTerm === "installment";
+  const showTermCount = paymentTerm === "installment" || paymentTerm === "full_cash";
   const paymentBoxes = Array.from({ length: currentOption.value === "installment" ? termCount : currentOption.terms }, (_, i) => i + 1);
 
   // Sync paymentDetails rows with actual payment box count (handles full_cash, down_payment, installment)
@@ -1705,7 +1705,7 @@ const ClientRecords: React.FC<{
     const opt = paymentOptions.find(o => o.value === selected)!;
     setCustomMaxTerms(null);
     setIsEditingMaxTerms(false);
-    if (selected === "installment") {
+    if (selected === "installment" || selected === "full_cash") {
       setTermCount(0); // start at 0, let user choose
       trackSectionField('payment-terms-schedule', 'termCount', termCount, 'Number of Terms');
       trackSectionField('payment-terms-schedule', 'termCount', 1, 'Number of Terms');
