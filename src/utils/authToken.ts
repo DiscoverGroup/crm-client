@@ -22,6 +22,37 @@
 
 const TOKEN_KEY = 'crm_jwt_token';
 
+// ── CSRF token (in-memory only, refreshed on app start) ─────────────────────
+let _csrfToken: string | null = null;
+
+/** Stores a CSRF token issued by the server. */
+export function setCsrfToken(token: string): void {
+  _csrfToken = token;
+}
+
+/** Returns the cached CSRF token, or null if not yet fetched. */
+export function getCsrfToken(): string | null {
+  return _csrfToken;
+}
+
+/**
+ * Fetches a fresh CSRF token from the server and caches it in memory.
+ * Call once on app startup (e.g. in App.tsx useEffect).
+ * Non-fatal — if the fetch fails the token stays null and requests will be
+ * rejected by CSRF validation, surfacing the network issue clearly.
+ */
+export async function initCsrfToken(): Promise<void> {
+  try {
+    const res = await fetch('/.netlify/functions/get-csrf-token');
+    if (res.ok) {
+      const data = await res.json() as { token?: string };
+      if (data.token) setCsrfToken(data.token);
+    }
+  } catch {
+    // Non-critical — callers will see 403s until the token is available
+  }
+}
+
 /** Returns the stored JWT, or null if not present. */
 export function getAuthToken(): string | null {
   try {
@@ -52,11 +83,14 @@ export function clearAuthToken(): void {
 
 /**
  * Returns headers suitable for authenticated fetch calls.
+ * Automatically includes X-CSRF-Token if a token has been initialised.
  * Example:
  *   fetch(url, { headers: { ...authHeaders(), 'Content-Type': 'application/json' } })
  */
 export function authHeaders(): Record<string, string> {
   const token = getAuthToken();
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (_csrfToken) headers['X-CSRF-Token'] = _csrfToken;
+  return headers;
 }

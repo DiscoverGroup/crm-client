@@ -16,7 +16,7 @@ import { MessagingService } from "./services/messagingService";
 import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
-import { getAuthToken, setAuthToken, clearAuthToken, authHeaders } from "./utils/authToken";
+import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken } from "./utils/authToken";
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
@@ -80,6 +80,9 @@ const App: React.FC = () => {
       return false;
     }
   }, [currentUser]);
+
+  // Fetch CSRF token once on mount — injected into all authHeaders() calls automatically
+  useEffect(() => { initCsrfToken(); }, []);
 
   // Handle toast notifications
   useEffect(() => {

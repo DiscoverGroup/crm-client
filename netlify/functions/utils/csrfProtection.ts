@@ -1,130 +1,89 @@
 /**
- * CSRF Protection Module (Server-Side)
- * Cross-Site Request Forgery protection for Netlify Functions
+ * CSRF Protection Module (Server-Side) — Stateless HMAC implementation
+ *
+ * Uses HMAC-SHA256 signed timestamps instead of an in-memory token store.
+ * This works correctly in Netlify's stateless serverless environment where
+ * each function invocation is a fresh process with no shared memory.
+ *
+ * Token format: "<unix_seconds_hex>.<hmac_hex>"
+ * Valid for up to 2 hours after issuance.
  */
 
 import crypto from 'crypto';
 
-interface CSRFTokenStore {
-  token: string;
-  hash: string;
-  createdAt: number;
-  expiresAt: number;
-  used: boolean;
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const CSRF_WINDOW_SECONDS = 2 * 60 * 60; // 2 hours
+
+function getSecret(): string {
+  if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
+  return JWT_SECRET;
+}
+
+function signTimestamp(timestampSeconds: number): string {
+  return crypto
+    .createHmac('sha256', getSecret())
+    .update(`csrf:${timestampSeconds}`)
+    .digest('hex');
 }
 
 /**
- * CSRF Protection Manager (Server-Side)
+ * Generates a stateless HMAC-signed CSRF token.
+ * Safe to call in any serverless function — no storage required.
  */
-class CSRFProtection {
-  // Store tokens with their hashes
-  private tokenStore: Map<string, CSRFTokenStore> = new Map();
-  private cleanupInterval: any = null;
-
-  constructor() {
-    this.startCleanup();
-  }
-
-  /**
-   * Generates a new CSRF token
-   * @param expirationMinutes How long token is valid (default 1 hour)
-   */
-  generateToken(expirationMinutes: number = 60): string {
-    const token = crypto.randomBytes(32).toString('hex');
-    const hash = this.hashToken(token);
-    const now = Date.now();
-
-    this.tokenStore.set(hash, {
-      token,
-      hash,
-      createdAt: now,
-      expiresAt: now + expirationMinutes * 60 * 1000,
-      used: false
-    });
-
-    return token;
-  }
-
-  /**
-   * Validates a CSRF token
-   * @param token The token to validate
-   * @param consumeToken Whether to mark token as used (prevents replay)
-   */
-  validateToken(token: string, consumeToken: boolean = true): { valid: boolean; error?: string } {
-    if (!token || typeof token !== 'string') {
-      return { valid: false, error: 'Token is missing' };
-    }
-
-    const hash = this.hashToken(token);
-    const entry = this.tokenStore.get(hash);
-
-    if (!entry) {
-      return { valid: false, error: 'Token is invalid' };
-    }
-
-    // Check if token has expired
-    if (Date.now() > entry.expiresAt) {
-      this.tokenStore.delete(hash);
-      return { valid: false, error: 'Token has expired' };
-    }
-
-    // Check if token has already been used (prevent replay)
-    if (entry.used) {
-      this.tokenStore.delete(hash);
-      return { valid: false, error: 'Token has already been used' };
-    }
-
-    // Mark as used if requested
-    if (consumeToken) {
-      entry.used = true;
-      // Set to expire in 5 seconds (for cleanup)
-      entry.expiresAt = Date.now() + 5000;
-    }
-
-    return { valid: true };
-  }
-
-  /**
-   * Gets a new token for a form/request
-   */
-  getToken(): string {
-    return this.generateToken(60);
-  }
-
-  /**
-   * Hashes a token for storage
-   */
-  private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  /**
-   * Starts automatic cleanup of expired tokens
-   */
-  private startCleanup(): void {
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-
-      for (const [hash, entry] of this.tokenStore.entries()) {
-        if (now > entry.expiresAt) {
-          this.tokenStore.delete(hash);
-        }
-      }
-    }, 10 * 60 * 1000); // Every 10 minutes
-  }
-
-  /**
-   * Stops cleanup
-   */
-  stop(): void {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-    }
-  }
+function generateStatelessToken(): string {
+  const ts = Math.floor(Date.now() / 1000);
+  return `${ts.toString(16)}.${signTimestamp(ts)}`;
 }
 
-// Global instance
-const csrfProtection = new CSRFProtection();
+/**
+ * Validates a stateless CSRF token.
+ * Returns valid=true if the HMAC is correct and the token is within the 2-hour window.
+ */
+function validateStatelessToken(token: string): { valid: boolean; error?: string } {
+  if (!token || typeof token !== 'string') {
+    return { valid: false, error: 'Token is missing' };
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 2) {
+    return { valid: false, error: 'Token format invalid' };
+  }
+
+  const [tsHex, receivedHmac] = parts;
+  const ts = parseInt(tsHex, 16);
+  if (isNaN(ts)) {
+    return { valid: false, error: 'Token format invalid' };
+  }
+
+  const ageSeconds = Math.floor(Date.now() / 1000) - ts;
+  if (ageSeconds > CSRF_WINDOW_SECONDS) {
+    return { valid: false, error: 'Token has expired' };
+  }
+  if (ageSeconds < -60) {
+    // Allow 60s clock skew, reject far-future tokens
+    return { valid: false, error: 'Token timestamp is in the future' };
+  }
+
+  const expectedHmac = signTimestamp(ts);
+  try {
+    const expected = Buffer.from(expectedHmac, 'hex');
+    const received = Buffer.from(receivedHmac, 'hex');
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
+      return { valid: false, error: 'Token is invalid' };
+    }
+  } catch {
+    return { valid: false, error: 'Token is invalid' };
+  }
+
+  return { valid: true };
+}
+
+// Legacy shim — kept so the class-based default export still satisfies any direct imports
+const csrfProtection = {
+  getToken: generateStatelessToken,
+  generateToken: (_minutes?: number) => generateStatelessToken(),
+  validateToken: (token: string, _consume?: boolean) => validateStatelessToken(token),
+};
 
 export default csrfProtection;
 
