@@ -558,13 +558,18 @@ export class ClientService {
       // Search term filter (searches across name, email, client number, phone)
       if (filters.searchTerm) {
         const searchLower = filters.searchTerm.toLowerCase();
+        const companionMatch = client.companions?.some(c =>
+          `${c.firstName ?? ''} ${c.lastName ?? ''}`.toLowerCase().includes(searchLower) ||
+          (c.name?.toLowerCase().includes(searchLower))
+        ) ?? false;
         const matchesSearch = 
           (client.contactName?.toLowerCase().includes(searchLower)) ||
           (client.email?.toLowerCase().includes(searchLower)) ||
           (client.clientNo?.toLowerCase().includes(searchLower)) ||
           (client.contactNo?.toLowerCase().includes(searchLower)) ||
           (client.agent?.toLowerCase().includes(searchLower)) ||
-          (client.packageName?.toLowerCase().includes(searchLower));
+          (client.packageName?.toLowerCase().includes(searchLower)) ||
+          companionMatch;
         
         if (!matchesSearch) {
           return false;

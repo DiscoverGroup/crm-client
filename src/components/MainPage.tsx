@@ -4351,10 +4351,15 @@ const MainPage: React.FC<MainPageProps> = ({
       const allTestRecords = ClientService.getTestRecords().filter(c => {
         const q = searchQuery.toLowerCase();
         if (!q) return true;
+        const companionMatch = c.companions?.some(comp =>
+          `${comp.firstName ?? ''} ${comp.lastName ?? ''}`.toLowerCase().includes(q) ||
+          (comp.name?.toLowerCase().includes(q))
+        ) ?? false;
         return (c.contactName || '').toLowerCase().includes(q) ||
                (c.clientNo || '').toLowerCase().includes(q) ||
                (c.email || '').toLowerCase().includes(q) ||
-               (c.packageName || '').toLowerCase().includes(q);
+               (c.packageName || '').toLowerCase().includes(q) ||
+               companionMatch;
       });
       setTestClients(allTestRecords);
     } catch (error) {
@@ -4930,7 +4935,7 @@ const MainPage: React.FC<MainPageProps> = ({
               </label>
               <Input
                 type="text"
-                placeholder="Search by name, email, client number, phone, or package..."
+                placeholder="Search by name, email, client number, phone, package, or companion..."
                 value={searchQuery}
                 onChange={handleSearchChange}
                 style={{
