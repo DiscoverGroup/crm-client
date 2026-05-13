@@ -36,6 +36,8 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ notification, onC
       case 'status_change': return '🔄';
       case 'file_upload': return '📎';
       case 'client_update': return '📝';
+      case 'new_sale': return '🎉';
+      case 'new_bc': return '📄';
       default: return '🔔';
     }
   };
@@ -91,7 +93,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ notification, onC
               justifyContent: 'space-between'
             }}
           >
-            <span>New Notification</span>
+            <span>{notification.title || 'New Notification'}</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();

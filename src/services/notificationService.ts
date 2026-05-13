@@ -253,4 +253,88 @@ export class NotificationService {
       })
     });
   }
+
+  // ─── Broadcast helpers ────────────────────────────────────────────────────
+
+  /** Return all registered users from localStorage */
+  private static getAllUsers(): Array<{ id?: string; email?: string; fullName?: string; username?: string }> {
+    try {
+      const raw = localStorage.getItem('crm_users');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Create a notification for every user except the one who triggered the event.
+   * fromUserId / fromUserName = the acting user.
+   */
+  private static broadcastToAllUsers(params: {
+    type: 'new_sale' | 'new_bc';
+    title: string;
+    message: string;
+    fromUserId: string;
+    fromUserName: string;
+    clientId?: string;
+    clientName?: string;
+  }): void {
+    const users = this.getAllUsers();
+    for (const user of users) {
+      const targetId = user.id ?? user.email ?? user.fullName ?? '';
+      const targetName = user.fullName ?? user.username ?? '';
+      if (!targetId || targetId === params.fromUserId) continue;
+      this.addNotification({
+        type: params.type,
+        title: params.title,
+        message: params.message,
+        targetUserId: targetId,
+        targetUserName: targetName,
+        fromUserId: params.fromUserId,
+        fromUserName: params.fromUserName,
+        clientId: params.clientId,
+        clientName: params.clientName,
+        link: params.clientId
+          ? { page: 'client-form', clientId: params.clientId }
+          : undefined,
+      });
+    }
+  }
+
+  /** Broadcast "New Sale added" to all users */
+  static createNewSaleNotification(params: {
+    fromUserId: string;
+    fromUserName: string;
+    clientId: string;
+    clientName: string;
+  }): void {
+    this.broadcastToAllUsers({
+      type: 'new_sale',
+      title: '🎉 New Sales',
+      message: `${params.fromUserName} added a new sale: ${params.clientName}`,
+      fromUserId: params.fromUserId,
+      fromUserName: params.fromUserName,
+      clientId: params.clientId,
+      clientName: params.clientName,
+    });
+  }
+
+  /** Broadcast "New BC uploaded" to all users */
+  static createNewBCNotification(params: {
+    fromUserId: string;
+    fromUserName: string;
+    clientId: string;
+    clientName: string;
+  }): void {
+    this.broadcastToAllUsers({
+      type: 'new_bc',
+      title: '📄 New BC Uploaded',
+      message: `New BC for ${params.clientName} has been uploaded by ${params.fromUserName}`,
+      fromUserId: params.fromUserId,
+      fromUserName: params.fromUserName,
+      clientId: params.clientId,
+      clientName: params.clientName,
+    });
+  }
 }
+

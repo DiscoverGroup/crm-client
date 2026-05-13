@@ -3,6 +3,19 @@ import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
 import ToastNotification from './ToastNotification';
 
+// Notification sound — place your sound file at public/sounds/notification.mp3
+const NOTIFICATION_SOUND_URL = '/sounds/notification.mp3';
+
+function playNotificationSound() {
+  try {
+    const audio = new Audio(NOTIFICATION_SOUND_URL);
+    audio.volume = 0.6;
+    audio.play().catch(() => {}); // silently ignore autoplay policy blocks
+  } catch {
+    // ignore
+  }
+}
+
 interface NotificationDropdownProps {
   currentUser: { fullName: string; username: string };
   onNavigate: (page: 'client-form' | 'activity-log' | 'log-notes', params?: any) => void;
@@ -28,6 +41,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       const latestUnread = userNotifs.find(n => !n.isRead);
       if (latestUnread) {
         setToastNotification(latestUnread);
+        playNotificationSound();
       }
     }
     
@@ -102,6 +116,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       case 'status_change': return '🔄';
       case 'file_upload': return '📎';
       case 'client_update': return '📝';
+      case 'new_sale': return '🎉';
+      case 'new_bc': return '📄';
       default: return '🔔';
     }
   };

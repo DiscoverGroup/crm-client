@@ -19,6 +19,7 @@ import TeamCalendar from './TeamCalendar';
 import PackageSelect from './PackageSelect';
 import PackageGroupView from './PackageGroupView';
 import { ActivityLogService } from '../services/activityLogService';
+import { NotificationService } from '../services/notificationService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
@@ -500,6 +501,16 @@ const ClientRecords: React.FC<{
       trackSectionField('package-information', 'bookingConfirmations', updated.filter(b => b.trim()).join(', '), 'Booking Confirmation');
       setBookingConfirmations(updated);
       setIsDirtyClientInfo(true); isDirtyClientInfoRef.current = true;
+      // Broadcast BC notification to all other users
+      try {
+        const cId = resolvedClientId || tempClientId;
+        NotificationService.createNewBCNotification({
+          fromUserId: currentUserId,
+          fromUserName: currentUserName,
+          clientId: cId,
+          clientName: contactName || 'Unknown',
+        });
+      } catch { /* non-critical */ }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Upload failed';
       setUploadError(prev => ({ ...prev, [key]: msg }));
@@ -1350,6 +1361,15 @@ const ClientRecords: React.FC<{
             profileImageR2Path: getCurrentUserProfileImagePath(),
             details: `New client created`,
           });
+          // Broadcast new sale notification to all other users
+          try {
+            NotificationService.createNewSaleNotification({
+              fromUserId: currentUserId,
+              fromUserName: currentUserName,
+              clientId: savedClientId,
+              clientName: contactName || 'Unknown',
+            });
+          } catch { /* non-critical */ }
         } else {
           const changedFields = Object.keys(clientChanges);
           ActivityLogService.addLog({
