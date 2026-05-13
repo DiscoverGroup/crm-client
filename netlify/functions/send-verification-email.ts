@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { MongoClient } from 'mongodb';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 
 // Gmail SMTP Configuration
 const GMAIL_USER = process.env.GMAIL_USER || '';
@@ -37,6 +38,13 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
   }
 
   if (!MONGODB_URI) {

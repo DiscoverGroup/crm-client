@@ -4,11 +4,12 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
 
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,128}$/;
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -20,6 +21,13 @@ export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // ── CSRF validation ────────────────────────────────────────────────────────
+  const csrfToken = extractCSRFToken(event);
+  const csrfResult = validateCSRFToken(csrfToken ?? '');
+  if (!csrfResult.valid) {
+    return { statusCode: 403, headers, body: JSON.stringify({ success: false, error: 'Invalid or missing CSRF token' }) };
   }
 
   if (!MONGODB_URI) {
@@ -42,7 +50,7 @@ export const handler: Handler = async (event) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Password must be at least 8 characters and include uppercase, lowercase, and a number' }),
+        body: JSON.stringify({ error: 'Password must be at least 12 characters and include uppercase, lowercase, and a number' }),
       };
     }
 

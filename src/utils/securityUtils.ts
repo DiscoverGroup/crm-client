@@ -226,7 +226,7 @@ export function validateUserRegistration(data: any): { valid: boolean; errors: s
     errors.push('Invalid email format');
   }
   if (!isValidPassword(data.password)) {
-    errors.push('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    errors.push('Password must be at least 12 characters with uppercase, lowercase, number, and special character');
   }
   if (!isValidUsername(data.username)) {
     errors.push('Username must be 3-30 characters, alphanumeric with underscore/hyphen');

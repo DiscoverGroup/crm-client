@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { showSuccessToast, showErrorToast, showWarningToast} from '../utils/toast';
+import { getCsrfToken } from '../utils/authToken';
 import {
   validateLoginForm,
   validateForgotPasswordForm,
@@ -78,7 +79,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
     try {
       const response = await fetch('/.netlify/functions/send-reset-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}) },
         body: JSON.stringify({ email: cleanEmail })
       });
 
@@ -116,7 +117,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onAuth0Login }) => {
     try {
       const response = await fetch('/.netlify/functions/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}) },
         body: JSON.stringify({ email: resetUserEmail, token: resetToken, newPassword: cleanNew }),
       });
 

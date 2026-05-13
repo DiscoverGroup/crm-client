@@ -16,7 +16,7 @@ import { MessagingService } from "./services/messagingService";
 import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
-import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken } from "./utils/authToken";
+import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken, getCsrfToken } from "./utils/authToken";
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
@@ -490,9 +490,12 @@ const App: React.FC = () => {
           authorizationParams: { scope: 'openid profile email' },
         });
 
+        const csrfRes = await fetch('/.netlify/functions/get-csrf-token');
+        const { token: csrfToken } = await csrfRes.json();
+
         const response = await fetch('/.netlify/functions/auth0-sync', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
           body: JSON.stringify({ accessToken }),
         });
 
@@ -642,6 +645,7 @@ const App: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
         },
         body: JSON.stringify({
           username: form.username.trim(),
@@ -684,7 +688,8 @@ const App: React.FC = () => {
           const emailResponse = await fetch('/.netlify/functions/send-verification-email', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
             },
             body: JSON.stringify({
               email: form.email,
@@ -787,7 +792,8 @@ const App: React.FC = () => {
         const response = await fetch('/.netlify/functions/send-verification-email', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
           },
           body: JSON.stringify({
             email: form.email,
@@ -827,7 +833,7 @@ const App: React.FC = () => {
       // Verify OTP server-side — never trust localStorage for security-critical checks
       const response = await fetch('/.netlify/functions/verify-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}) },
         body: JSON.stringify({ email: pendingUserEmail, code }),
       });
 
@@ -890,7 +896,7 @@ const App: React.FC = () => {
       // Server generates a new OTP — no code generated on client
       const response = await fetch('/.netlify/functions/send-verification-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}) },
         body: JSON.stringify({ email: pendingUserEmail, fullName })
       });
 
