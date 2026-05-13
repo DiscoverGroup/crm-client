@@ -3,36 +3,59 @@ import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
 import ToastNotification from './ToastNotification';
 
-// Notification sound
-const NOTIFICATION_SOUND_URL = '/sounds/notification.mp3';
+// ── Notification sound via Web Audio API ─────────────────────────────────────
+// AudioContext stays unlocked after first user gesture — works from any callback
+let _audioCtx: AudioContext | null = null;
+let _audioBuffer: AudioBuffer | null = null;
 
-// Pre-load audio so it's ready to play (needed for autoplay policy)
-const notificationAudio = new Audio(NOTIFICATION_SOUND_URL);
-notificationAudio.volume = 0.6;
-notificationAudio.preload = 'auto';
-
-// Track if user has interacted with the page (required for autoplay)
-let userHasInteracted = false;
-const unlockAudio = () => {
-  if (!userHasInteracted) {
-    userHasInteracted = true;
-    // Play + immediately pause to "unlock" the audio context
-    notificationAudio.play().then(() => {
-      notificationAudio.pause();
-      notificationAudio.currentTime = 0;
-    }).catch(() => {});
-  }
-};
-document.addEventListener('click', unlockAudio, { once: false });
-document.addEventListener('keydown', unlockAudio, { once: false });
-
-function playNotificationSound() {
+function getAudioCtx(): AudioContext | null {
   try {
-    notificationAudio.currentTime = 0;
-    notificationAudio.play().catch(() => {});
+    if (!_audioCtx) {
+      _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    return _audioCtx;
   } catch {
-    // ignore
+    return null;
   }
+}
+
+async function loadSoundBuffer(): Promise<void> {
+  if (_audioBuffer) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  try {
+    const res = await fetch('/sounds/notification.mp3');
+    const buf = await res.arrayBuffer();
+    _audioBuffer = await ctx.decodeAudioData(buf);
+  } catch { /* ignore */ }
+}
+
+// Unlock AudioContext and pre-load sound on first user interaction
+function unlockAndLoad(): void {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') {
+    ctx.resume().then(() => loadSoundBuffer()).catch(() => {});
+  } else {
+    loadSoundBuffer().catch(() => {});
+  }
+}
+document.addEventListener('click', unlockAndLoad, { once: true });
+document.addEventListener('keydown', unlockAndLoad, { once: true });
+
+function playNotificationSound(): void {
+  const ctx = getAudioCtx();
+  if (!ctx || !_audioBuffer) return;
+  try {
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const src = ctx.createBufferSource();
+    src.buffer = _audioBuffer;
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0.6;
+    src.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    src.start(0);
+  } catch { /* ignore */ }
 }
 
 interface NotificationDropdownProps {
