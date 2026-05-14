@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
 import ToastNotification from './ToastNotification';
-import { formatAgoLabelPHT, formatDatePHT } from '../utils/dateUtils';
+import { formatDatePHT } from '../utils/dateUtils';
 
 // ── Notification sound via Web Audio API ─────────────────────────────────────
 // AudioContext stays unlocked after first user gesture — works from any callback
