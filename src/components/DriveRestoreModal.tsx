@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
+import { formatDatePHT, formatDateTimePHT } from '../utils/dateUtils';
 import type { ClientData } from '../services/clientService';
 import { FileService } from '../services/fileService';
 import type { FileAttachment } from '../services/fileService';
@@ -32,7 +33,7 @@ function formatBytes(bytes: number): string {
 
 function formatDate(iso: string): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return formatDatePHT(iso);
 }
 
 function mimeIcon(mime: string): string {

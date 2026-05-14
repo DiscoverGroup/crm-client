@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileService, type StoredFile } from '../services/fileService';
+import { formatDatePHT } from '../utils/dateUtils';
 
 interface FileViewerProps {
   file: StoredFile;
@@ -165,7 +166,7 @@ const FileViewer: React.FC<FileViewerProps> = ({ file, onClose }) => {
             }}>
               <span>Size: {FileService.formatFileSize(file.size)}</span>
               <span>Type: {file.type}</span>
-              <span>Uploaded: {new Date(file.uploadDate).toLocaleDateString()}</span>
+              <span>Uploaded: {formatDatePHT(file.uploadDate)}</span>
               {file.isR2 && <span style={{ color: '#28a745', fontWeight: '500' }}>📦 R2 Storage</span>}
             </div>
           </div>

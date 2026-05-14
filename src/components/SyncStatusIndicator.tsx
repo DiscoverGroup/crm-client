@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatTimePHT } from '../utils/dateUtils';
 
 type SyncStatus = 'online' | 'syncing' | 'offline' | 'error';
 
@@ -16,7 +17,7 @@ const SyncStatusIndicator: React.FC<SyncStatusIndicatorProps> = ({ style }) => {
     const handleSyncStart = () => setStatus('syncing');
     const handleSyncSuccess = () => {
       setStatus('online');
-      setLastSyncTime(new Date().toLocaleTimeString());
+      setLastSyncTime(formatTimePHT(new Date()));
       setLastError('');
     };
     const handleSyncError = (e: Event) => {

@@ -5,6 +5,7 @@ import { FileService, type FileAttachment } from '../services/fileService';
 import { FileRecoveryService } from '../services/fileRecoveryService';
 import { ClientRecoveryService } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
+import { formatDateTimePHT, formatDatePHT } from '../utils/dateUtils';
 
 interface DeletedClientsProps {
   currentUser: string;
@@ -137,6 +138,7 @@ const DeletedClients: React.FC<DeletedClientsProps> = ({ currentUser, onBack }) 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
+    return formatDateTimePHT(date);
     return date.toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',

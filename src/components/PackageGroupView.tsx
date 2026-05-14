@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { ClientData } from '../services/clientService';
+import { formatDatePHT } from '../utils/dateUtils';
 
 interface Props {
   clients: ClientData[];
@@ -11,7 +12,7 @@ function formatDate(dateStr?: string): string {
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    return formatDatePHT(d);
   } catch {
     return dateStr;
   }

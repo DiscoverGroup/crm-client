@@ -6,6 +6,7 @@ import type {
 } from '../types/workflow';
 import { WORKFLOW_TEMPLATES } from '../types/workflow';
 import workflowService from '../services/workflowService';
+import { formatDateTimePHT } from '../utils/dateUtils';
 import WorkflowEditor from './WorkflowEditor';
 import WorkflowTester from './WorkflowTester';
 
@@ -440,7 +441,7 @@ const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({ onClose }) => {
                             {execution.workflowName}
                           </h4>
                           <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
-                            {new Date(execution.startedAt).toLocaleString()}
+                            {formatDateTimePHT(execution.startedAt)}
                           </p>
                         </div>
                         <div style={{

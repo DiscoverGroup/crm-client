@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import territoryService from '../services/territoryService';
+import { formatDateTimePHT } from '../utils/dateUtils';
 import type {
   Territory,
   AssignmentRule,
@@ -403,7 +404,7 @@ export const TerritoryManager: React.FC<TerritoryManagerProps> = ({ onClose }) =
                   </span>
                   <span>{log.reason}</span>
                   <span className="timestamp">
-                    {new Date(log.timestamp).toLocaleString()}
+                    {formatDateTimePHT(log.timestamp)}
                   </span>
                 </div>
               </div>

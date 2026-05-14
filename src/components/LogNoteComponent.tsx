@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { sanitizeComment, validateLogNoteForm } from '../utils/formSanitizer';
+import { formatRelativePHT, formatDatePHT, formatTimePHT } from '../utils/dateUtils';
 import { LogNoteService } from '../services/logNoteService';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import type { LogNote, LogNoteAttachment } from '../types/logNote';
@@ -121,28 +122,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
     const date = new Date(timestamp);
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
     
-    if (diffInHours < 24) {
-      return `Today at ${date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      })}`;
-    } else if (diffInHours < 48) {
-      return `Yesterday at ${date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      })}`;
-    } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric',
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    }
+    return formatRelativePHT(date);
   };
 
   // Recursively convert reply timestamps from API data
@@ -1662,7 +1642,7 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
                   <span>
-                    Marked <strong>{note.status}</strong> by <strong>{note.statusChangedBy}</strong> on {note.statusChangedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {note.statusChangedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    Marked <strong>{note.status}</strong> by <strong>{note.statusChangedBy}</strong> on {formatDatePHT(note.statusChangedAt)} at {formatTimePHT(note.statusChangedAt, { showSeconds: false })}
                   </span>
                 </div>
               )}

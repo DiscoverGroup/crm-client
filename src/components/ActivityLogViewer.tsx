@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ActivityLogService, type ActivityLog } from '../services/activityLogService';
 import { authHeaders } from '../utils/authToken';
+import { formatDateTimePHT } from '../utils/dateUtils';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 
 interface ActivityLogViewerProps {
@@ -97,17 +98,7 @@ const ActivityLogViewer: React.FC<ActivityLogViewerProps> = ({ clientId, onBack 
     setProfileImages(imageCache);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
+  const formatDate = (dateString: string) => formatDateTimePHT(dateString);
 
   const getActionColor = (action: string) => {
     switch (action) {

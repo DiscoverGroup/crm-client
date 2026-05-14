@@ -3,6 +3,7 @@ import { FileService } from '../services/fileService';
 import { ClientService } from '../services/clientService';
 import { sanitizeComment, containsAttackPatterns } from '../utils/formSanitizer';
 import { authHeaders } from '../utils/authToken';
+import { formatAgoLabelPHT, formatDatePHT } from '../utils/dateUtils';
 import Loader from './Loader';
 import MentionInput from './MentionInput';
 
@@ -47,18 +48,7 @@ function generateId(): string {
 }
 
 function formatTimestamp(ts: string): string {
-  const date = new Date(ts);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffH = diffMs / (1000 * 60 * 60);
-
-  if (diffH < 1) {
-    const diffM = Math.floor(diffMs / (1000 * 60));
-    return diffM <= 0 ? 'just now' : `${diffM}m ago`;
-  }
-  if (diffH < 24) return `${Math.floor(diffH)}h ago`;
-  if (diffH < 48) return 'Yesterday';
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatAgoLabelPHT(ts);
 }
 
 function getInitials(name: string): string {

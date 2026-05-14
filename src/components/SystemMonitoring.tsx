@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { MonitoringDashboard } from '../types/monitoring';
 import monitoringService from '../services/monitoringService';
+import { formatDateTimePHT } from '../utils/dateUtils';
 
 interface SystemMonitoringProps {
   onClose: () => void;
@@ -393,7 +394,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({ onClose }) => {
                             {error.message}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            {new Date(error.timestamp).toLocaleString()}
+                            {formatDateTimePHT(error.timestamp)}
                             {error.componentName && ` • ${error.componentName}`}
                             {error.userEmail && ` • ${error.userEmail}`}
                           </div>
@@ -461,7 +462,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({ onClose }) => {
                             {metric.metricType.replace(/_/g, ' ').toUpperCase()}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            {new Date(metric.timestamp).toLocaleString()}
+                            {formatDateTimePHT(metric.timestamp)}
                             {metric.componentName && ` • ${metric.componentName}`}
                           </div>
                         </div>
@@ -507,7 +508,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({ onClose }) => {
                             {anomaly.description}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
-                            Affected: {anomaly.affectedData} • {new Date(anomaly.timestamp).toLocaleString()}
+                            Affected: {anomaly.affectedData} • {formatDateTimePHT(anomaly.timestamp)}
                           </div>
                           {anomaly.recommendations && (
                             <div style={{ marginTop: '12px' }}>
@@ -571,7 +572,7 @@ const SystemMonitoring: React.FC<SystemMonitoringProps> = ({ onClose }) => {
                             {check.description}
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Affected records: {check.affectedRecords} • {new Date(check.timestamp).toLocaleString()}
+                            Affected records: {check.affectedRecords} • {formatDateTimePHT(check.timestamp)}
                           </div>
                           {check.fixAction && (
                             <div style={{

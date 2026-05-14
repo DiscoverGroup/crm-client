@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { validateRoleChange, sanitizeEmail } from '../utils/formSanitizer';
 import { MongoDBService } from '../services/mongoDBService';
+import { formatDateTimePHT, formatDatePHT } from '../utils/dateUtils';
 import { FileRecoveryService, type FileRecoveryRequest } from '../services/fileRecoveryService';
 import { ClientRecoveryService, type ClientRecoveryRequest } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
@@ -994,11 +995,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#64748b', fontSize: '12px', fontWeight: '600' }}>BUILD DATE</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#475569' }}>
-                    {new Date(VERSION_INFO.website.buildDate).toLocaleDateString('en-US', { 
+                    {new Date(VERSION_INFO.website.buildDate).toLocaleDateString('en-PH', { 
                       weekday: 'long', 
                       year: 'numeric', 
                       month: 'long', 
-                      day: 'numeric' 
+                      day: 'numeric',
+                      timeZone: 'Asia/Manila'
                     })}
                   </p>
                 </div>
@@ -1016,11 +1018,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <div>
                   <p style={{ margin: '0 0 4px 0', color: '#65a30d', fontSize: '12px', fontWeight: '600' }}>LAST PATCHED</p>
                   <p style={{ margin: 0, fontSize: '13px', color: '#475569' }}>
-                    {new Date(VERSION_INFO.security.lastPatched).toLocaleDateString('en-US', { 
+                    {new Date(VERSION_INFO.security.lastPatched).toLocaleDateString('en-PH', { 
                       weekday: 'long', 
                       year: 'numeric', 
                       month: 'long', 
-                      day: 'numeric' 
+                      day: 'numeric',
+                      timeZone: 'Asia/Manila'
                     })}
                   </p>
                 </div>
@@ -1395,7 +1398,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       const d = user.createdAt || user.registeredAt;
                       if (!d) return '—';
                       const parsed = new Date(d);
-                      return isNaN(parsed.getTime()) ? '—' : parsed.toLocaleDateString();
+                      return isNaN(parsed.getTime()) ? '—' : formatDatePHT(parsed);
                     })()}
                   </td>
                   <td style={{ padding: '16px' }}>
@@ -1580,7 +1583,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                           {request.requestedBy}
                         </td>
                         <td style={{ padding: '16px', color: '#64748b', fontSize: '13px' }}>
-                          {new Date(request.requestedAt).toLocaleString()}
+                          {formatDateTimePHT(request.requestedAt)}
                         </td>
                         <td style={{ padding: '16px' }}>
                           <span style={{
@@ -1798,7 +1801,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                           {request.requestedBy}
                         </td>
                         <td style={{ padding: '16px', color: '#64748b', fontSize: '13px' }}>
-                          {new Date(request.requestedAt).toLocaleString()}
+                          {formatDateTimePHT(request.requestedAt)}
                         </td>
                         <td style={{ padding: '16px' }}>
                           <span style={{
@@ -3283,7 +3286,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <div style={{ marginTop: '20px', padding: '18px 20px', background: '#fffbeb', border: '1.5px solid #fcd34d', borderRadius: '10px' }}>
                   <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: '700', color: '#92400e' }}>📋 Backup Preview</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', fontSize: '13px', color: '#78350f' }}>
-                    <div><strong>Created:</strong> {new Date(restorePreview.createdAt).toLocaleString()}</div>
+                    <div><strong>Created:</strong> {formatDateTimePHT(restorePreview.createdAt)}</div>
                     <div><strong>By:</strong> {restorePreview.createdBy}</div>
                     <div><strong>MongoDB collections:</strong> {restorePreview.collections.join(', ')}</div>
                     <div><strong>localStorage keys:</strong> {restorePreview.localKeys.length}</div>
@@ -3691,7 +3694,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
                                   <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                                     {(file.size / 1024).toFixed(1)} KB
-                                    {file.lastModified ? ` · ${new Date(file.lastModified).toLocaleString()}` : ''}
+                                    {file.lastModified ? ` · ${formatDateTimePHT(file.lastModified)}` : ''}
                                   </div>
                                 </div>
                               </div>
