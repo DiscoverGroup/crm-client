@@ -97,7 +97,7 @@ export const handler: Handler = async (event) => {
     // Admin panel filters by verification/approval status
     await usersCol.createIndex({ isVerified: 1 });
     await usersCol.createIndex({ role: 1 });
-    await usersCol.createIndex({ isApproved: 1, role: 1 });
+    await usersCol.createIndex({ approvalStatus: 1, role: 1 });
     // Presence: get-active-users filters by lastActiveAt — sparse so users who
     // have never sent a heartbeat don't consume index space.
     await usersCol.createIndex({ lastActiveAt: 1 }, { sparse: true });

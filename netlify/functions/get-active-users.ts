@@ -64,7 +64,7 @@ export const handler: Handler = async (event) => {
     const activeUsers = await db
       .collection('users')
       .find(
-        { lastActiveAt: { $gte: since }, isApproved: true },
+        { lastActiveAt: { $gte: since }, approvalStatus: 'approved' },
         { projection: { fullName: 1, _id: 0 } }
       )
       .toArray();
