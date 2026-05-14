@@ -137,18 +137,25 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       loadNotifications();
     });
     
-    // Poll every 30 seconds — sound/toast fires from loadNotifications when count increases
+    // Poll every 8 seconds as a fallback for when the realtimeSync fast path
+    // (sync-signal → 5s poller → sync:notifications event) fails due to a
+    // cold-start Lambda or transient network error.
     const interval = setInterval(() => {
       NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
         loadNotifications();
       }).catch(() => {});
-    }, 30000);
+    }, 8000);
 
-    // Also listen for instant same-browser sync events, debounced to avoid
-    // N rapid fires when a broadcast creates N notifications at once
+    // Also listen for realtimeSync / BroadcastChannel events.
+    // Show from localStorage immediately (covers same-browser BroadcastChannel
+    // which is instant), then fire a background MongoDB sync so cross-device
+    // data is fetched too.
     let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const onSync = () => {
       if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      // Step 1: render from localStorage immediately (zero latency same-browser path)
+      loadNotifications();
+      // Step 2: debounced MongoDB fetch for cross-device path
       syncDebounceTimer = setTimeout(() => {
         NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
           loadNotifications();

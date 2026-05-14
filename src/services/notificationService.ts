@@ -30,7 +30,12 @@ export class NotificationService {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(notifications));
     }
 
-    // Fire-and-forget sync to MongoDB
+    // Signal same-browser tabs immediately (BroadcastChannel, zero latency)
+    realtimeSync.signalChange('notifications').catch(() => {});
+
+    // Persist to MongoDB, then re-signal so other devices pick it up via
+    // the sync_metadata timestamp update (the first signalChange above only
+    // broadcasts to same-browser tabs before the DB write completes).
     this.saveNotificationToMongoDB(newNotification).then(() => {
       realtimeSync.signalChange('notifications');
     }).catch(() => {});
