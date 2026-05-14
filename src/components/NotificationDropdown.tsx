@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NotificationService } from '../services/notificationService';
 import type { Notification } from '../types/notification';
 import ToastNotification from './ToastNotification';
+import { formatAgoLabelPHT, formatDatePHT } from '../utils/dateUtils';
 
 // ── Notification sound via Web Audio API ─────────────────────────────────────
 // AudioContext stays unlocked after first user gesture — works from any callback
@@ -104,33 +105,50 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
   const dropdownRef = useRef<HTMLDivElement>(null);
   // -1 = not yet initialized (skip toast on first load)
   const previousCountRef = useRef<number>(-1);
+  // Track IDs already seen so we never miss or double-show a notification
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  // Queue of notifications waiting to be toasted, shown one at a time
+  const toastQueueRef = useRef<Notification[]>([]);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Show the next item from the queue; called after each toast is dismissed
+  const showNextToast = useCallback(() => {
+    if (toastQueueRef.current.length === 0) return;
+    const next = toastQueueRef.current.shift()!;
+    setToastNotification(next);
+    if (next.type === 'new_sale' || next.type === 'new_bc') {
+      playNotificationSound();
+    }
+  }, []);
 
   // Load notifications
   const loadNotifications = useCallback(() => {
     const userNotifs = NotificationService.getUserNotifications(currentUser.fullName);
     const newUnreadCount = NotificationService.getUnreadCount(currentUser.fullName);
-    
-    // Only trigger toast+sound for genuinely new notifications (not on first load)
-    if (previousCountRef.current !== -1 && newUnreadCount > previousCountRef.current && userNotifs.length > 0) {
-      console.log('[NOTIF] New notification detected — prev:', previousCountRef.current, '→ now:', newUnreadCount);
-      const latestUnread = userNotifs.find(n => !n.isRead);
-      if (latestUnread) {
-        setToastNotification(latestUnread);
-        // Sound only for new client added (new_sale) or new booking confirmation (new_bc)
-        if (latestUnread.type === 'new_sale' || latestUnread.type === 'new_bc') {
-          playNotificationSound();
+
+    if (previousCountRef.current !== -1) {
+      // Collect every unread notification not yet seen — preserves arrival order
+      const brandNew = userNotifs.filter(n => !n.isRead && !seenIdsRef.current.has(n.id));
+      if (brandNew.length > 0) {
+        console.log('[NOTIF] New notifications:', brandNew.length, brandNew.map(n => n.type));
+        // Mark all as seen immediately so a subsequent poll never re-queues them
+        brandNew.forEach(n => seenIdsRef.current.add(n.id));
+        toastQueueRef.current.push(...brandNew);
+        // Only kick off the queue if nothing is currently showing
+        if (!toastTimerRef.current) {
+          showNextToast();
         }
-      } else {
-        console.warn('[NOTIF] No unread notification found despite count increase');
       }
-    } else if (previousCountRef.current === -1) {
-      console.log('[NOTIF] Initial load — skipping toast. Unread count:', newUnreadCount);
+    } else {
+      // First load — seed seen IDs from all current unread so we never toast them
+      console.log('[NOTIF] Initial load — seeding seen IDs. Unread count:', newUnreadCount);
+      userNotifs.filter(n => !n.isRead).forEach(n => seenIdsRef.current.add(n.id));
     }
-    
+
     previousCountRef.current = newUnreadCount;
     setNotifications(userNotifs);
     setUnreadCount(newUnreadCount);
-  }, [currentUser.fullName]);
+  }, [currentUser.fullName, showNextToast]);
 
   useEffect(() => {
     // Sync from MongoDB first, record baseline (no toast), then start polling
@@ -169,6 +187,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
     return () => {
       clearInterval(interval);
       if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       window.removeEventListener('sync:notifications', onSync);
     };
   }, [currentUser.fullName, loadNotifications]);
@@ -232,7 +251,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return new Date(timestamp).toLocaleDateString();
+    return formatDatePHT(new Date(timestamp));
   };
 
   const displayedNotifications = showAll ? notifications : notifications.slice(0, 10);
@@ -448,7 +467,18 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       {/* Toast Notification */}
       <ToastNotification 
         notification={toastNotification}
-        onClose={() => setToastNotification(null)}
+        onClose={() => {
+          setToastNotification(null);
+          // Wait 400ms (slide-out animation) then show next queued notification
+          if (toastQueueRef.current.length > 0) {
+            toastTimerRef.current = setTimeout(() => {
+              toastTimerRef.current = null;
+              showNextToast();
+            }, 400);
+          } else {
+            toastTimerRef.current = null;
+          }
+        }}
       />
     </div>
   );
