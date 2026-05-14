@@ -283,10 +283,9 @@ const App: React.FC = () => {
       if (!getAuthToken()) return;
       try {
         const { ClientService } = await import('./services/clientService');
-        await ClientService.syncFromMongoDB();
-        
-        // Sync activity logs, file attachments, calendar events, and notifications
+        // Fire notifications sync in parallel with the heavier syncs — don't wait for clients first
         await Promise.allSettled([
+          ClientService.syncFromMongoDB(),
           ActivityLogService.syncFromMongoDB(),
           FileService.syncFromMongoDB(),
           calendarService.syncFromMongoDB(),

@@ -1662,6 +1662,8 @@ const ClientRecords: React.FC<{
         insuranceService,
         etaService: eta,
         visaOfficerAppointed,
+        passportVisaPayments,
+        passportPaymentDates,
       });
       saveSection('visa-service', 'Visa & Additional Services');
       showSuccessToast('Visa information saved successfully!');
@@ -3475,8 +3477,10 @@ const ClientRecords: React.FC<{
                       value={visaPayVal}
                       onChange={e => {
                         const updated = [...passportVisaPayments];
+                        trackSectionField('visa-service', `passportVisaPayment_${idx}`, updated[idx] ?? '', `Visa Payment (Passport ${idx + 1})`);
                         updated[idx] = e.target.value;
                         setPassportVisaPayments(updated);
+                        trackSectionField('visa-service', `passportVisaPayment_${idx}`, e.target.value, `Visa Payment (Passport ${idx + 1})`);
                       }}
                     >
                       <option value="">— Select —</option>
