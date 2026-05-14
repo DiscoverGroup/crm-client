@@ -191,16 +191,26 @@ export class NotificationService {
           link: d.link
         }));
 
-        // Merge: MongoDB + local-only
+        // Merge: MongoDB + any local notifications for this user not yet in MongoDB.
+        // When userId-scoped, only compare the current user's local notifs —
+        // never touch other users' notifications (they ARE in MongoDB, just not fetched).
         const mongoIds = new Set(mongoNotifications.map(n => n.id));
-        const localOnly = this.getAllNotifications().filter(n => !mongoIds.has(n.id));
+        const allLocal = this.getAllNotifications();
+        const localScopeForUser = userId
+          ? allLocal.filter(n => n.targetUserId === userId)
+          : allLocal;
+        const localOnly = localScopeForUser.filter(n => !mongoIds.has(n.id));
 
-        // Re-sync local-only to MongoDB
+        // Re-sync any genuinely local-only (created offline) to MongoDB
         for (const notif of localOnly) {
           this.saveNotificationToMongoDB(notif).catch(() => {});
         }
 
-        const merged = [...localOnly, ...mongoNotifications];
+        // Rebuild localStorage: keep other users' notifs + merge current user's
+        const otherUsersNotifs = userId
+          ? allLocal.filter(n => n.targetUserId !== userId)
+          : [];
+        const merged = [...localOnly, ...mongoNotifications, ...otherUsersNotifs];
         merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
