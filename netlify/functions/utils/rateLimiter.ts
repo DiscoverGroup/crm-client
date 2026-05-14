@@ -1,10 +1,13 @@
 /**
  * MongoDB-backed Rate Limiter for Netlify Functions
  *
- * Because Netlify Functions are stateless (each invocation can run on a
- * different instance), in-memory counters are ineffective.  This module
- * stores counters in a MongoDB collection with a TTL index so documents
- * expire automatically.
+ * Uses a fixed TTL index on `expiresAt` (expireAfterSeconds: 0) so that each
+ * document carries its own absolute expiry timestamp. This avoids the
+ * "conflicting TTL value" problem where multiple endpoints with different
+ * window lengths all try to create the same index with different
+ * expireAfterSeconds values — MongoDB only honours the first one, causing
+ * rate-limit documents for shorter windows to never expire and counts to
+ * grow forever, permanently blocking users.
  *
  * Usage:
  *   const result = await checkRateLimit(db, ip, 'login', 10, 900);
@@ -24,41 +27,36 @@ export interface RateLimitResult {
 const COLLECTION = 'rate_limits';
 
 /**
- * Checks (and increments) the rate limit counter for a given key.
- *
- * @param db            Mongo Db instance (already connected)
- * @param ip            Client IP address (from event.headers['x-forwarded-for'] etc.)
- * @param endpoint      Short label, e.g. 'login', 'register', 'verify-otp'
- * @param maxRequests   Maximum allowed requests in the window (default 10)
- * @param windowSeconds Length of the sliding window in seconds (default 900 = 15 min)
+ * Shared internal implementation — keys on an arbitrary string key.
+ * Documents expire via a sparse TTL index on `expiresAt` (expireAfterSeconds: 0).
+ * On first insert, expiresAt is set to now + windowSeconds. Subsequent increments
+ * within the window do NOT change expiresAt, so the window is fixed (not sliding).
  */
-export async function checkRateLimit(
+async function _checkLimit(
   db: Db,
-  ip: string,
+  key: string,
   endpoint: string,
-  maxRequests = 10,
-  windowSeconds = 900
+  maxRequests: number,
+  windowSeconds: number
 ): Promise<RateLimitResult> {
   const col = db.collection(COLLECTION);
-  const key = `${ip}:${endpoint}`;
   const now = new Date();
+  const expiresAt = new Date(now.getTime() + windowSeconds * 1000);
 
-  // Ensure TTL index exists (no-op if already created)
+  // Single TTL index: documents auto-delete when their expiresAt is reached.
+  // expireAfterSeconds: 0 means "delete as soon as expiresAt <= now".
+  // This is safe to call every request — MongoDB createIndex is idempotent.
   try {
-    await col.createIndex(
-      { createdAt: 1 },
-      { expireAfterSeconds: windowSeconds, background: true }
-    );
-  } catch {
-    // Index may already exist with a different TTL — that's fine
-  }
+    await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true });
+  } catch { /* already exists — fine */ }
 
-  // Atomically increment (or create) the counter
+  // Atomically increment counter; only set expiresAt on first insert so the
+  // window is fixed from the first request in the period.
   const result = await col.findOneAndUpdate(
     { key },
     {
       $inc: { count: 1 },
-      $setOnInsert: { createdAt: now },
+      $setOnInsert: { createdAt: now, expiresAt },
     },
     { upsert: true, returnDocument: 'after' }
   );
@@ -70,8 +68,8 @@ export async function checkRateLimit(
     logWarn({
       fn: 'rateLimiter',
       msg: 'Rate limit exceeded',
-      ip,
       op: endpoint,
+      key,
       count,
       maxRequests,
       windowSeconds,
@@ -84,6 +82,25 @@ export async function checkRateLimit(
     remaining: Math.max(0, maxRequests - count),
     resetAfterSeconds: windowSeconds,
   };
+}
+
+/**
+ * IP-based rate limit check.
+ *
+ * @param db            Mongo Db instance (already connected)
+ * @param ip            Client IP address
+ * @param endpoint      Short label, e.g. 'login', 'register'
+ * @param maxRequests   Maximum allowed requests in the window (default 10)
+ * @param windowSeconds Window length in seconds (default 900 = 15 min)
+ */
+export async function checkRateLimit(
+  db: Db,
+  ip: string,
+  endpoint: string,
+  maxRequests = 10,
+  windowSeconds = 900
+): Promise<RateLimitResult> {
+  return _checkLimit(db, `${ip}:${endpoint}`, endpoint, maxRequests, windowSeconds);
 }
 
 /**
@@ -103,49 +120,7 @@ export async function checkRateLimitByUser(
   maxRequests = 20,
   windowSeconds = 60
 ): Promise<RateLimitResult> {
-  const col = db.collection(COLLECTION);
-  const key = `user:${userId}:${endpoint}`;
-  const now = new Date();
-
-  try {
-    await col.createIndex(
-      { createdAt: 1 },
-      { expireAfterSeconds: windowSeconds, background: true }
-    );
-  } catch {
-    // Index may already exist — fine
-  }
-
-  const result = await col.findOneAndUpdate(
-    { key },
-    {
-      $inc: { count: 1 },
-      $setOnInsert: { createdAt: now },
-    },
-    { upsert: true, returnDocument: 'after' }
-  );
-
-  const count = result?.count ?? 1;
-  const limited = count > maxRequests;
-
-  if (limited) {
-    logWarn({
-      fn: 'rateLimiter',
-      msg: 'User-scoped rate limit exceeded',
-      userId,
-      op: endpoint,
-      count,
-      maxRequests,
-      windowSeconds,
-    });
-  }
-
-  return {
-    limited,
-    count,
-    remaining: Math.max(0, maxRequests - count),
-    resetAfterSeconds: windowSeconds,
-  };
+  return _checkLimit(db, `user:${userId}:${endpoint}`, endpoint, maxRequests, windowSeconds);
 }
 
 /**

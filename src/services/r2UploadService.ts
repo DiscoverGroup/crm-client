@@ -10,7 +10,7 @@
  * so large files never pass through a function's 6 MB payload limit.
  */
 
-import { authHeaders } from '../utils/authToken';
+import { authHeaders, initCsrfToken } from '../utils/authToken';
 
 const API_BASE = '/.netlify/functions';
 
@@ -57,8 +57,18 @@ export async function uploadFileToR2(
       if (!urlRes.ok) {
         const err = await urlRes.json().catch(() => ({})) as { error?: string };
         lastError = err.error || `Failed to get upload URL (${urlRes.status})`;
-        // Auth / permission errors — don't retry
-        if (urlRes.status === 401 || urlRes.status === 403) {
+        if (urlRes.status === 401) {
+          // JWT expired — cannot recover silently, surface immediately
+          return { success: false, error: lastError };
+        }
+        if (urlRes.status === 403 && lastError === 'Token has expired') {
+          // CSRF token expired — refresh it and retry (CSRF tokens are valid for 2h)
+          await initCsrfToken();
+          if (attempt < maxRetries) continue;
+          return { success: false, error: lastError };
+        }
+        if (urlRes.status === 403) {
+          // True permission denial — don't retry
           return { success: false, error: lastError };
         }
         if (attempt < maxRetries) await _backoff(attempt);

@@ -6,7 +6,7 @@ import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
-import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { checkRateLimit, checkRateLimitByUser, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -69,9 +69,13 @@ export const handler = async (event: any) => {
     const db = client.db(DB_NAME);
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
+    // Primary: per-user (60 req/user/60s) — prevents one user from flooding the signal.
+    // Secondary: per-IP guard (300/IP/60s) — catches abuse from untrusted IPs.
     const ip = getClientIP(event.headers);
-    const rl = await checkRateLimit(db, ip, 'sync-signal', 200, 60);
-    if (rl.limited) return tooManyRequestsResponse(headers, 60);
+    const userRl = await checkRateLimitByUser(db, auth.user!.userId, 'sync-signal', 60, 60);
+    if (userRl.limited) return tooManyRequestsResponse(headers, 60);
+    const ipRl = await checkRateLimit(db, ip, 'sync-signal', 300, 60);
+    if (ipRl.limited) return tooManyRequestsResponse(headers, 60);
 
     const now = new Date().toISOString();
 

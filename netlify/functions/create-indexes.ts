@@ -143,6 +143,27 @@ export const handler: Handler = async (event) => {
     await settingsCol.createIndex({ key: 1 }, { unique: true });
     results.push('Settings indexes created');
 
+    // ── Rate-limits collection ────────────────────────────────────────────────
+    // The old TTL index was on `createdAt` with a varying expireAfterSeconds value.
+    // Because MongoDB only honours the TTL configured when the index was first created,
+    // all rate-limit documents created with a shorter window never expired, causing
+    // counters to grow forever and eventually blocking all users permanently.
+    // Fix: drop the old index (if present) and create a fixed `expiresAt` TTL index
+    // (expireAfterSeconds: 0) so each document controls its own expiry.
+    const rateLimitsCol = db.collection('rate_limits');
+    try {
+      await rateLimitsCol.dropIndex('createdAt_1');
+      results.push('Dropped old rate_limits createdAt_1 TTL index');
+    } catch {
+      // Index may not exist — fine
+      results.push('rate_limits createdAt_1 index not found (already removed or never existed)');
+    }
+    await rateLimitsCol.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, sparse: true });
+    // Clear any stale counters so no user is left in a permanently-limited state
+    await rateLimitsCol.deleteMany({});
+    results.push('rate_limits expiresAt TTL index created, stale counters cleared');
+
+
     await client.close();
 
     return {

@@ -18,7 +18,7 @@ function getAudioCtx(): AudioContext | null {
         return null;
       }
       _audioCtx = new Ctor();
-      console.log('[SOUND] AudioContext created, state:', _audioCtx.state);
+      // console.log('[SOUND] AudioContext created, state:', _audioCtx.state);
     }
     return _audioCtx;
   } catch (e) {
@@ -29,22 +29,22 @@ function getAudioCtx(): AudioContext | null {
 
 async function loadSoundBuffer(): Promise<void> {
   if (_audioBuffer) {
-    console.log('[SOUND] Buffer already loaded, skipping fetch');
+    // console.log('[SOUND] Buffer already loaded, skipping fetch');
     return;
   }
   const ctx = getAudioCtx();
   if (!ctx) { console.error('[SOUND] loadSoundBuffer: no AudioContext'); return; }
   try {
-    console.log('[SOUND] Fetching /sounds/notification.mp3 ...');
+    // console.log('[SOUND] Fetching /sounds/notification.mp3 ...');
     const res = await fetch('/sounds/notification.mp3');
     if (!res.ok) {
       console.error('[SOUND] Fetch failed:', res.status, res.statusText);
       return;
     }
     const buf = await res.arrayBuffer();
-    console.log('[SOUND] Fetched', buf.byteLength, 'bytes, decoding...');
+    // console.log('[SOUND] Fetched', buf.byteLength, 'bytes, decoding...');
     _audioBuffer = await ctx.decodeAudioData(buf);
-    console.log('[SOUND] Buffer decoded OK, duration:', _audioBuffer.duration.toFixed(2), 's');
+    // console.log('[SOUND] Buffer decoded OK, duration:', _audioBuffer.duration.toFixed(2), 's');
   } catch (e) {
     console.error('[SOUND] loadSoundBuffer error:', e);
   }
@@ -52,13 +52,13 @@ async function loadSoundBuffer(): Promise<void> {
 
 // Unlock AudioContext and pre-load sound on first user interaction
 function unlockAndLoad(): void {
-  console.log('[SOUND] unlockAndLoad triggered');
+  // console.log('[SOUND] unlockAndLoad triggered');
   const ctx = getAudioCtx();
   if (!ctx) { console.error('[SOUND] unlockAndLoad: no AudioContext'); return; }
-  console.log('[SOUND] AudioContext state before resume:', ctx.state);
+  // console.log('[SOUND] AudioContext state before resume:', ctx.state);
   if (ctx.state === 'suspended') {
     ctx.resume()
-      .then(() => { console.log('[SOUND] AudioContext resumed OK'); return loadSoundBuffer(); })
+      .then(() => { /* console.log('[SOUND] AudioContext resumed OK'); */ return loadSoundBuffer(); })
       .catch((e) => console.error('[SOUND] resume failed:', e));
   } else {
     loadSoundBuffer().catch((e) => console.error('[SOUND] loadSoundBuffer failed:', e));
@@ -68,14 +68,14 @@ document.addEventListener('click', unlockAndLoad, { once: true });
 document.addEventListener('keydown', unlockAndLoad, { once: true });
 
 function playNotificationSound(): void {
-  console.log('[SOUND] playNotificationSound called');
+  // console.log('[SOUND] playNotificationSound called');
   const ctx = getAudioCtx();
   if (!ctx) { console.error('[SOUND] play: no AudioContext'); return; }
   if (!_audioBuffer) { console.error('[SOUND] play: buffer not loaded yet — was unlockAndLoad called?'); return; }
-  console.log('[SOUND] AudioContext state at play time:', ctx.state);
+  // console.log('[SOUND] AudioContext state at play time:', ctx.state);
   try {
     if (ctx.state === 'suspended') {
-      console.warn('[SOUND] Context suspended at play time — resuming first');
+      // console.warn('[SOUND] Context suspended at play time — resuming first');
       ctx.resume().catch((e) => console.error('[SOUND] resume at play time failed:', e));
     }
     const src = ctx.createBufferSource();
@@ -85,7 +85,7 @@ function playNotificationSound(): void {
     src.connect(gainNode);
     gainNode.connect(ctx.destination);
     src.start(0);
-    console.log('[SOUND] BufferSource started OK');
+    // console.log('[SOUND] BufferSource started OK');
   } catch (e) {
     console.error('[SOUND] play error:', e);
   }
@@ -130,7 +130,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       // Collect every unread notification not yet seen — preserves arrival order
       const brandNew = userNotifs.filter(n => !n.isRead && !seenIdsRef.current.has(n.id));
       if (brandNew.length > 0) {
-        console.log('[NOTIF] New notifications:', brandNew.length, brandNew.map(n => n.type));
+        // console.log('[NOTIF] New notifications:', brandNew.length, brandNew.map(n => n.type));
         // Mark all as seen immediately so a subsequent poll never re-queues them
         brandNew.forEach(n => seenIdsRef.current.add(n.id));
         toastQueueRef.current.push(...brandNew);
@@ -141,7 +141,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       }
     } else {
       // First load — seed seen IDs from all current unread so we never toast them
-      console.log('[NOTIF] Initial load — seeding seen IDs. Unread count:', newUnreadCount);
+      // console.log('[NOTIF] Initial load — seeding seen IDs. Unread count:', newUnreadCount);
       userNotifs.filter(n => !n.isRead).forEach(n => seenIdsRef.current.add(n.id));
     }
 

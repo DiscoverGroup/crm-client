@@ -166,7 +166,7 @@ export class NotificationService {
     this.lastSyncAt = Date.now();
 
     try {
-      console.log('[NOTIF-SYNC] Fetching notifications from MongoDB...');
+      // console.log('[NOTIF-SYNC] Fetching notifications from MongoDB...');
       const filter = userId ? { targetUserId: userId } : {};
       const response = await fetch(DB_API, {
         method: 'POST',
@@ -182,7 +182,7 @@ export class NotificationService {
       const result = await response.json();
 
       if (result.success && Array.isArray(result.data)) {
-        console.log('[NOTIF-SYNC] MongoDB returned', result.data.length, 'notifications');
+        // console.log('[NOTIF-SYNC] MongoDB returned', result.data.length, 'notifications');
         const mongoNotifications: Notification[] = result.data.map((d: any) => ({
           id: d.id,
           type: d.type,
@@ -225,7 +225,7 @@ export class NotificationService {
 
         localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
         localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
-        console.log('[NOTIF-SYNC] Merged', merged.length, 'total notifications into localStorage');
+        // console.log('[NOTIF-SYNC] Merged', merged.length, 'total notifications into localStorage');
       }
     } catch (e) {
       console.error('[NOTIF-SYNC] syncFromMongoDB failed:', e);

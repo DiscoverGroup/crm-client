@@ -82,7 +82,13 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   // Fetch CSRF token once on mount — injected into all authHeaders() calls automatically
-  useEffect(() => { initCsrfToken(); }, []);
+  useEffect(() => {
+    initCsrfToken();
+    // Proactively refresh CSRF token every 90 minutes — tokens expire after 2 hours.
+    // Prevents uploads and writes from failing mid-session with "Token has expired".
+    const csrfRefreshInterval = setInterval(() => { initCsrfToken(); }, 90 * 60 * 1000);
+    return () => clearInterval(csrfRefreshInterval);
+  }, []);
 
   // Handle toast notifications
   useEffect(() => {
