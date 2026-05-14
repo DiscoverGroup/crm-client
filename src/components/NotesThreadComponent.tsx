@@ -3,7 +3,7 @@ import { FileService } from '../services/fileService';
 import { ClientService } from '../services/clientService';
 import { sanitizeComment, containsAttackPatterns } from '../utils/formSanitizer';
 import { authHeaders } from '../utils/authToken';
-import { formatAgoLabelPHT, formatDatePHT } from '../utils/dateUtils';
+import { formatAgoLabelPHT } from '../utils/dateUtils';
 import Loader from './Loader';
 import MentionInput from './MentionInput';
 

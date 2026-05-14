@@ -5,7 +5,7 @@ import { FileService, type FileAttachment } from '../services/fileService';
 import { FileRecoveryService } from '../services/fileRecoveryService';
 import { ClientRecoveryService } from '../services/clientRecoveryService';
 import { showSuccessToast, showErrorToast, showConfirmDialog } from '../utils/toast';
-import { formatDateTimePHT, formatDatePHT } from '../utils/dateUtils';
+import { formatDateTimePHT } from '../utils/dateUtils';
 
 interface DeletedClientsProps {
   currentUser: string;

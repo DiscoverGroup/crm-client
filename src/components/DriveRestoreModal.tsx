@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { authHeaders } from '../utils/authToken';
-import { formatDatePHT, formatDateTimePHT } from '../utils/dateUtils';
+import { formatDatePHT } from '../utils/dateUtils';
 import type { ClientData } from '../services/clientService';
 import { FileService } from '../services/fileService';
 import type { FileAttachment } from '../services/fileService';

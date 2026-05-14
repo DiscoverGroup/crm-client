@@ -120,8 +120,6 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
   const formatTimestamp = (timestamp: Date) => {
     const now = new Date();
     const date = new Date(timestamp);
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
     return formatRelativePHT(date);
   };
 
