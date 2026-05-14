@@ -118,7 +118,6 @@ const LogNoteComponent: React.FC<LogNoteComponentProps> = ({
 
   // Helper function to format timestamp like "Today at 6:06 PM"
   const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
     const date = new Date(timestamp);
     return formatRelativePHT(date);
   };
