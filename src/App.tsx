@@ -224,20 +224,15 @@ const App: React.FC = () => {
     checkConnections();
   }, []);
 
-  // Sync all localStorage users to MongoDB
+  // Keep crm_users in sync with MongoDB (bidirectional: push local-only users, pull all users)
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const syncUsersToMongoDB = async () => {
+    const syncUsers = async () => {
       if (!getAuthToken()) return;
-      const usersData = localStorage.getItem('crm_users');
-      if (!usersData) return;
 
       try {
-        const users = JSON.parse(usersData);
-        if (!users.length) return;
-
-        // Fetch all existing user emails in one request instead of N findUser calls
+        // Fetch all users from MongoDB
         const response = await fetch('/.netlify/functions/database', {
           method: 'POST',
           headers: { ...authHeaders(), 'Content-Type': 'application/json' },
@@ -247,16 +242,27 @@ const App: React.FC = () => {
             filter: {}
           })
         });
-        if (!response.ok) return; // rate-limited or error — skip silently
+        if (!response.ok) return;
 
         const result = await response.json();
-        const existingEmails = new Set<string>(
-          result.success && Array.isArray(result.data)
-            ? result.data.map((u: any) => u.email as string)
-            : []
-        );
+        const mongoUsers: any[] = result.success && Array.isArray(result.data) ? result.data : [];
 
-        const missing = users.filter((u: any) => u.email && !existingEmails.has(u.email));
+        // Pull: merge MongoDB users into crm_users so every session has the full list
+        // (required for broadcastToAllUsers to reach all recipients)
+        const raw = localStorage.getItem('crm_users');
+        const localUsers: any[] = raw ? JSON.parse(raw) : [];
+        const localEmails = new Set<string>(localUsers.map((u: any) => u.email).filter(Boolean));
+
+        const mongoEmails = new Set<string>(mongoUsers.map((u: any) => u.email).filter(Boolean));
+        const incomingNew = mongoUsers.filter((u: any) => u.email && !localEmails.has(u.email));
+
+        if (incomingNew.length > 0) {
+          const merged = [...localUsers, ...incomingNew];
+          localStorage.setItem('crm_users', JSON.stringify(merged));
+        }
+
+        // Push: save any local-only users to MongoDB
+        const missing = localUsers.filter((u: any) => u.email && !mongoEmails.has(u.email));
         for (const user of missing) {
           await MongoDBService.saveUser(user).catch(() => {});
         }
@@ -265,11 +271,7 @@ const App: React.FC = () => {
       }
     };
 
-    // Only run sync once per login, after a short delay to let other initialization complete
-    const timer = setTimeout(() => {
-      syncUsersToMongoDB();
-    }, 2000);
-
+    const timer = setTimeout(() => { syncUsers(); }, 2000);
     return () => clearTimeout(timer);
   }, [isLoggedIn]);
 
