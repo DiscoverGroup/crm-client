@@ -120,8 +120,27 @@ export class PaymentService {
       
       // Sync to MongoDB if clientId is provided
       if (clientId) {
-        MongoDBService.savePaymentData(clientId, serializedData).catch(() => {
-          // console.error('MongoDB sync failed:', err);
+        MongoDBService.savePaymentData(clientId, serializedData).then(result => {
+          if (!result.success) {
+            // One-shot retry after 5s
+            setTimeout(() => {
+              MongoDBService.savePaymentData(clientId, serializedData).then(retryResult => {
+                if (!retryResult.success) {
+                  window.dispatchEvent(new CustomEvent('showToast', {
+                    detail: { type: 'error', message: 'Failed to sync payment data with database. Please save again.' }
+                  }));
+                }
+              }).catch(() => {
+                window.dispatchEvent(new CustomEvent('showToast', {
+                  detail: { type: 'error', message: 'Failed to sync payment data with database. Please save again.' }
+                }));
+              });
+            }, 5000);
+          }
+        }).catch(() => {
+          window.dispatchEvent(new CustomEvent('showToast', {
+            detail: { type: 'error', message: 'Failed to sync payment data with database. Please save again.' }
+          }));
         });
       }
       

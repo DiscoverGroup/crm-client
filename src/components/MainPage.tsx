@@ -1720,6 +1720,18 @@ const ClientRecords: React.FC<{
           otherFiles: overrides?.otherFiles ?? voucherLinkOtherFiles,
         },
       });
+      if (overrides) {
+        const LINK_LABELS: Record<string, string> = {
+          intlFlight: 'International Flight Voucher Link',
+          tourVoucher: 'Tour Voucher Link',
+          hotelVoucher: 'Hotel Voucher Link',
+          otherFiles: 'Other Files Link',
+          localFlights: 'Local Flights Links',
+        };
+        for (const key of Object.keys(overrides)) {
+          logSectionAction('package-information', 'Field Updated', `${LINK_LABELS[key] || key} updated`, 'done');
+        }
+      }
     } catch { /* non-fatal */ }
   };
 
@@ -1727,7 +1739,18 @@ const ClientRecords: React.FC<{
 
   // Handlers
   function handleCompanionChange(idx: number, field: keyof Companion, value: string) {
+    const COMPANION_FIELD_LABELS: Partial<Record<keyof Companion, string>> = {
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      dob: 'Date of Birth',
+      email: 'Email',
+      contactNo: 'Contact Number',
+    };
+    const displayName = `Companion ${idx + 1} ${COMPANION_FIELD_LABELS[field] || String(field)}`;
+    const currentVal = (companions[idx]?.[field] as string) || '';
+    trackSectionField('package-information', `companion_${idx}_${field}`, currentVal, displayName);
     setCompanions(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+    trackSectionField('package-information', `companion_${idx}_${field}`, value, displayName);
   }
 
   function handlePaymentTermChange(e: React.ChangeEvent<HTMLSelectElement>) {
