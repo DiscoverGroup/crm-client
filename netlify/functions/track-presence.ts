@@ -70,6 +70,10 @@ export const handler: Handler = async (event) => {
     void ip; // ip captured for future IP-based limiting if needed
 
     // ── Stamp lastActiveAt ────────────────────────────────────────────────────
+    // Guard against malformed userId (non-hex string) crashing ObjectId constructor
+    if (!ObjectId.isValid(userId)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, error: 'Invalid user id' }) };
+    }
     await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
       { $set: { lastActiveAt: new Date() } }
@@ -79,6 +83,12 @@ export const handler: Handler = async (event) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({ success: true }),
+    };
+  } catch (err: any) {
+    return {
+      statusCode: 502,
+      headers,
+      body: JSON.stringify({ success: false, error: 'Presence update failed' }),
     };
   } finally {
     await client?.close();
