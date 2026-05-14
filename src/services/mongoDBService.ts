@@ -70,51 +70,55 @@ export class MongoDBService {
 
   // Save client to MongoDB
   static async saveClient(clientData: any): Promise<{ success: boolean; message?: string }> {
-    try {
-      // Don't save images/files and strip MongoDB _id
-      const { profileImage, attachments, _id, ...clientInfo } = clientData;
-      
-      const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          collection: 'clients',
-          operation: 'insertOne',
-          data: clientInfo
-        })
-      });
+    // Don't save images/files and strip MongoDB _id
+    const { profileImage, attachments, _id, ...clientInfo } = clientData;
 
-      const result = await response.json();
-      return { success: result.success || response.ok, message: result.message };
-    } catch (error) {
-      // console.error('Error saving client to MongoDB:', error);
-      return { success: false, message: 'Failed to sync with MongoDB' };
+    const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'clients',
+        operation: 'insertOne',
+        data: clientInfo
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`MongoDB saveClient failed: HTTP ${response.status}`);
     }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'MongoDB saveClient returned success:false');
+    }
+    return { success: true, message: result.message };
   }
 
   // Update client in MongoDB
   static async updateClient(clientId: string, updates: any): Promise<{ success: boolean; message?: string }> {
-    try {
-      // Don't save images/files and strip MongoDB _id (immutable, breaks $set)
-      const { profileImage, attachments, _id, ...clientInfo } = updates;
-      
-      const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          collection: 'clients',
-          operation: 'updateOne',
-          filter: { id: clientId },
-          update: clientInfo
-        })
-      });
+    // Don't save images/files and strip MongoDB _id (immutable, breaks $set)
+    const { profileImage, attachments, _id, ...clientInfo } = updates;
 
-      const result = await response.json();
-      return { success: result.success || response.ok, message: result.message };
-    } catch (error) {
-      // console.error('Error updating client in MongoDB:', error);
-      return { success: false, message: 'Failed to sync with MongoDB' };
+    const response = await fetch(`${this.FUNCTIONS_BASE}/database`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        collection: 'clients',
+        operation: 'updateOne',
+        filter: { id: clientId },
+        update: clientInfo
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`MongoDB updateClient failed: HTTP ${response.status}`);
     }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'MongoDB updateClient returned success:false');
+    }
+    return { success: true, message: result.message };
   }
 
   // Find client in MongoDB
