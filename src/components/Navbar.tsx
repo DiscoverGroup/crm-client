@@ -135,7 +135,6 @@ const Navbar: React.FC<NavbarProps> = ({
         alignItems: "center",
         gap: "clamp(6px, 1.5vw, 12px)",
         flexShrink: 0,
-        overflow: "hidden"
       }}>
         {/* Sync Status Indicator */}
         <SyncStatusIndicator />
