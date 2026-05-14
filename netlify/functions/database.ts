@@ -101,7 +101,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const { collection, operation, data, filter, update, upsert } = JSON.parse(event.body || '{}');
+  const { collection, operation, data, filter, update, upsert, sort, limit, projection } = JSON.parse(event.body || '{}');
 
   // ── Rate limiting: 300 requests per IP per minute ─────────────────────────
   // Prevents runaway clients or compromised tokens from hammering Atlas.
@@ -141,9 +141,19 @@ export const handler: Handler = async (event) => {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         switch (operation) {
-          case 'find':
-            result = await col.find(filter || {}).toArray();
+          case 'find': {
+            // Optional modifiers for scalable queries:
+            //   sort       — e.g. { createdAt: -1 }
+            //   limit      — integer 1–1000 (capped to 1000 to prevent accidental full dumps)
+            //   projection — e.g. { name: 1, email: 1, _id: 0 }
+            const safeLimit = limit != null ? Math.min(Math.max(1, parseInt(String(limit), 10) || 1000), 1000) : undefined;
+            let cursor = col.find(filter || {});
+            if (sort) cursor = cursor.sort(sort);
+            if (safeLimit !== undefined) cursor = cursor.limit(safeLimit);
+            if (projection) cursor = cursor.project(projection);
+            result = await cursor.toArray();
             break;
+          }
           case 'findOne':
             result = await col.findOne(filter);
             break;

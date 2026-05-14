@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import NotificationDropdown from "./NotificationDropdown";
 import SyncStatusIndicator from "./SyncStatusIndicator";
+import { authHeaders, getCsrfToken } from "../utils/authToken";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -26,6 +27,55 @@ const Navbar: React.FC<NavbarProps> = ({
   const companyLogo = localStorage.getItem('crm_company_logo') || '/DG.jpg';
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const [activeUserCount, setActiveUserCount] = useState<number | null>(null);
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Presence: heartbeat + active-user count poll ───────────────────────────
+  const sendHeartbeat = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      await fetch('/.netlify/functions/track-presence', {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          ...(getCsrfToken() ? { 'X-CSRF-Token': getCsrfToken()! } : {}),
+        },
+        body: JSON.stringify({}),
+      });
+    } catch {
+      // non-fatal — heartbeat failures are silently ignored
+    }
+  }, [isLoggedIn]);
+
+  const pollActiveUsers = useCallback(async () => {
+    if (!isLoggedIn) return;
+    try {
+      const res = await fetch('/.netlify/functions/get-active-users', {
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.count === 'number') setActiveUserCount(data.count);
+      }
+    } catch {
+      // non-fatal
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    // Immediate first run
+    sendHeartbeat();
+    pollActiveUsers();
+    // Heartbeat every 60 s, count poll every 30 s
+    heartbeatTimerRef.current = setInterval(sendHeartbeat, 60_000);
+    pollTimerRef.current = setInterval(pollActiveUsers, 30_000);
+    return () => {
+      if (heartbeatTimerRef.current) clearInterval(heartbeatTimerRef.current);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [isLoggedIn, sendHeartbeat, pollActiveUsers]);
 
   useEffect(() => {
     if (!showActionsMenu) return;
@@ -138,6 +188,41 @@ const Navbar: React.FC<NavbarProps> = ({
       }}>
         {/* Sync Status Indicator */}
         <SyncStatusIndicator />
+
+        {/* Active Now badge */}
+        {activeUserCount !== null && (
+          <div
+            title={`${activeUserCount} user${activeUserCount !== 1 ? 's' : ''} active right now`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              background: 'rgba(34, 197, 94, 0.12)',
+              border: '1px solid rgba(34, 197, 94, 0.35)',
+              borderRadius: '999px',
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#86efac',
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+              cursor: 'default',
+              userSelect: 'none',
+            }}
+          >
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: '#22c55e',
+                boxShadow: '0 0 6px #22c55e',
+                flexShrink: 0,
+              }}
+            />
+            {activeUserCount} active now
+          </div>
+        )}
 
         {/* Actions Dropdown (Users + Messaging) */}
         {(onOpenUserDirectory || onOpenMessaging) && (

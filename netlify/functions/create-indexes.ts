@@ -94,9 +94,13 @@ export const handler: Handler = async (event) => {
     const usersCol = db.collection('users');
     await usersCol.createIndex({ email: 1 }, { unique: true });
     await usersCol.createIndex({ username: 1 }, { unique: true, sparse: true });
-    // Admin panel filters by verification status
+    // Admin panel filters by verification/approval status
     await usersCol.createIndex({ isVerified: 1 });
     await usersCol.createIndex({ role: 1 });
+    await usersCol.createIndex({ isApproved: 1, role: 1 });
+    // Presence: get-active-users filters by lastActiveAt — sparse so users who
+    // have never sent a heartbeat don't consume index space.
+    await usersCol.createIndex({ lastActiveAt: 1 }, { sparse: true });
     results.push('Users indexes created');
 
     // ── Clients collection ────────────────────────────────────────────────────
@@ -107,9 +111,14 @@ export const handler: Handler = async (event) => {
     // Individual status/deleted indexes
     await clientsCol.createIndex({ status: 1 });
     await clientsCol.createIndex({ isDeleted: 1 });
-    // Compound indexes used by filtered client list queries (most common access pattern)
+    // Two-field compound (filter by deleted + status)
     await clientsCol.createIndex({ isDeleted: 1, status: 1 });
     await clientsCol.createIndex({ isDeleted: 1, createdAt: -1 });
+    // Three-field compound: covers the most common list query
+    // (active clients filtered by status, sorted by newest first)
+    await clientsCol.createIndex({ isDeleted: 1, status: 1, createdAt: -1 });
+    // Text search on client name and email — enables efficient $regex/$text on names
+    await clientsCol.createIndex({ isDeleted: 1, clientNo: 1 });
     results.push('Clients indexes created');
 
     // ── Groups collection ─────────────────────────────────────────────────────
@@ -125,6 +134,8 @@ export const handler: Handler = async (event) => {
     await logNotesCol.createIndex({ clientId: 1, timestamp: -1 });
     // Secondary: user-based queries (who added notes)
     await logNotesCol.createIndex({ userId: 1, timestamp: -1 });
+    // Compound: client + user filter (admin audit view)
+    await logNotesCol.createIndex({ clientId: 1, userId: 1, timestamp: -1 });
     results.push('Log notes indexes created');
 
     // ── Settings collection ───────────────────────────────────────────────────
