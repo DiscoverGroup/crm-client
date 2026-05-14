@@ -156,9 +156,14 @@ export class NotificationService {
 
   // ─── MongoDB Sync ─────────────────────────────────────────────────────
 
+  private static lastSyncAt = 0;
+  private static MIN_SYNC_INTERVAL_MS = 15_000; // never sync more than once every 15 s
+
   static async syncFromMongoDB(userId?: string): Promise<void> {
     if (this.syncInProgress) return;
+    if (Date.now() - this.lastSyncAt < this.MIN_SYNC_INTERVAL_MS) return;
     this.syncInProgress = true;
+    this.lastSyncAt = Date.now();
 
     try {
       console.log('[NOTIF-SYNC] Fetching notifications from MongoDB...');

@@ -2,7 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
-import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { checkRateLimit, checkRateLimitByUser, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 import { logInfo, logWarn, logError, startTimer } from './utils/logger';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
@@ -126,10 +126,19 @@ export const handler: Handler = async (event) => {
     let mongoClient = await getMongoClient();
     let db = mongoClient.db(DB_NAME);
 
-    // ── Rate limit (300 req / IP / 60 s) ──────────────────────────────────────
-    const rateLimit = await checkRateLimit(db, ip, 'database', 300, 60);
-    if (rateLimit.limited) {
-      logWarn({ fn: 'database', msg: 'Rate limit exceeded', ip, userId: auth.user?.userId });
+    // ── Rate limiting ──────────────────────────────────────────────────────────
+    // Primary: per-user limit (120 req / user / 60 s ≈ 2 req/s per employee).
+    // Multiple employees sharing the same office NAT IP each get their own budget.
+    const userRateLimit = await checkRateLimitByUser(db, auth.user!.userId, 'database', 120, 60);
+    if (userRateLimit.limited) {
+      logWarn({ fn: 'database', msg: 'Per-user rate limit exceeded', ip, userId: auth.user?.userId });
+      return tooManyRequestsResponse(headers, 60);
+    }
+    // Secondary: per-IP burst guard — 600 req / IP / 60 s catches abuse/scrapers
+    // but does NOT block legitimate office traffic from multiple employees.
+    const ipRateLimit = await checkRateLimit(db, ip, 'database', 600, 60);
+    if (ipRateLimit.limited) {
+      logWarn({ fn: 'database', msg: 'Per-IP rate limit exceeded', ip, userId: auth.user?.userId });
       return tooManyRequestsResponse(headers, 60);
     }
 

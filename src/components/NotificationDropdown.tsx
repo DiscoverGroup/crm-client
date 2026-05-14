@@ -158,14 +158,17 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       loadNotifications();
     });
     
-    // Poll every 8 seconds as a fallback for when the realtimeSync fast path
-    // (sync-signal → 5s poller → sync:notifications event) fails due to a
-    // cold-start Lambda or transient network error.
+    // Fallback poll: 30 s is sufficient because the realtimeSync fast path
+    // (sync-signal → sync-check every 5 s → sync:notifications event) already
+    // delivers near-instant updates. The 30 s poll only guards against a missed
+    // event (cold Lambda, transient network blip).
+    // This also prevents office teams sharing a NAT IP from hitting the 429
+    // rate limit — each extra 8 s poll added ~7.5 /database calls/min/user.
     const interval = setInterval(() => {
       NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
         loadNotifications();
       }).catch(() => {});
-    }, 8000);
+    }, 30000);
 
     // Also listen for realtimeSync / BroadcastChannel events.
     // Show from localStorage immediately (covers same-browser BroadcastChannel
