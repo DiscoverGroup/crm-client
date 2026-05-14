@@ -63,9 +63,9 @@ export const handler: Handler = async (event) => {
     });
     const db = client.db(DB_NAME);
 
-    // ── Per-user rate limit (5 req / user / 60 s) ─────────────────────────────
+    // ── Per-user rate limit (20 req / user / 60 s — allows ~3 open tabs each beating every 60s) ──
     const ip = getClientIP(event.headers as Record<string, string>);
-    const rl = await checkRateLimitByUser(db, userId, 'track-presence', 5, 60);
+    const rl = await checkRateLimitByUser(db, userId, 'track-presence', 20, 60);
     if (rl.limited) return tooManyRequestsResponse(headers, 60);
     void ip; // ip captured for future IP-based limiting if needed
 
