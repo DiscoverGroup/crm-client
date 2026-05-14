@@ -116,7 +116,10 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
       const latestUnread = userNotifs.find(n => !n.isRead);
       if (latestUnread) {
         setToastNotification(latestUnread);
-        playNotificationSound();
+        // Sound only for new client added (new_sale) or new booking confirmation (new_bc)
+        if (latestUnread.type === 'new_sale' || latestUnread.type === 'new_bc') {
+          playNotificationSound();
+        }
       } else {
         console.warn('[NOTIF] No unread notification found despite count increase');
       }
