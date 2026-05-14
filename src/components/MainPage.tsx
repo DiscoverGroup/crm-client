@@ -1904,7 +1904,7 @@ const ClientRecords: React.FC<{
           </div>
           
           {/* Client Info */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-client-info" style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               
@@ -2200,7 +2200,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Package & Companions */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-package" style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               
@@ -2667,7 +2667,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Payment Terms & Schedule */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-payment" style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               
@@ -3334,7 +3334,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Account Relations Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-account-relations" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Account Relations
@@ -3360,7 +3360,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* After Sales SC Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-after-sales-sc" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>After Sales SC</h2>
             </div>
@@ -3403,7 +3403,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Visa Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-visa" style={sectionStyle(windowWidth)}>
             {/* Section Header */}
             <div style={sectionHeader}>
               
@@ -3661,7 +3661,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Embassy Information Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-embassy" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Embassy Information
@@ -3708,7 +3708,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* After Visa SC Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-after-visa-sc" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>After Visa SC</h2>
             </div>
@@ -3751,7 +3751,7 @@ const ClientRecords: React.FC<{
           </div>
 
           {/* Pre-Departure SC Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-pre-departure-sc" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>Pre-Departure SC</h2>
             </div>
@@ -3973,7 +3973,7 @@ const ClientRecords: React.FC<{
             })()}
           </div>
           {/* Post-Departure SC Section */}
-          <div style={sectionStyle(windowWidth)}>
+          <div id="section-post-departure-sc" style={sectionStyle(windowWidth)}>
             <div style={sectionHeader}>
               <h2 style={{ margin: 0, color: "#0A2D74", fontSize: "19px", fontWeight: 700, letterSpacing: "0.01em" }}>
                 Post-Departure
@@ -4282,18 +4282,27 @@ const MainPage: React.FC<MainPageProps> = ({
   useEffect(() => {
     if (navigationRequest && onNavigationHandled) {
       const { page, params } = navigationRequest;
-      
-      if (page === 'log-notes' && params?.clientId) {
-        // Navigate to client form (which shows log notes)
-        setViewingForm({ clientId: params.clientId });
+
+      const openClientAndScroll = (clientId: string, scrollTo?: string) => {
+        setViewingForm({ clientId });
         setViewProfile(false);
         setViewDeleted(false);
         setViewActivityLog(false);
         setViewCalendar(false);
         setViewAdminPanel(false);
-        
-        // TODO: Scroll to specific note if params.scrollTo is provided
-        // This would need to be handled in the ClientForm/LogNoteComponent
+        if (scrollTo) {
+          // Wait for the form to render before scrolling
+          setTimeout(() => {
+            const el = document.getElementById(scrollTo);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 500);
+        }
+      };
+
+      if (page === 'client-form' && params?.clientId) {
+        openClientAndScroll(params.clientId, params.scrollTo);
+      } else if (page === 'log-notes' && params?.clientId) {
+        openClientAndScroll(params.clientId, params.scrollTo);
       } else if (page === 'activity-log') {
         setViewActivityLog(true);
         setViewingForm(null);
@@ -4302,7 +4311,7 @@ const MainPage: React.FC<MainPageProps> = ({
         setViewCalendar(false);
         setViewAdminPanel(false);
       }
-      
+
       onNavigationHandled();
     }
   }, [navigationRequest, onNavigationHandled]);

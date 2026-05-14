@@ -293,6 +293,7 @@ export class NotificationService {
     fromUserName: string;
     clientId?: string;
     clientName?: string;
+    scrollTo?: string;
   }): void {
     const users = this.getAllUsers();
     console.log('[NOTIF-BROADCAST] Broadcasting', params.type, '— users in crm_users:', users.length, users.map(u => u.fullName ?? u.username));
@@ -311,7 +312,7 @@ export class NotificationService {
         clientId: params.clientId,
         clientName: params.clientName,
         link: params.clientId
-          ? { page: 'client-form', clientId: params.clientId }
+          ? { page: 'client-form', clientId: params.clientId, scrollTo: params.scrollTo }
           : undefined,
       });
     }
@@ -361,6 +362,19 @@ export class NotificationService {
     clientName: string;
     section: string;
   }): void {
+    // Map section name to the DOM element id for scroll-to on click
+    const SECTION_ID_MAP: Record<string, string> = {
+      'Client Information': 'section-client-info',
+      'Package & Companions': 'section-package',
+      'Payment Details': 'section-payment',
+      'Account Relations': 'section-account-relations',
+      'After Sales SC': 'section-after-sales-sc',
+      'After Visa SC': 'section-after-visa-sc',
+      'Pre-Departure SC': 'section-pre-departure-sc',
+      'Post-Departure SC': 'section-post-departure-sc',
+      'Visa Information': 'section-visa',
+      'Embassy Information': 'section-embassy',
+    };
     this.broadcastToAllUsers({
       type: 'client_update',
       title: '📝 Client Updated',
@@ -369,6 +383,7 @@ export class NotificationService {
       fromUserName: params.fromUserName,
       clientId: params.clientId,
       clientName: params.clientName,
+      scrollTo: SECTION_ID_MAP[params.section] ?? 'section-client-info',
     });
   }
 }
