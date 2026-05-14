@@ -235,36 +235,33 @@ const App: React.FC = () => {
 
       try {
         const users = JSON.parse(usersData);
-        // console.log(`🔄 Syncing ${users.length} users to MongoDB...`);
+        if (!users.length) return;
 
-        let successCount = 0;
-        let failCount = 0;
+        // Fetch all existing user emails in one request instead of N findUser calls
+        const response = await fetch('/.netlify/functions/database', {
+          method: 'POST',
+          headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            collection: 'users',
+            operation: 'find',
+            filter: {}
+          })
+        });
+        if (!response.ok) return; // rate-limited or error — skip silently
 
-        for (const user of users) {
-          try {
-            // Check if user already exists in MongoDB
-            const existingUser = await MongoDBService.findUser(user.email);
-            
-            if (!existingUser) {
-              // User doesn't exist, insert it
-              const result = await MongoDBService.saveUser(user);
-              if (result.success) {
-                successCount++;
-                // console.log(`✅ Synced user: ${user.fullName} (${user.email})`);
-              } else {
-                failCount++;
-                // console.warn(`⚠️ Failed to sync user: ${user.email}`);
-              }
-            }
-          } catch (error) {
-            failCount++;
-            // console.error(`❌ Error syncing user ${user.email}:`, error);
-          }
+        const result = await response.json();
+        const existingEmails = new Set<string>(
+          result.success && Array.isArray(result.data)
+            ? result.data.map((u: any) => u.email as string)
+            : []
+        );
+
+        const missing = users.filter((u: any) => u.email && !existingEmails.has(u.email));
+        for (const user of missing) {
+          await MongoDBService.saveUser(user).catch(() => {});
         }
-
-        // console.log(`✅ MongoDB sync complete: ${successCount} successful, ${failCount} failed`);
-      } catch (error) {
-        // console.error('Error syncing users to MongoDB:', error);
+      } catch {
+        // silent — non-critical background sync
       }
     };
 
