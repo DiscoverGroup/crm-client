@@ -131,28 +131,34 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ currentUser
 
   useEffect(() => {
     // Sync from MongoDB first, record baseline (no toast), then start polling
-    NotificationService.syncFromMongoDB().then(() => {
+    NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
       loadNotifications();
     }).catch(() => {
       loadNotifications();
     });
     
-    // Poll every 5 seconds for near-real-time updates
+    // Poll every 30 seconds — sound/toast fires from loadNotifications when count increases
     const interval = setInterval(() => {
-      NotificationService.syncFromMongoDB().then(() => {
+      NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
         loadNotifications();
       }).catch(() => {});
-    }, 5000);
+    }, 30000);
 
-    // Also listen for instant same-browser sync events
+    // Also listen for instant same-browser sync events, debounced to avoid
+    // N rapid fires when a broadcast creates N notifications at once
+    let syncDebounceTimer: ReturnType<typeof setTimeout> | null = null;
     const onSync = () => {
-      NotificationService.syncFromMongoDB().then(() => {
-        loadNotifications();
-      }).catch(() => {});
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+      syncDebounceTimer = setTimeout(() => {
+        NotificationService.syncFromMongoDB(currentUser.fullName).then(() => {
+          loadNotifications();
+        }).catch(() => {});
+      }, 500);
     };
     window.addEventListener('sync:notifications', onSync);
     return () => {
       clearInterval(interval);
+      if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
       window.removeEventListener('sync:notifications', onSync);
     };
   }, [currentUser.fullName, loadNotifications]);

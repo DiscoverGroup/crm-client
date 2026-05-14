@@ -291,7 +291,7 @@ const App: React.FC = () => {
           ActivityLogService.syncFromMongoDB(),
           FileService.syncFromMongoDB(),
           calendarService.syncFromMongoDB(),
-          NotificationService.syncFromMongoDB()
+          NotificationService.syncFromMongoDB(currentUser?.fullName)
         ]);
       } catch (error) {
         // console.error('Error syncing from MongoDB:', error);

@@ -151,19 +151,20 @@ export class NotificationService {
 
   // ─── MongoDB Sync ─────────────────────────────────────────────────────
 
-  static async syncFromMongoDB(): Promise<void> {
+  static async syncFromMongoDB(userId?: string): Promise<void> {
     if (this.syncInProgress) return;
     this.syncInProgress = true;
 
     try {
       console.log('[NOTIF-SYNC] Fetching notifications from MongoDB...');
+      const filter = userId ? { targetUserId: userId } : {};
       const response = await fetch(DB_API, {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           collection: 'notifications',
           operation: 'find',
-          filter: {}
+          filter
         })
       });
 
