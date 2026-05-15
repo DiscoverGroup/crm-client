@@ -1,8 +1,8 @@
 .ui-card {
   background: var(--card);
   border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .ui-card--soft {
@@ -32,7 +32,7 @@
 
 .ui-button:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.28);
+  box-shadow: 0 0 0 3px rgba(40, 162, 220, 0.28);
 }
 
 .ui-button:disabled {
@@ -50,15 +50,15 @@
 }
 
 .ui-button--primary {
-  background: var(--gradient-signature);
-  color: var(--accent-foreground);
-  box-shadow: var(--shadow-accent);
+  background: linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(10, 45, 116, 0.25);
 }
 
 .ui-button--primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-accent-lg);
-  filter: brightness(1.05);
+  box-shadow: 0 4px 14px rgba(10, 45, 116, 0.32);
+  filter: brightness(1.06);
 }
 
 .ui-button--secondary {
@@ -135,31 +135,31 @@
 
 .ui-input:focus {
   outline: none;
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.2);
+  border-color: #28A2DC;
+  box-shadow: 0 0 0 3px rgba(40, 162, 220, 0.15);
 }
 
 .ui-select-focus:focus-visible {
   outline: none;
-  border-color: var(--ring) !important;
-  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.2);
+  border-color: #28A2DC !important;
+  box-shadow: 0 0 0 3px rgba(40, 162, 220, 0.15);
 }
 
 .ui-section-label {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 82, 255, 0.3);
-  background: rgba(0, 82, 255, 0.06);
-  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.3rem 0.75rem;
 }
 
 .ui-section-label__dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--accent);
+  background: #28A2DC;
 }
 
 .ui-section-label__dot--pulse {
@@ -167,11 +167,12 @@
 }
 
 .ui-section-label__text {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
-  letter-spacing: 0.14em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: #64748b;
 }
 
 @keyframes ui-pulse {

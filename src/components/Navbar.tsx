@@ -96,13 +96,13 @@ const Navbar: React.FC<NavbarProps> = ({
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    boxShadow: "0 4px 20px rgba(10, 45, 116, 0.35)",
+    boxShadow: "0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(7, 31, 85, 0.4)",
     position: "sticky",
     top: 0,
     zIndex: 999,
     gap: "8px",
-    height: "64px",
-    borderBottom: "1px solid rgba(40, 162, 220, 0.3)"
+    height: "60px",
+    borderBottom: "1px solid rgba(40, 162, 220, 0.2)"
   }}>
     <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
       {/* Mobile Hamburger Menu */}
@@ -197,14 +197,14 @@ const Navbar: React.FC<NavbarProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '5px',
-              background: 'rgba(34, 197, 94, 0.12)',
-              border: '1px solid rgba(34, 197, 94, 0.35)',
-              borderRadius: '999px',
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+              borderRadius: '6px',
               padding: '4px 10px',
               fontSize: '12px',
-              fontWeight: '600',
+              fontWeight: '500',
               color: '#86efac',
-              letterSpacing: '0.02em',
+              letterSpacing: '0.01em',
               whiteSpace: 'nowrap',
               cursor: 'default',
               userSelect: 'none',

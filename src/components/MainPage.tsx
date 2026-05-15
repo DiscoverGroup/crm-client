@@ -39,27 +39,27 @@ import { VERSION_INFO, getFullVersion } from '../config/version';
 
 // Utility for modern UI
 const modernInput: React.CSSProperties = {
-  padding: "11px 14px",
-  border: "1.5px solid #d1dbe8",
-  borderRadius: "10px",
-  fontSize: "15px",
+  padding: "10px 12px",
+  border: "1.5px solid #e2e8f0",
+  borderRadius: "8px",
+  fontSize: "14px",
   width: "100%",
   boxSizing: "border-box" as const,
   background: "#ffffff",
-  transition: "all 0.2s ease",
+  transition: "all 0.15s ease",
   color: "#1e293b",
-  fontFamily: "'Poppins', sans-serif"
+  fontFamily: "'Inter', -apple-system, sans-serif"
 };
 
 // modernInputFocus, modernCheckbox, checkboxLabel removed — no longer used
 
 const sectionStyle = (w: number): React.CSSProperties => ({
   background: "#ffffff",
-  borderRadius: "16px",
-  boxShadow: "0 2px 12px rgba(10, 45, 116, 0.08), 0 1px 3px rgba(0,0,0,0.04)",
-  padding: w < 640 ? "16px" : w <= 1366 ? "20px" : "28px",
-  marginBottom: w < 640 ? "16px" : w <= 1366 ? "16px" : "24px",
-  border: "1px solid rgba(10, 45, 116, 0.1)",
+  borderRadius: "12px",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)",
+  padding: w < 640 ? "16px" : w <= 1366 ? "20px" : "24px",
+  marginBottom: w < 640 ? "12px" : w <= 1366 ? "14px" : "20px",
+  border: "1px solid #e2e8f0",
   position: "relative" as const,
   overflow: "hidden" as const
 });
@@ -67,17 +67,17 @@ const sectionStyle = (w: number): React.CSSProperties => ({
 const sectionHeader: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  marginBottom: "20px",
-  paddingBottom: "14px",
-  borderBottom: "2px solid rgba(40, 162, 220, 0.25)"
+  marginBottom: "18px",
+  paddingBottom: "12px",
+  borderBottom: "1px solid #e2e8f0"
 };
 
 const label: React.CSSProperties = {
-  fontWeight: 600,
-  color: "#0A2D74", 
-  marginBottom: "6px",
+  fontWeight: 500,
+  color: "#64748b",
+  marginBottom: "5px",
   display: "block",
-  fontSize: "13px",
+  fontSize: "12px",
   letterSpacing: "0.02em",
   textTransform: "uppercase" as const
 };
@@ -92,19 +92,19 @@ const subLabel = {
 
 const saveButtonStyle = (isSaving: boolean): React.CSSProperties => ({
   background: isSaving
-    ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+    ? "#e2e8f0"
     : "linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)",
-  color: "#fff",
+  color: isSaving ? "#94a3b8" : "#fff",
   padding: "10px 24px",
   border: "none",
-  borderRadius: "10px",
+  borderRadius: "8px",
   fontSize: "14px",
   fontWeight: 600,
   cursor: isSaving ? "not-allowed" : "pointer",
   boxShadow: isSaving
     ? "none"
-    : "0 4px 14px rgba(10, 45, 116, 0.35)",
-  transition: "all 0.25s ease",
+    : "0 2px 8px rgba(10, 45, 116, 0.25)",
+  transition: "all 0.2s ease",
   marginTop: "20px",
   letterSpacing: "0.02em",
   opacity: isSaving ? 0.7 : 1

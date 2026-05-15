@@ -151,11 +151,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={`sidebar-container ${isOpen ? 'open' : ''}`}
         style={{
           width: isCollapsed ? '80px' : '272px',
-          background: 'rgba(255, 255, 255, 0.95)',
+          background: '#ffffff',
           color: '#0f172a',
           padding: isCollapsed ? '14px 10px' : '18px 14px',
           height: '100vh',
-          boxShadow: '8px 0 30px rgba(15, 23, 42, 0.10)',
+          boxShadow: '1px 0 0 #e2e8f0',
           position: 'fixed',
           left: 0,
           top: 0,
@@ -164,7 +164,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           overflowX: 'hidden',
           borderRight: '1px solid #e2e8f0',
           transition: 'all 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
-          backdropFilter: 'blur(8px)',
         }}
       >
         <div
@@ -204,9 +203,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 width: isCollapsed ? '34px' : '38px',
                 height: isCollapsed ? '34px' : '38px',
                 objectFit: 'contain',
-                borderRadius: '10px',
-                border: '1px solid #dbe7ff',
-                background: '#f8fbff',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                background: '#f8fafc',
                 padding: '2px',
               }}
             />
@@ -267,32 +266,27 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={item.onClick}
               style={{
                 width: '100%',
-                padding: isCollapsed ? '11px 0' : '11px 12px',
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
+                padding: isCollapsed ? '10px 0' : '9px 12px',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '8px',
                 fontSize: '13px',
-                fontWeight: 600,
+                fontWeight: 500,
                 cursor: 'pointer',
-                marginBottom: '8px',
-                transition: 'all 0.16s ease',
+                marginBottom: '2px',
+                transition: 'all 0.15s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: isCollapsed ? 'center' : 'flex-start',
                 gap: '10px',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
                 ...getToneStyle(item.tone),
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.transform = isCollapsed ? 'scale(1.03)' : 'translateX(2px)';
-                e.currentTarget.style.borderColor = '#cdd8e8';
-                e.currentTarget.style.background = '#f8fbff';
+                e.currentTarget.style.background = '#f1f5f9';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.borderColor = '#e2e8f0';
-                e.currentTarget.style.background = '#ffffff';
+                e.currentTarget.style.background = 'transparent';
               }}
               title={isCollapsed ? item.title : ''}
             >
@@ -308,16 +302,16 @@ const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => handleNavigation(onNavigateToAdminPanel)}
             style={{
               width: '100%',
-              padding: isCollapsed ? '11px 0' : '12px 14px',
-              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-              color: '#f8fafc',
-              border: '1px solid #0f172a',
-              borderRadius: '12px',
+              padding: isCollapsed ? '10px 0' : '10px 14px',
+              background: '#0A2D74',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
               cursor: 'pointer',
               fontSize: '13px',
-              fontWeight: 700,
+              fontWeight: 600,
               transition: 'all 0.2s ease',
-              marginTop: '6px',
+              marginTop: '8px',
               marginBottom: '90px',
               display: 'flex',
               alignItems: 'center',
