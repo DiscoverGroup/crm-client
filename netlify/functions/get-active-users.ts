@@ -65,7 +65,7 @@ export const handler: Handler = async (event) => {
       .collection('users')
       .find(
         { lastActiveAt: { $gte: since }, approvalStatus: 'approved' },
-        { projection: { fullName: 1, _id: 0 } }
+        { projection: { fullName: 1, email: 1, department: 1, position: 1, profileImageR2Path: 1, _id: 0 } }
       )
       .toArray();
 

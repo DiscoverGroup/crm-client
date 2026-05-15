@@ -28,6 +28,9 @@ const Navbar: React.FC<NavbarProps> = ({
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const [activeUserCount, setActiveUserCount] = useState<number | null>(null);
+  const [activeUserList, setActiveUserList] = useState<Array<{ fullName: string; email?: string; department?: string; position?: string; profileImageR2Path?: string }>>([]);
+  const [showActiveDropdown, setShowActiveDropdown] = useState(false);
+  const activeDropdownRef = useRef<HTMLDivElement>(null);
   const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -57,6 +60,7 @@ const Navbar: React.FC<NavbarProps> = ({
       if (res.ok) {
         const data = await res.json();
         if (typeof data.count === 'number') setActiveUserCount(data.count);
+        if (Array.isArray(data.users)) setActiveUserList(data.users);
       }
     } catch {
       // non-fatal
@@ -87,6 +91,17 @@ const Navbar: React.FC<NavbarProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showActionsMenu]);
+
+  useEffect(() => {
+    if (!showActiveDropdown) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (activeDropdownRef.current && !activeDropdownRef.current.contains(e.target as Node)) {
+        setShowActiveDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showActiveDropdown]);
 
   return (
   <nav style={{
@@ -189,38 +204,150 @@ const Navbar: React.FC<NavbarProps> = ({
         {/* Sync Status Indicator */}
         <SyncStatusIndicator />
 
-        {/* Active Now badge */}
+        {/* Active Now badge — click to see who's online */}
         {activeUserCount !== null && (
-          <div
-            title={`${activeUserCount} user${activeUserCount !== 1 ? 's' : ''} active right now`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              background: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid rgba(34, 197, 94, 0.25)',
-              borderRadius: '6px',
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontWeight: '500',
-              color: '#86efac',
-              letterSpacing: '0.01em',
-              whiteSpace: 'nowrap',
-              cursor: 'default',
-              userSelect: 'none',
-            }}
-          >
-            <span
+          <div ref={activeDropdownRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowActiveDropdown(v => !v)}
               style={{
-                width: '7px',
-                height: '7px',
-                borderRadius: '50%',
-                background: '#22c55e',
-                boxShadow: '0 0 6px #22c55e',
-                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: showActiveDropdown ? 'rgba(34, 197, 94, 0.18)' : 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+                borderRadius: '6px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#86efac',
+                letterSpacing: '0.01em',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'background 0.15s',
               }}
-            />
-            {activeUserCount} active now
+            >
+              <span
+                style={{
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  background: '#22c55e',
+                  boxShadow: '0 0 6px #22c55e',
+                  flexShrink: 0,
+                }}
+              />
+              {activeUserCount} active now
+            </button>
+
+            {showActiveDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '10px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                minWidth: '220px',
+                maxWidth: '280px',
+                zIndex: 1001,
+                overflow: 'hidden',
+              }}>
+                {/* Header */}
+                <div style={{
+                  padding: '10px 14px 8px',
+                  borderBottom: '1px solid #f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  <span style={{
+                    width: '7px', height: '7px', borderRadius: '50%',
+                    background: '#22c55e', boxShadow: '0 0 5px #22c55e', flexShrink: 0,
+                  }} />
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>
+                    {activeUserCount} Online Now
+                  </span>
+                </div>
+
+                {/* User list */}
+                <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                  {activeUserList.length === 0 ? (
+                    <div style={{ padding: '14px', fontSize: '13px', color: '#94a3b8', textAlign: 'center' }}>
+                      No user details available
+                    </div>
+                  ) : (
+                    activeUserList.map((u, i) => {
+                      const initials = u.fullName
+                        .split(' ')
+                        .map(n => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase();
+                      const r2BaseUrl = (window as any).__R2_PUBLIC_URL__ || import.meta.env.VITE_R2_PUBLIC_URL || '';
+                      const avatarSrc = u.profileImageR2Path ? `${r2BaseUrl}/${u.profileImageR2Path}` : null;
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 14px',
+                            borderBottom: i < activeUserList.length - 1 ? '1px solid #f8fafc' : 'none',
+                          }}
+                        >
+                          {/* Avatar */}
+                          <div style={{
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            background: '#e0f2fe', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '12px', fontWeight: 700, color: '#0369a1',
+                            overflow: 'hidden', border: '1px solid #bae6fd',
+                          }}>
+                            {avatarSrc ? (
+                              <img src={avatarSrc} alt={initials}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={e => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : initials}
+                          </div>
+                          {/* Info */}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{
+                              fontSize: '13px', fontWeight: 600, color: '#0f172a',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}>
+                              {u.fullName}
+                              {u.fullName === currentUser?.fullName && (
+                                <span style={{ marginLeft: '5px', fontSize: '10px', color: '#64748b', fontWeight: 400 }}>
+                                  (you)
+                                </span>
+                              )}
+                            </div>
+                            {(u.position || u.department) && (
+                              <div style={{
+                                fontSize: '11px', color: '#64748b',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                              }}>
+                                {[u.position, u.department].filter(Boolean).join(' · ')}
+                              </div>
+                            )}
+                          </div>
+                          {/* Online dot */}
+                          <div style={{
+                            width: '7px', height: '7px', borderRadius: '50%',
+                            background: '#22c55e', boxShadow: '0 0 4px #22c55e',
+                            flexShrink: 0, marginLeft: 'auto',
+                          }} />
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
