@@ -4167,6 +4167,7 @@ interface MainPageProps {
   onNavigationHandled?: () => void;
   isSidebarOpen?: boolean;
   onCloseSidebar?: () => void;
+  onMessageUser?: (user: { id: string; name: string; email: string }) => void;
 }
 
 const MainPage: React.FC<MainPageProps> = ({ 
@@ -4175,7 +4176,8 @@ const MainPage: React.FC<MainPageProps> = ({
   navigationRequest, 
   onNavigationHandled,
   isSidebarOpen = false,
-  onCloseSidebar
+  onCloseSidebar,
+  onMessageUser
 }) => {
   const releaseTag = `${getFullVersion()}-${VERSION_INFO.website.buildNumber}`;
   const NEW_UI_MODAL_KEY = `crm_whats_new_seen_${releaseTag}`;
@@ -4780,6 +4782,7 @@ const MainPage: React.FC<MainPageProps> = ({
           }}>
             <AdminPanel
               onBack={() => setViewAdminPanel(false)}
+              onMessageUser={onMessageUser}
             />
           </div>
         </div>

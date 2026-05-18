@@ -18,6 +18,7 @@ import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveS
 import type { StorageSettings, StorageMode } from '../types/storage';
 import Button from './ui/Button';
 import ProgressBar from './ui/ProgressBar';
+import AddUserModal from './AddUserModal';
 
 interface User {
   fullName: string;
@@ -40,9 +41,10 @@ interface User {
 
 interface AdminPanelProps {
   onBack: () => void;
+  onMessageUser?: (user: { id: string; name: string; email: string }) => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
@@ -98,6 +100,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   // ── Reject reason modal state ──────────────────────────────────────────────
   const [rejectModal, setRejectModal] = useState<{ type: 'file' | 'client'; requestId: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // ── Add User modal ─────────────────────────────────────────────────────────
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   const saveQuotaSettings = (updated: typeof quotaSettings) => {
     setQuotaSettings(updated);
@@ -935,6 +940,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </div>
       </div>
 
+      {/* Add User CTA */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+        <Button variant="primary" size="md" onClick={() => setShowAddUserModal(true)}>
+          + Add User
+        </Button>
+      </div>
+
       {/* Filters */}
       <div style={{
         background: 'white',
@@ -1169,6 +1181,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      {onMessageUser && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => onMessageUser({ id: (user as any).id || user.email, name: user.fullName, email: user.email })}
+                          title="Message User"
+                        >
+                          💬 Message
+                        </Button>
+                      )}
                       {!user.isVerified && (
                         <Button
                           variant="success"
@@ -1739,6 +1761,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Add User Modal */}
+      <AddUserModal
+        open={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        onCreated={() => {
+          showSuccessToast('User created successfully');
+          loadUsers();
+        }}
+      />
 
       {/* Workflows Tab */}
       {activeTab === 'workflows' && (

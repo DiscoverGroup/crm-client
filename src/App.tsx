@@ -1007,6 +1007,7 @@ const App: React.FC = () => {
               onNavigationHandled={() => setNavigationRequest(null)}
               isSidebarOpen={isSidebarOpen}
               onCloseSidebar={() => setIsSidebarOpen(false)}
+              onMessageUser={isAdmin() ? handleMessageUser : undefined}
             />
           </>
         ) : (

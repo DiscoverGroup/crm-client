@@ -6,6 +6,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -59,6 +60,12 @@ export const handler: Handler = async (event) => {
   try {
     await client.connect();
     const db = client.db(DB_NAME);
+
+    // ── Rate limit: 60 admin list requests per IP per 15 min ────────────────
+    const ip = getClientIP(event.headers as Record<string, string>);
+    const rl = await checkRateLimit(db, ip, 'get-users', 60, 900);
+    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+
     const usersCollection = db.collection('users');
 
     const rawUsers = await usersCollection

@@ -2,6 +2,7 @@ import type { Handler } from '@netlify/functions';
 import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { checkRateLimitByUser, tooManyRequestsResponse } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -69,6 +70,12 @@ export const handler: Handler = async (event) => {
     });
 
     const db = client.db(DB_NAME);
+
+    // ── Rate limit: 60 conversation-list fetches per user per 60s ─────────────
+    const rlAuthUserId = auth.user!.userId;
+    const rl = await checkRateLimitByUser(db, rlAuthUserId, 'get-conversations', 60, 60);
+    if (rl.limited) return tooManyRequestsResponse(headers, 60);
+
     const messagesCol = db.collection('messages');
     const usersCol = db.collection('users');
     const conversationMetaCol = db.collection('conversation_meta');
