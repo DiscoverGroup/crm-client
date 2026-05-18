@@ -16,6 +16,8 @@ import StressTest from './StressTest';
 import { checkLocalMacConnection, listMacBackups, uploadFileToLocalMac } from '../services/localMacService';
 import { backupFilesToDrive, type DriveProgress } from '../services/googleDriveService';
 import type { StorageSettings, StorageMode } from '../types/storage';
+import Button from './ui/Button';
+import ProgressBar from './ui/ProgressBar';
 
 interface User {
   fullName: string;
@@ -92,6 +94,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [macBackupStatus, setMacBackupStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [macBackupMessage, setMacBackupMessage] = useState('');
   const storageSettingsLoadedRef = useRef(false);
+
+  // ── Reject reason modal state ──────────────────────────────────────────────
+  const [rejectModal, setRejectModal] = useState<{ type: 'file' | 'client'; requestId: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const saveQuotaSettings = (updated: typeof quotaSettings) => {
     setQuotaSettings(updated);
@@ -353,17 +359,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const handleRejectRecovery = (requestId: string) => {
     const request = recoveryRequests.find(r => r.id === requestId);
     if (!request) return;
-
-    const reason = prompt('Enter rejection reason (optional):');
-    if (reason !== null) { // User didn't cancel
-      const success = FileRecoveryService.rejectRequest(requestId, getCurrentAdmin(), reason || undefined);
-      if (success) {
-        showSuccessToast('File recovery request rejected.');
-        loadRecoveryRequests();
-      } else {
-        showErrorToast('Failed to reject recovery request.');
-      }
-    }
+    setRejectReason('');
+    setRejectModal({ type: 'file', requestId });
   };
 
   const handleApproveClientRecovery = async (requestId: string) => {
@@ -389,10 +386,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const handleRejectClientRecovery = (requestId: string) => {
     const request = clientRecoveryRequests.find(r => r.id === requestId);
     if (!request) return;
+    setRejectReason('');
+    setRejectModal({ type: 'client', requestId });
+  };
 
-    const reason = prompt('Enter rejection reason (optional):');
-    if (reason !== null) { // User didn't cancel
-      const success = ClientRecoveryService.rejectRequest(requestId, getCurrentAdmin(), reason || undefined);
+  const confirmRejectRecovery = () => {
+    if (!rejectModal) return;
+    const reason = rejectReason.trim() || undefined;
+    const admin = getCurrentAdmin();
+    if (rejectModal.type === 'file') {
+      const success = FileRecoveryService.rejectRequest(rejectModal.requestId, admin, reason);
+      if (success) {
+        showSuccessToast('File recovery request rejected.');
+        loadRecoveryRequests();
+      } else {
+        showErrorToast('Failed to reject recovery request.');
+      }
+    } else {
+      const success = ClientRecoveryService.rejectRequest(rejectModal.requestId, admin, reason);
       if (success) {
         showSuccessToast('Client recovery request rejected.');
         loadClientRecoveryRequests();
@@ -400,6 +411,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         showErrorToast('Failed to reject client recovery request.');
       }
     }
+    setRejectModal(null);
+    setRejectReason('');
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -497,44 +510,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => {
               loadUsers();
               loadRecoveryRequests();
               loadClientRecoveryRequests();
             }}
-            style={{
-              padding: '10px 20px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
             title="Refresh data"
           >
             🔄 Refresh
-          </button>
-          <button
-            onClick={onBack}
-            style={{
-              padding: '10px 20px',
-              background: '#64748b',
-              color: 'white',
-              border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}
-        >
-          ← Back to Dashboard
-        </button>
+          </Button>
+          <Button variant="secondary" size="md" onClick={onBack}>
+            ← Back to Dashboard
+          </Button>
         </div>
       </div>
 
@@ -545,275 +535,67 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         marginBottom: '24px',
         borderBottom: '2px solid #e2e8f0'
       }}>
-        <button
-          onClick={() => setActiveTab('users')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'users' ? 'white' : 'transparent',
-            color: activeTab === 'users' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'users' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          👥 Users
-        </button>
-        <button
-          onClick={() => setActiveTab('client-recovery')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'client-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'client-recovery' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'client-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            position: 'relative'
-          }}
-        >
-          👤 Client Recovery
-          {clientRecoveryStats.pending > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              background: '#ef4444',
-              color: 'white',
-              borderRadius: '10px',
-              padding: '2px 6px',
-              fontSize: '11px',
-              fontWeight: '700',
-              minWidth: '18px',
-              textAlign: 'center'
-            }}>
-              {clientRecoveryStats.pending}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('file-recovery')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'file-recovery' ? 'white' : 'transparent',
-            color: activeTab === 'file-recovery' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'file-recovery' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            position: 'relative'
-          }}
-        >
-          📁 File Recovery
-          {recoveryStats.pending > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              background: '#ef4444',
-              color: 'white',
-              borderRadius: '10px',
-              padding: '2px 6px',
-              fontSize: '11px',
-              fontWeight: '700',
-              minWidth: '18px',
-              textAlign: 'center'
-            }}>
-              {recoveryStats.pending}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('version')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'version' ? 'white' : 'transparent',
-            color: activeTab === 'version' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'version' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          ℹ️ Version Info
-        </button>
-        <button
-          onClick={() => setActiveTab('workflows')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'workflows' ? 'white' : 'transparent',
-            color: activeTab === 'workflows' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'workflows' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          🔄 Workflows
-        </button>
-        <button
-          onClick={() => setActiveTab('monitoring')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'monitoring' ? 'white' : 'transparent',
-            color: activeTab === 'monitoring' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'monitoring' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          🔍 System Monitoring
-        </button>
-        <button
-          onClick={() => setActiveTab('territory')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'territory' ? 'white' : 'transparent',
-            color: activeTab === 'territory' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'territory' ? '3px solid #3b82f6' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          🗺️ Territory Management
-        </button>
-        <button
-          onClick={() => setActiveTab('stress-test')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'stress-test' ? 'white' : 'transparent',
-            color: activeTab === 'stress-test' ? '#3b82f6' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'stress-test' ? '3px solid #28A2DC' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px'
-          }}
-        >
-          🧪 Stress Test
-        </button>
-        <button
-          onClick={() => setActiveTab('branding')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'branding' ? 'white' : 'transparent',
-            color: activeTab === 'branding' ? '#0A2D74' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'branding' ? '3px solid #28A2DC' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          🎨 Branding
-        </button>
-        <button
-          onClick={() => setActiveTab('storage-quota')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'storage-quota' ? 'white' : 'transparent',
-            color: activeTab === 'storage-quota' ? '#7c3aed' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'storage-quota' ? '3px solid #7c3aed' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          💾 Storage &amp; Quota
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('storage-settings');
-            if (!storageSettingsLoadedRef.current) {
+        {([
+          { id: 'users', label: '👥 Users' },
+          { id: 'client-recovery', label: '👤 Client Recovery', badge: clientRecoveryStats.pending },
+          { id: 'file-recovery', label: '📁 File Recovery', badge: recoveryStats.pending },
+          { id: 'version', label: 'ℹ️ Version Info' },
+          { id: 'workflows', label: '🔄 Workflows' },
+          { id: 'monitoring', label: '🔍 System Monitoring' },
+          { id: 'territory', label: '🗺️ Territory Management' },
+          { id: 'stress-test', label: '🧪 Stress Test' },
+          { id: 'branding', label: '🎨 Branding' },
+          { id: 'storage-quota', label: '💾 Storage & Quota' },
+          { id: 'storage-settings', label: '🖥️ Storage Settings' },
+          { id: 'backup-restore', label: '🗄️ Backup & Restore' },
+          { id: 'packages', label: '📦 Packages' },
+        ] as const).map((tab) => {
+          const isActive = activeTab === tab.id;
+          const handleClick = () => {
+            setActiveTab(tab.id as typeof activeTab);
+            if (tab.id === 'storage-settings' && !storageSettingsLoadedRef.current) {
               storageSettingsLoadedRef.current = true;
               setStorageSettingsLoading(true);
               FileService.getStorageConfig().then(cfg => setStorageSettings(cfg)).finally(() => setStorageSettingsLoading(false));
             }
-          }}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'storage-settings' ? 'white' : 'transparent',
-            color: activeTab === 'storage-settings' ? '#0369a1' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'storage-settings' ? '3px solid #0369a1' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          🖥️ Storage Settings
-        </button>
-        <button
-          onClick={() => setActiveTab('backup-restore')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'backup-restore' ? 'white' : 'transparent',
-            color: activeTab === 'backup-restore' ? '#059669' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'backup-restore' ? '3px solid #059669' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          🗄️ Backup &amp; Restore
-        </button>
-        <button
-          onClick={() => setActiveTab('packages')}
-          style={{
-            padding: '12px 24px',
-            background: activeTab === 'packages' ? 'white' : 'transparent',
-            color: activeTab === 'packages' ? '#0891b2' : '#64748b',
-            border: 'none',
-            borderBottom: activeTab === 'packages' ? '3px solid #0891b2' : '3px solid transparent',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            marginBottom: '-2px',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          📦 Packages
-        </button>
+          };
+          return (
+            <Button
+              key={tab.id}
+              variant="ghost"
+              size="md"
+              onClick={handleClick}
+              style={{
+                position: 'relative',
+                whiteSpace: 'nowrap',
+                marginBottom: '-2px',
+                borderBottom: isActive ? '3px solid var(--brand-sky)' : '3px solid transparent',
+                borderRadius: 0,
+                color: isActive ? 'var(--brand-sky)' : undefined,
+                background: isActive ? 'white' : undefined,
+              }}
+            >
+              {tab.label}
+              {'badge' in tab && tab.badge && tab.badge > 0 ? (
+                <span style={{
+                  position: 'absolute',
+                  top: '6px',
+                  right: '6px',
+                  background: '#ef4444',
+                  color: 'white',
+                  borderRadius: '10px',
+                  padding: '2px 6px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  minWidth: '18px',
+                  textAlign: 'center'
+                }}>
+                  {tab.badge}
+                </span>
+              ) : null}
+            </Button>
+          );
+        })}
       </div>
 
       {/* Branding Tab */}
@@ -1324,37 +1106,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                           </span>
                           {status !== 'approved' && (
                             <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                              <button
+                              <Button
+                                variant="success"
+                                size="sm"
                                 onClick={() => handleApproveUser(user.email, 'approve')}
-                                style={{
-                                  padding: '3px 8px',
-                                  background: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '4px',
-                                  fontSize: '11px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
                               >
                                 Approve
-                              </button>
+                              </Button>
                               {status !== 'rejected' && (
-                                <button
+                                <Button
+                                  variant="danger"
+                                  size="sm"
                                   onClick={() => handleApproveUser(user.email, 'reject')}
-                                  style={{
-                                    padding: '3px 8px',
-                                    background: '#ef4444',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer'
-                                  }}
                                 >
                                   Reject
-                                </button>
+                                </Button>
                               )}
                             </div>
                           )}
@@ -1404,39 +1170,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       {!user.isVerified && (
-                        <button
+                        <Button
+                          variant="success"
+                          size="sm"
                           onClick={() => handleVerifyUser(user.email)}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#10b981',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            cursor: 'pointer'
-                          }}
                           title="Verify User"
                         >
                           ✓ Verify
-                        </button>
+                        </Button>
                       )}
-                      <button
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => setShowDeleteConfirm(user)}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: 'pointer'
-                        }}
                         title="Delete User"
                       >
                         🗑️ Delete
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -1607,38 +1357,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         <td style={{ padding: '16px' }}>
                           {request.status === 'pending' ? (
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              <button
+                              <Button
+                                variant="success"
+                                size="sm"
                                 onClick={() => handleApproveClientRecovery(request.id)}
-                                style={{
-                                  padding: '6px 12px',
-                                  background: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
                                 title="Approve Recovery"
                               >
                                 ✓ Approve
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
                                 onClick={() => handleRejectClientRecovery(request.id)}
-                                style={{
-                                  padding: '6px 12px',
-                                  background: '#ef4444',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
                                 title="Reject Recovery"
                               >
                                 ✗ Reject
-                              </button>
+                              </Button>
                             </div>
                           ) : (
                             <div style={{ textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
@@ -1825,38 +1559,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         <td style={{ padding: '16px' }}>
                           {request.status === 'pending' ? (
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              <button
+                              <Button
+                                variant="success"
+                                size="sm"
                                 onClick={() => handleApproveRecovery(request.id)}
-                                style={{
-                                  padding: '6px 12px',
-                                  background: '#10b981',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
                                 title="Approve Recovery"
                               >
                                 ✓ Approve
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
                                 onClick={() => handleRejectRecovery(request.id)}
-                                style={{
-                                  padding: '6px 12px',
-                                  background: '#ef4444',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
-                                  fontWeight: '600',
-                                  cursor: 'pointer'
-                                }}
                                 title="Reject Recovery"
                               >
                                 ✗ Reject
-                              </button>
+                              </Button>
                             </div>
                           ) : (
                             <div style={{ textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
@@ -1953,6 +1671,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Recovery Reason Modal */}
+      {rejectModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '28px',
+            borderRadius: '16px',
+            maxWidth: '460px',
+            width: '90%',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 700, color: 'var(--brand-navy)' }}>
+              Reject {rejectModal.type === 'file' ? 'File' : 'Client'} Recovery
+            </h3>
+            <p style={{ margin: '0 0 16px 0', color: 'var(--muted-foreground)', fontSize: '13px' }}>
+              Provide an optional reason for rejecting this request.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Reason (optional)"
+              rows={4}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontFamily: 'var(--font-sans)',
+                fontSize: '14px',
+                resize: 'vertical',
+                boxSizing: 'border-box'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px', marginTop: '20px', justifyContent: 'flex-end' }}>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => { setRejectModal(null); setRejectReason(''); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={confirmRejectRecovery}
+              >
+                Reject Request
+              </Button>
             </div>
           </div>
         </div>
@@ -2766,9 +2548,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     </button>
                     {macBackupProgress && macBackupStatus === 'running' && (
                       <div style={{ marginTop: '12px' }}>
-                        <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '8px', overflow: 'hidden' }}>
-                          <div style={{ background: '#0369a1', height: '100%', width: `${(macBackupProgress.current / macBackupProgress.total) * 100}%`, transition: 'width 0.3s' }} />
-                        </div>
+                        <ProgressBar
+                          value={(macBackupProgress.current / macBackupProgress.total) * 100}
+                        />
                         <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>{macBackupProgress.current} / {macBackupProgress.total} files</p>
                       </div>
                     )}
@@ -3213,13 +2995,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {/* Download progress bar */}
               {backupProgress !== null && (
                 <div style={{ marginTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
-                    <span>💾 Saving backup to Mac…</span>
-                    <span>{backupProgress}%</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: `${backupProgress}%`, height: '100%', background: backupProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#059669,#34d399)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
-                  </div>
+                  <ProgressBar
+                    value={backupProgress}
+                    label="💾 Saving backup to Mac…"
+                    variant={backupProgress === 100 ? 'success' : 'default'}
+                    showPercent
+                  />
                 </div>
               )}
 
@@ -3232,13 +3013,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {/* R2 upload progress bar */}
               {r2BackupProgress !== null && (
                 <div style={{ marginTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
-                    <span>☁️ Backup running in background…</span>
-                    <span>{r2BackupProgress}%</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: `${r2BackupProgress}%`, height: '100%', background: r2BackupProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#0284c7,#38bdf8)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
-                  </div>
+                  <ProgressBar
+                    value={r2BackupProgress}
+                    label="☁️ Backup running in background…"
+                    variant={r2BackupProgress === 100 ? 'success' : 'default'}
+                    showPercent
+                  />
                 </div>
               )}
 
@@ -3323,13 +3103,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                 <div style={{ marginTop: '14px', padding: '12px 16px', background: statusBg(restoreStatus.type), borderRadius: '8px', fontSize: '13px', color: statusColor(restoreStatus.type), border: `1px solid ${restoreStatus.type === 'success' ? '#bbf7d0' : restoreStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}` }}>
                   {restoreStatus.type === 'loading' && restoreProgress !== null && (
                     <div style={{ marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '5px', fontWeight: '500' }}>
-                        <span>Restoring…</span>
-                        <span>{restoreProgress}%</span>
-                      </div>
-                      <div style={{ background: 'rgba(0,0,0,0.1)', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                        <div style={{ width: `${restoreProgress}%`, height: '100%', background: restoreProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#dc2626,#f87171)', borderRadius: '99px', transition: 'width 0.4s ease' }} />
-                      </div>
+                      <ProgressBar
+                        value={restoreProgress}
+                        label="Restoring…"
+                        variant={restoreProgress === 100 ? 'success' : 'error'}
+                        showPercent
+                      />
                     </div>
                   )}
                   {restoreStatus.message}
@@ -3495,13 +3274,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
               {/* ZIP progress bar */}
               {zipProgress !== null && (
                 <div style={{ marginTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '5px', fontWeight: '500' }}>
-                    <span>{zipProgress === 100 ? '✅ ZIP ready!' : '📦 Creating ZIP archive…'}</span>
-                    <span>{zipProgress}%</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: `${zipProgress}%`, height: '100%', background: zipProgress === 100 ? 'linear-gradient(90deg,#059669,#10b981)' : 'linear-gradient(90deg,#0284c7,#38bdf8)', borderRadius: '99px', transition: 'width 0.6s ease' }} />
-                  </div>
+                  <ProgressBar
+                    value={zipProgress}
+                    label={zipProgress === 100 ? '✅ ZIP ready!' : '📦 Creating ZIP archive…'}
+                    variant={zipProgress === 100 ? 'success' : 'default'}
+                    showPercent
+                  />
                 </div>
               )}
 

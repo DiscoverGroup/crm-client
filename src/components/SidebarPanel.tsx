@@ -11,9 +11,11 @@ interface SidebarProps {
   onOpenDriveRestore?: () => void;
   isOpen?: boolean;
   onClose?: () => void;
+  activePage?: string;
 }
 
 type NavItem = {
+  id: string;
   label: string;
   title: string;
   onClick: () => void;
@@ -32,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onOpenDriveRestore,
   isOpen = false,
   onClose,
+  activePage,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -42,6 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems: NavItem[] = [
     {
+      id: 'dashboard',
       label: 'Dashboard',
       title: 'Client Dashboard',
       onClick: () => handleNavigation(onNavigateToClientRecords),
@@ -55,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       ),
     },
     {
+      id: 'profile',
       label: 'Profile',
       title: 'My Profile',
       onClick: () => handleNavigation(onNavigateToProfile),
@@ -66,6 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       ),
     },
     {
+      id: 'deleted',
       label: 'Deleted',
       title: 'Deleted Clients',
       onClick: () => handleNavigation(onNavigateToDeleted),
@@ -80,6 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       tone: 'warn',
     },
     {
+      id: 'archived',
       label: 'Archived',
       title: 'Archived Clients',
       onClick: () => handleNavigation(onNavigateToArchived),
@@ -92,6 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       ),
     },
     {
+      id: 'activity',
       label: 'Activity',
       title: 'Activity Log',
       onClick: () => handleNavigation(onNavigateToActivityLog),
@@ -107,6 +115,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       ),
     },
     {
+      id: 'calendar',
       label: 'Calendar',
       title: 'Team Calendar',
       onClick: () => handleNavigation(onNavigateToCalendar),
@@ -123,6 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   if (onOpenDriveRestore) {
     navItems.push({
+      id: 'restore',
       label: 'Restore',
       title: 'Restore from Drive',
       onClick: () => {
@@ -260,40 +270,53 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          {navItems.map((item) => (
-            <button
-              key={item.title}
-              onClick={item.onClick}
-              style={{
-                width: '100%',
-                padding: isCollapsed ? '10px 0' : '9px 12px',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                marginBottom: '2px',
-                transition: 'all 0.15s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: isCollapsed ? 'center' : 'flex-start',
-                gap: '10px',
-                whiteSpace: 'nowrap',
-                ...getToneStyle(item.tone),
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = '#f1f5f9';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}
-              title={isCollapsed ? item.title : ''}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>{item.icon}</span>
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = activePage === item.id;
+            const toneStyle = getToneStyle(item.tone);
+            const activeStyle: React.CSSProperties = isActive
+              ? {
+                  background: 'rgba(40, 162, 220, 0.12)',
+                  borderLeft: '3px solid var(--brand-sky)',
+                  color: 'var(--brand-navy)',
+                }
+              : {};
+            return (
+              <button
+                key={item.title}
+                onClick={item.onClick}
+                style={{
+                  width: '100%',
+                  padding: isCollapsed ? '10px 0' : '9px 12px',
+                  background: 'transparent',
+                  border: 'none',
+                  borderLeft: '3px solid transparent',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  marginBottom: '2px',
+                  transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isCollapsed ? 'center' : 'flex-start',
+                  gap: '10px',
+                  whiteSpace: 'nowrap',
+                  ...toneStyle,
+                  ...activeStyle,
+                }}
+                onMouseOver={(e) => {
+                  if (!isActive) e.currentTarget.style.background = '#f1f5f9';
+                }}
+                onMouseOut={(e) => {
+                  if (!isActive) e.currentTarget.style.background = 'transparent';
+                }}
+                title={isCollapsed ? item.title : ''}
+              >
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>{item.icon}</span>
+                {!isCollapsed && <span>{item.label}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {onNavigateToAdminPanel && (

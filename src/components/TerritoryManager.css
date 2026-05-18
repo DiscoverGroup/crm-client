@@ -3,7 +3,7 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--gray-50);
 }
 
 .manager-header {
@@ -11,14 +11,14 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  border-bottom: 2px solid #ddd;
+  border-bottom: 2px solid var(--border);
   padding-bottom: 16px;
 }
 
 .manager-header h1 {
   font-size: 28px;
   margin: 0;
-  color: #333;
+  color: var(--gray-900);
 }
 
 .btn-close {
@@ -26,7 +26,7 @@
   border: none;
   font-size: 24px;
   cursor: pointer;
-  color: #666;
+  color: var(--muted-foreground);
   padding: 0;
   width: 32px;
   height: 32px;
@@ -38,7 +38,7 @@
 }
 
 .btn-close:hover {
-  background-color: #e0e0e0;
+  background-color: var(--muted);
   color: #000;
 }
 
@@ -47,14 +47,14 @@
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--border);
 }
 
 .tab-btn {
   padding: 12px 20px;
   border: none;
   background: none;
-  color: #666;
+  color: var(--muted-foreground);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -65,7 +65,7 @@
 }
 
 .tab-btn:hover {
-  color: #333;
+  color: var(--gray-900);
   background-color: #f0f0f0;
 }
 
@@ -108,7 +108,7 @@
 .tab-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #333;
+  color: var(--gray-900);
 }
 
 /* Empty State */
@@ -150,7 +150,7 @@
 .card-header h3 {
   margin: 0;
   font-size: 16px;
-  color: #333;
+  color: var(--gray-900);
   flex: 1;
 }
 
@@ -176,7 +176,7 @@
 
 .territory-card .description {
   font-size: 13px;
-  color: #666;
+  color: var(--muted-foreground);
   margin: 0 0 12px 0;
   line-height: 1.4;
 }
@@ -198,12 +198,12 @@
 }
 
 .stat .label {
-  color: #666;
+  color: var(--muted-foreground);
   font-weight: 500;
 }
 
 .stat .value {
-  color: #333;
+  color: var(--gray-900);
   font-weight: 600;
 }
 
@@ -221,15 +221,15 @@
 }
 
 .rules-table thead {
-  background-color: #f5f5f5;
-  border-bottom: 2px solid #ddd;
+  background-color: var(--gray-50);
+  border-bottom: 2px solid var(--border);
 }
 
 .rules-table th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
-  color: #333;
+  color: var(--gray-900);
   text-transform: uppercase;
   font-size: 12px;
 }
@@ -237,7 +237,7 @@
 .rules-table td {
   padding: 12px;
   border-bottom: 1px solid #eee;
-  color: #666;
+  color: var(--muted-foreground);
 }
 
 .rules-table tbody tr:hover {
@@ -260,7 +260,7 @@
 
 .assignment-card h3 {
   margin: 0 0 12px 0;
-  color: #333;
+  color: var(--gray-900);
   font-size: 16px;
 }
 
@@ -286,7 +286,7 @@
 
 .member-info strong {
   font-size: 13px;
-  color: #333;
+  color: var(--gray-900);
 }
 
 .role-badge {
@@ -318,7 +318,7 @@
   flex-direction: column;
   gap: 2px;
   font-size: 12px;
-  color: #666;
+  color: var(--muted-foreground);
 }
 
 /* Performance */
@@ -329,7 +329,7 @@
 .performance-section h3 {
   margin: 0 0 12px 0;
   font-size: 16px;
-  color: #333;
+  color: var(--gray-900);
   border-bottom: 1px solid #eee;
   padding-bottom: 8px;
 }
@@ -367,7 +367,7 @@
 
 .log-header .client {
   font-weight: 600;
-  color: #333;
+  color: var(--gray-900);
   font-size: 13px;
 }
 
@@ -394,7 +394,7 @@
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #666;
+  color: var(--muted-foreground);
 }
 
 .log-details .timestamp {
@@ -419,13 +419,13 @@
   min-width: 120px;
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: var(--gray-900);
 }
 
 .progress-bar {
   flex: 1;
   height: 24px;
-  background-color: #e0e0e0;
+  background-color: var(--muted);
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid #ddd;
@@ -441,7 +441,7 @@
   text-align: right;
   font-size: 13px;
   font-weight: 600;
-  color: #333;
+  color: var(--gray-900);
 }
 
 /* Modal */
@@ -487,7 +487,7 @@
 .modal-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #333;
+  color: var(--gray-900);
 }
 
 .modal-body {
@@ -502,7 +502,7 @@
   display: block;
   margin-bottom: 6px;
   font-weight: 500;
-  color: #333;
+  color: var(--gray-900);
   font-size: 13px;
 }
 

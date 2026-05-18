@@ -4516,6 +4516,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="dashboard"
           />
           <div
             className="main-content dashboard-themed-content"
@@ -4563,6 +4564,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="profile"
           />
           <div
             className="main-content dashboard-themed-content"
@@ -4619,6 +4621,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="deleted"
           />
           <div 
             className="main-content dashboard-themed-content"
@@ -4669,6 +4672,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="archived"
           />
           <div 
             className="main-content dashboard-themed-content"
@@ -4719,6 +4723,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="activity"
           />
           <div 
             className="main-content dashboard-themed-content"
@@ -4809,6 +4814,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="calendar"
           />
           <div
             className="main-content dashboard-themed-content"
@@ -4843,6 +4849,7 @@ const MainPage: React.FC<MainPageProps> = ({
             onOpenDriveRestore={() => setDriveRestoreVisible(true)}
             isOpen={isSidebarOpen}
             onClose={onCloseSidebar}
+            activePage="dashboard"
           />
           <div
             className="main-content dashboard-themed-content"

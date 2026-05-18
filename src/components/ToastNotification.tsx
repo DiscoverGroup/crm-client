@@ -47,7 +47,7 @@ const ToastNotification: React.FC<ToastNotificationProps> = ({ notification, onC
     >
       <div
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #0A2D74 0%, #1a4a9e 60%, #28A2DC 100%)',
           borderRadius: '12px',
           padding: '16px',
           boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
