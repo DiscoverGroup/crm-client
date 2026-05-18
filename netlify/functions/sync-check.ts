@@ -3,12 +3,10 @@
  * Returns the latest modification timestamp for each synced collection.
  * Designed to be polled every few seconds — reads a single small document.
  */
-import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
+import { getMongoDb } from './utils/mongoClient';
 
-const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'dg_crm';
 const COLLECTION = 'sync_metadata';
 
 export const handler = async (event: any) => {
@@ -33,18 +31,8 @@ export const handler = async (event: any) => {
   }
 
   try {
-    const client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      retryWrites: true,
-      w: 'majority',
-    });
-
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
     const doc = await db.collection(COLLECTION).findOne({ _id: 'timestamps' as any });
-    await client.close();
 
     return {
       statusCode: 200,

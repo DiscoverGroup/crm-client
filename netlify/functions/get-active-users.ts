@@ -8,13 +8,11 @@
  */
 
 import type { Handler } from '@netlify/functions';
-import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { getMongoDb } from './utils/mongoClient';
 
-const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'dg_crm';
 // Users are considered "active" if they pinged within this window
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -40,19 +38,8 @@ export const handler: Handler = async (event) => {
     return unauthorizedResponse(headers, auth.error);
   }
 
-  if (!MONGODB_URI) {
-    return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Database not configured' }) };
-  }
-
-  let client: MongoClient | null = null;
   try {
-    client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-    });
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
 
     // ── Rate limit (60 req / IP / 60 s — one poll every ~30 s is well within this) ──
     const ip = getClientIP(event.headers as Record<string, string>);
@@ -78,7 +65,13 @@ export const handler: Handler = async (event) => {
         users: activeUsers,
       }),
     };
-  } finally {
-    await client?.close();
+  } catch {
+    // Soft-fail: this endpoint is polled every 30s by the Navbar.
+    // Returning 502 floods the console; return an empty active list instead.
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, count: 0, users: [], degraded: true }),
+    };
   }
 };

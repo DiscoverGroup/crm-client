@@ -10,14 +10,12 @@
  */
 
 import type { Handler } from '@netlify/functions';
-import { MongoClient, ObjectId } from 'mongodb';
+import { ObjectId } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 import { checkRateLimitByUser, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
-
-const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'dg_crm';
+import { getMongoDb } from './utils/mongoClient';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -49,19 +47,8 @@ export const handler: Handler = async (event) => {
 
   const userId = auth.user!.userId;
 
-  if (!MONGODB_URI) {
-    return { statusCode: 500, headers, body: JSON.stringify({ success: false, error: 'Database not configured' }) };
-  }
-
-  let client: MongoClient | null = null;
   try {
-    client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-    });
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
 
     // ── Per-user rate limit (20 req / user / 60 s — allows ~3 open tabs each beating every 60s) ──
     const ip = getClientIP(event.headers as Record<string, string>);
@@ -84,13 +71,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({ success: true }),
     };
-  } catch (err: any) {
+  } catch {
+    // Heartbeat is best-effort — soft-fail so the Navbar doesn't show 502 storms.
     return {
-      statusCode: 502,
+      statusCode: 200,
       headers,
-      body: JSON.stringify({ success: false, error: 'Presence update failed' }),
+      body: JSON.stringify({ success: true, degraded: true }),
     };
-  } finally {
-    await client?.close();
   }
 };

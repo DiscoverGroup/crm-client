@@ -1,12 +1,9 @@
 import type { Handler } from '@netlify/functions';
-import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
 import { checkRateLimitByUser, tooManyRequestsResponse } from './utils/rateLimiter';
-
-const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'dg_crm';
+import { getMongoDb } from './utils/mongoClient';
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -40,7 +37,7 @@ export const handler: Handler = async (event) => {
     return unauthorizedResponse(headers, auth.error);
   }
 
-  if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
+  if (!process.env.MONGODB_URI || process.env.MONGODB_URI === 'mongodb://localhost:27017') {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -57,16 +54,7 @@ export const handler: Handler = async (event) => {
     // Always use the authenticated user's ID from the JWT — never trust the body
     const userId = auth.user!.userId;
 
-    const client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      retryWrites: true,
-      w: 'majority',
-    });
-
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
 
     // ── Rate limit: 120 mark-as-read per user per 60s (one per conversation open) ──
     const rl = await checkRateLimitByUser(db, userId, 'mark-as-read', 120, 60);
@@ -91,9 +79,9 @@ export const handler: Handler = async (event) => {
         isRead: false
       };
     } else {
-      await client.close();
       return {
         statusCode: 400,
+        headers,
         body: JSON.stringify({ error: 'Must specify either otherUserId or groupId' })
       };
     }
@@ -102,8 +90,6 @@ export const handler: Handler = async (event) => {
       query,
       { $set: { isRead: true } }
     );
-
-    await client.close();
 
     return {
       statusCode: 200,

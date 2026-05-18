@@ -1,11 +1,8 @@
 import type { Handler } from '@netlify/functions';
-import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { checkRateLimitByUser, tooManyRequestsResponse } from './utils/rateLimiter';
-
-const MONGODB_URI = process.env.MONGODB_URI || '';
-const DB_NAME = 'dg_crm';
+import { getMongoDb } from './utils/mongoClient';
 
 export const handler: Handler = async (event) => {
   // CORS headers + security headers
@@ -38,17 +35,6 @@ export const handler: Handler = async (event) => {
     return unauthorizedResponse(headers, auth.error);
   }
 
-  if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017') {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        success: false, 
-        error: 'MONGODB_URI environment variable is not configured' 
-      })
-    };
-  }
-
   try {
     const { userId } = JSON.parse(event.body || '{}');
 
@@ -60,16 +46,7 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    const client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      retryWrites: true,
-      w: 'majority',
-    });
-
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
 
     // ── Rate limit: 60 conversation-list fetches per user per 60s ─────────────
     const rlAuthUserId = auth.user!.userId;
@@ -243,8 +220,6 @@ export const handler: Handler = async (event) => {
       const tB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
       return tB - tA;
     });
-
-    client.close().catch(() => {});
 
     return {
       statusCode: 200,
