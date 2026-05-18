@@ -72,6 +72,11 @@ export class MessagingService {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(messages));
   }
 
+  // Generate a collision-resistant unique ID
+  private static generateMessageId(): string {
+    return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
   // Send a message
   static async sendMessage(
     fromUserId: string, 
@@ -83,7 +88,7 @@ export class MessagingService {
   ): Promise<Message> {
     try {
       const messageData = {
-        id: Date.now().toString(),
+        id: this.generateMessageId(),
         fromUserId,
         fromUserName,
         toUserId,
@@ -101,7 +106,7 @@ export class MessagingService {
       // console.warn('Falling back to localStorage for sendMessage');
       const messages = this.getAllMessages();
       const newMessage: Message = {
-        id: Date.now().toString(),
+        id: this.generateMessageId(),
         fromUserId,
         fromUserName,
         toUserId,
@@ -259,7 +264,7 @@ export class MessagingService {
       // console.warn('Falling back to localStorage for createGroup');
       const groups = this.getAllGroups();
       const newGroup: GroupChat = {
-        id: Date.now().toString(),
+        id: this.generateMessageId(),
         name,
         participants: participantIds,
         participantNames,
@@ -276,7 +281,7 @@ export class MessagingService {
   static async sendGroupMessage(fromUserId: string, fromUserName: string, groupId: string, content: string, replyTo?: string): Promise<Message> {
     try {
       const messageData = {
-        id: Date.now().toString(),
+        id: this.generateMessageId(),
         fromUserId,
         fromUserName,
         groupId,

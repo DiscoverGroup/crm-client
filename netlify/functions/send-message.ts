@@ -101,16 +101,7 @@ export const handler: Handler = async (event) => {
       };
     }
 
-    client = await MongoClient.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      retryWrites: true,
-      w: 'majority',
-    });
-
-    const db = client.db(DB_NAME);
+    const db = await getMongoDb();
 
     // ── Rate limiting: 60 messages per IP per minute ───────────────────────────
     const ip = getClientIP(event.headers as Record<string, string>);
@@ -154,13 +145,5 @@ export const handler: Handler = async (event) => {
         error: 'Failed to send message' 
       })
     };
-  } finally {
-    if (client) {
-      try {
-        await client.close();
-      } catch (e) {
-        // console.error('Error closing connection:', e);
-      }
-    }
   }
 };

@@ -241,7 +241,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setIsLoadingMessages(true);
     try {
       const conv = await MessagingService.getConversation(currentUser.id, userId);
-      setMessages(conv);
+      // Deduplicate by ID (in case of duplicate insertions)
+      const uniqueMessages = Array.from(new Map(conv.map(m => [m.id, m])).values());
+      setMessages(uniqueMessages);
       setActiveConversationId(userId);
       setActiveConversationName(userName);
       setIsGroupChat(false);
@@ -272,7 +274,9 @@ const MessagingCenter: React.FC<MessagingCenterProps> = ({
     setIsLoadingMessages(true);
     try {
       const msgs = await MessagingService.getGroupMessages(currentUser.id, groupId);
-      setMessages(msgs);
+      // Deduplicate by ID (in case of duplicate insertions)
+      const uniqueMessages = Array.from(new Map(msgs.map(m => [m.id, m])).values());
+      setMessages(uniqueMessages);
       setActiveConversationId(groupId);
       setActiveConversationName(groupName);
       setIsGroupChat(true);
