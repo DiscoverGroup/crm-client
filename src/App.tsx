@@ -982,10 +982,10 @@ const App: React.FC = () => {
         onLogout={handleLogout}
         onNavigate={handleNavigate}
         onOpenUserDirectory={() => setShowUserDirectory(true)}
-        onOpenMessaging={isAdmin() ? () => {
+        onOpenMessaging={() => {
           setMessagingTargetUser(null);
           setShowMessaging(true);
-        } : undefined}
+        }}
         unreadMessageCount={unreadMessageCount}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
@@ -1007,7 +1007,7 @@ const App: React.FC = () => {
               onNavigationHandled={() => setNavigationRequest(null)}
               isSidebarOpen={isSidebarOpen}
               onCloseSidebar={() => setIsSidebarOpen(false)}
-              onMessageUser={isAdmin() ? handleMessageUser : undefined}
+              onMessageUser={handleMessageUser}
             />
           </>
         ) : (
@@ -1039,8 +1039,8 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* Messaging Center Modal (Admin Only) */}
-      {showMessaging && currentUser && isAdmin() && (
+      {/* Messaging Center Modal */}
+      {showMessaging && currentUser && (
         <MessagingCenter
           currentUser={currentUser}
           selectedUserId={messagingTargetUser?.id}

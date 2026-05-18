@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 import { verifyAuthToken, unauthorizedResponse } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
-import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import { checkRateLimitByUser, tooManyRequestsResponse } from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
@@ -68,10 +68,9 @@ export const handler: Handler = async (event) => {
 
     const db = client.db(DB_NAME);
 
-    // ── Rate limiting ─────────────────────────────────────────────────────────
-    const ip = getClientIP(event.headers);
-    const rl = await checkRateLimit(db, ip, 'mark-as-read', 20, 900);
-    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+    // ── Rate limit: 120 mark-as-read per user per 60s (one per conversation open) ──
+    const rl = await checkRateLimitByUser(db, userId, 'mark-as-read', 120, 60);
+    if (rl.limited) return tooManyRequestsResponse(headers, 60);
 
     const messagesCol = db.collection('messages');
 
