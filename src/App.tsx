@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import TurnstileGate from "./components/TurnstileGate";
 import Navbar from "./components/Navbar";
@@ -21,6 +21,7 @@ import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
   const { loginWithRedirect, getAccessTokenSilently, isAuthenticated, isLoading: auth0Loading } = useAuth0();
+  const auth0SyncInFlightRef = useRef(false);
 
   const [gateToken, setGateToken] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -484,12 +485,14 @@ const App: React.FC = () => {
     if (auth0Loading) return;
     if (!isAuthenticated) return;
     if (isLoggedIn) return; // already logged in via CRM JWT
+    if (auth0SyncInFlightRef.current) return;
 
     const pending = sessionStorage.getItem('auth0_redirect_pending');
     if (!pending) return;
     sessionStorage.removeItem('auth0_redirect_pending');
 
     const completeAuth0Login = async () => {
+      auth0SyncInFlightRef.current = true;
       try {
         const accessToken = await getAccessTokenSilently({
           authorizationParams: { scope: 'openid profile email' },
@@ -505,6 +508,21 @@ const App: React.FC = () => {
         });
 
         const result = await response.json();
+
+        if (response.status === 429) {
+          const retryAfterSeconds = Number(response.headers.get('Retry-After') || 0);
+          const retryText = retryAfterSeconds > 0
+            ? `Too many requests. Please try again in ${Math.ceil(retryAfterSeconds / 60)} minute(s).`
+            : 'Too many requests. Please try again later.';
+
+          setModalConfig({
+            isOpen: true,
+            title: 'Auth0 Sync Delayed',
+            message: retryText,
+            type: 'warning',
+          });
+          return;
+        }
 
         if (result.success && result.user) {
           if (result.token) setAuthToken(result.token);
@@ -545,6 +563,8 @@ const App: React.FC = () => {
           message: err?.message || 'Authentication failed. Please try again.',
           type: 'error',
         });
+      } finally {
+        auth0SyncInFlightRef.current = false;
       }
     };
 

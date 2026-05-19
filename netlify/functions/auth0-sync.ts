@@ -12,7 +12,12 @@ import { MongoClient } from 'mongodb';
 import { generateAuthToken } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { validateCSRFToken, extractCSRFToken } from './utils/csrfProtection';
-import { checkRateLimit, tooManyRequestsResponse, getClientIP } from './utils/rateLimiter';
+import {
+  checkRateLimit,
+  checkRateLimitByUser,
+  tooManyRequestsResponse,
+  getClientIP,
+} from './utils/rateLimiter';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || '';
@@ -116,9 +121,24 @@ export const handler: Handler = async (event) => {
     const db = client.db(DB_NAME);
 
     // ── Rate limiting ─────────────────────────────────────────────────────────
+    // Coarse IP guard (prevents abuse), tuned high to avoid blocking shared networks.
     const ip = getClientIP(event.headers as Record<string, string>);
-    const rl = await checkRateLimit(db, ip, 'auth0-sync', 10, 900);
-    if (rl.limited) return tooManyRequestsResponse(headers, 900);
+    const ipLimit = await checkRateLimit(db, ip, 'auth0-sync-ip', 60, 900);
+    if (ipLimit.limited) {
+      return tooManyRequestsResponse(headers, ipLimit.resetAfterSeconds);
+    }
+
+    // User-scoped limiter avoids one user's retries blocking other users behind the same IP.
+    const userLimit = await checkRateLimitByUser(
+      db,
+      auth0User.sub || auth0User.email.toLowerCase(),
+      'auth0-sync-user',
+      20,
+      900
+    );
+    if (userLimit.limited) {
+      return tooManyRequestsResponse(headers, userLimit.resetAfterSeconds);
+    }
 
     const users = db.collection('users');
 
