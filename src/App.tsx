@@ -16,7 +16,33 @@ import { MessagingService } from "./services/messagingService";
 import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
-import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken, getCsrfToken, shouldRefreshToken, refreshAuthToken } from "./utils/authToken";
+import { 
+  getAuthToken, 
+  setAuthToken, 
+  clearAuthToken, 
+  authHeaders, 
+  initCsrfToken, 
+  getCsrfToken, 
+  shouldRefreshToken, 
+  refreshAuthToken 
+} from "./utils/authToken";
+import { 
+  initSessionTracking, 
+  clearSessionTracking, 
+  recordTokenMetric,
+  printMetricsSummary,
+  downloadMetricsCSV,
+  getTokenMetricsSummary
+} from "./utils/tokenMetrics";
+
+// Expose metrics functions to browser console for debugging
+if (typeof window !== 'undefined') {
+  (window as any).tokenMetrics = {
+    summary: printMetricsSummary,
+    download: downloadMetricsCSV,
+    get: getTokenMetricsSummary
+  };
+}
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
@@ -86,6 +112,8 @@ const App: React.FC = () => {
   // Fetch CSRF token once on mount — injected into all authHeaders() calls automatically
   useEffect(() => {
     initCsrfToken();
+    initSessionTracking(); // Track session duration for metrics
+    
     // Proactively refresh CSRF token every 90 minutes — tokens expire after 2 hours.
     // Prevents uploads and writes from failing mid-session with "Token has expired".
     const csrfRefreshInterval = setInterval(() => { initCsrfToken(); }, 90 * 60 * 1000);
@@ -121,8 +149,10 @@ const App: React.FC = () => {
         const newToken = await refreshAuthToken();
         if (newToken) {
           console.log('[Auth] Token refreshed successfully');
+          recordTokenMetric('refresh_success', 'Periodic auto-refresh');
         } else {
           console.warn('[Auth] Token refresh failed');
+          recordTokenMetric('refresh_failure', 'Periodic auto-refresh failed');
         }
       }
     };
@@ -393,15 +423,19 @@ const App: React.FC = () => {
           // If token is expired or expiring soon, try to refresh it
           if (authData.isLoggedIn && authData.currentUser && !jwtValid && token) {
             console.log('[Auth] Token expired on page load, attempting refresh...');
+            recordTokenMetric('grace_recovery', 'Attempting recovery on page load');
             const newToken = await refreshAuthToken();
             if (newToken) {
               console.log('[Auth] Token refreshed successfully on page load');
+              recordTokenMetric('refresh_success', 'Grace period recovery successful');
               setIsLoggedIn(true);
               setCurrentUser(authData.currentUser);
               setIsLoading(false);
               return;
             } else {
               console.log('[Auth] Token refresh failed, clearing session');
+              recordTokenMetric('refresh_failure', 'Grace period recovery failed');
+              recordTokenMetric('forced_logout', 'Token refresh failed on page load');
               // Refresh failed — clear stored data
               localStorage.removeItem('crm_auth');
               clearAuthToken();
@@ -417,6 +451,9 @@ const App: React.FC = () => {
               refreshAuthToken().then(newToken => {
                 if (newToken) {
                   console.log('[Auth] Token refreshed proactively');
+                  recordTokenMetric('refresh_success', 'Proactive refresh on page load');
+                } else {
+                  recordTokenMetric('refresh_failure', 'Proactive refresh failed on page load');
                 }
               });
             }
@@ -453,6 +490,7 @@ const App: React.FC = () => {
     localStorage.removeItem('crm_auth');
     sessionStorage.removeItem('crm_current_view');
     clearAuthToken(); // Invalidate the JWT on the client side
+    clearSessionTracking(); // Clear metrics tracking
   };
 
   // Handle user login with validation

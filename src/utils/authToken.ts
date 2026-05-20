@@ -204,6 +204,14 @@ export function recordAuthFailure(status: number): void {
   const cooldownMs = AUTH_BACKOFF_STEPS_MS[_authFailureCount - 1];
   _authBackoffUntil = Date.now() + cooldownMs;
   
+  // Record metric for monitoring
+  if (status === 401) {
+    // Dynamic import to avoid circular dependency
+    import('./tokenMetrics').then(({ recordTokenMetric }) => {
+      recordTokenMetric('auth_401', 'Received 401 Unauthorized response');
+    });
+  }
+  
   // On 401, clear the token and trigger logout
   if (status === 401) {
     clearAuthToken();
