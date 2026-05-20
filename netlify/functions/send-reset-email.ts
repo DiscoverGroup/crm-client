@@ -13,7 +13,7 @@ const FROM_EMAIL = process.env.FROM_EMAIL || '';
 const FROM_NAME = process.env.FROM_NAME || 'DG-CRM';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DB_NAME = 'dg_crm';
-const SITE_URL = 'https://dg-crm-client.netlify.app';
+const SITE_URL = process.env.SITE_URL || process.env.ALLOWED_ORIGIN || 'https://dgcrm.netlify.app';
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
