@@ -371,32 +371,69 @@ const App: React.FC = () => {
 
   // Check for existing authentication on app load
   useEffect(() => {
-    const savedAuth = localStorage.getItem('crm_auth');
-    if (savedAuth) {
-      try {
-        const authData = JSON.parse(savedAuth);
-        const token = getAuthToken();
-        let jwtValid = false;
-        if (token) {
-          try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            jwtValid = typeof payload.exp === 'number' && Date.now() < payload.exp * 1000;
-          } catch { /* malformed token — treat as expired */ }
-        }
-        if (authData.isLoggedIn && authData.currentUser && jwtValid) {
-          setIsLoggedIn(true);
-          setCurrentUser(authData.currentUser);
-        } else {
-          // Session expired or JWT missing/expired — clear stored data
+    const initializeAuth = async () => {
+      const savedAuth = localStorage.getItem('crm_auth');
+      if (savedAuth) {
+        try {
+          const authData = JSON.parse(savedAuth);
+          const token = getAuthToken();
+          let jwtValid = false;
+          let jwtExpiringSoon = false;
+          
+          if (token) {
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const expiresAt = payload.exp * 1000;
+              const now = Date.now();
+              jwtValid = typeof payload.exp === 'number' && now < expiresAt;
+              jwtExpiringSoon = (expiresAt - now) < (10 * 60 * 1000); // <10 min remaining
+            } catch { /* malformed token — treat as expired */ }
+          }
+          
+          // If token is expired or expiring soon, try to refresh it
+          if (authData.isLoggedIn && authData.currentUser && !jwtValid && token) {
+            console.log('[Auth] Token expired on page load, attempting refresh...');
+            const newToken = await refreshAuthToken();
+            if (newToken) {
+              console.log('[Auth] Token refreshed successfully on page load');
+              setIsLoggedIn(true);
+              setCurrentUser(authData.currentUser);
+              setIsLoading(false);
+              return;
+            } else {
+              console.log('[Auth] Token refresh failed, clearing session');
+              // Refresh failed — clear stored data
+              localStorage.removeItem('crm_auth');
+              clearAuthToken();
+            }
+          } else if (authData.isLoggedIn && authData.currentUser && jwtValid) {
+            // Token is valid, restore session
+            setIsLoggedIn(true);
+            setCurrentUser(authData.currentUser);
+            
+            // If token is expiring soon, refresh it proactively
+            if (jwtExpiringSoon) {
+              console.log('[Auth] Token expiring soon, refreshing proactively...');
+              refreshAuthToken().then(newToken => {
+                if (newToken) {
+                  console.log('[Auth] Token refreshed proactively');
+                }
+              });
+            }
+          } else {
+            // Session expired or JWT missing — clear stored data
+            localStorage.removeItem('crm_auth');
+            clearAuthToken();
+          }
+        } catch (error) {
+          // console.error('Error parsing saved auth data:', error);
           localStorage.removeItem('crm_auth');
-          clearAuthToken();
         }
-      } catch (error) {
-        // console.error('Error parsing saved auth data:', error);
-        localStorage.removeItem('crm_auth');
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+    
+    initializeAuth();
   }, []);
 
   // Save authentication state to localStorage

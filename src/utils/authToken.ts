@@ -115,9 +115,12 @@ export function shouldRefreshToken(token: string | null): boolean {
 /**
  * Attempts to refresh the current JWT token.
  * Returns the new token on success, null on failure.
+ * 
+ * Note: This will attempt refresh even if the token is expired,
+ * as the server may accept recently expired tokens for refresh.
  */
 export async function refreshAuthToken(): Promise<string | null> {
-  const currentToken = getAuthToken();
+  const currentToken = localStorage.getItem(TOKEN_KEY); // Get directly from storage, bypass expiry check
   if (!currentToken) return null;
   
   try {

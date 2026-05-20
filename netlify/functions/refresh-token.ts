@@ -35,14 +35,55 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  // ── Verify current token ───────────────────────────────────────────────────
+  // ── Verify current token (with grace period for expired tokens) ────────────
   const auth = verifyAuthToken(event.headers['authorization']);
   
-  if (!auth.valid) {
-    return unauthorizedResponse(headers, auth.error || 'Invalid or expired token');
+  // If token is invalid but not due to expiry, reject immediately
+  if (!auth.valid && auth.error !== 'Token has expired') {
+    return unauthorizedResponse(headers, auth.error || 'Invalid token');
   }
-
-  const { userId, email, role, fullName } = auth.user!;
+  
+  // If token is expired, check if it's within the grace period (5 minutes)
+  let userId: string;
+  let email: string;
+  let role: 'admin' | 'user' | 'intern';
+  let fullName: string | undefined;
+  
+  if (!auth.valid && auth.error === 'Token has expired') {
+    // Manually decode the expired token to check grace period
+    try {
+      const authHeader = event.headers['authorization'];
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return unauthorizedResponse(headers, 'Missing authorization header');
+      }
+      
+      const token = authHeader.slice(7).trim();
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      
+      // Check if token expired within the last 5 minutes (grace period)
+      const expiredAt = payload.exp * 1000;
+      const now = Date.now();
+      const gracePeriodMs = 5 * 60 * 1000; // 5 minutes
+      
+      if (now - expiredAt > gracePeriodMs) {
+        return unauthorizedResponse(headers, 'Token expired beyond grace period. Please log in again.');
+      }
+      
+      // Token is within grace period, allow refresh
+      userId = payload.userId;
+      email = payload.email;
+      role = payload.role;
+      fullName = payload.fullName;
+    } catch (error) {
+      return unauthorizedResponse(headers, 'Invalid token format');
+    }
+  } else {
+    // Token is still valid
+    userId = auth.user!.userId;
+    email = auth.user!.email;
+    role = auth.user!.role;
+    fullName = auth.user!.fullName;
+  }
 
   try {
     const db = await getMongoDb();
