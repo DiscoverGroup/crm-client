@@ -22,6 +22,11 @@
 
 const TOKEN_KEY = 'crm_jwt_token';
 
+// ── Auth failure backoff (prevents repeated 401/403 request storms) ────────
+const AUTH_BACKOFF_STEPS_MS = [15000, 30000, 60000, 120000, 300000];
+let _authFailureCount = 0;
+let _authBackoffUntil = 0;
+
 // ── CSRF token (in-memory only, refreshed on app start) ─────────────────────
 let _csrfToken: string | null = null;
 
@@ -53,12 +58,35 @@ export async function initCsrfToken(): Promise<void> {
   }
 }
 
-/** Returns the stored JWT, or null if not present. */
+/** Returns the stored JWT, or null if not present or expired. */
 export function getAuthToken(): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) return null;
+    
+    // Check if token is expired
+    if (isTokenExpired(token)) {
+      clearAuthToken();
+      return null;
+    }
+    
+    return token;
   } catch {
     return null;
+  }
+}
+
+/** Checks if a JWT token is expired without verifying the signature. */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return false;
+    
+    // Check if token expires in the next 5 minutes (300 seconds)
+    // This gives a buffer to avoid mid-request expiry
+    return Date.now() >= (payload.exp * 1000) - (5 * 60 * 1000);
+  } catch {
+    return true; // If we can't parse it, treat as expired
   }
 }
 
@@ -66,6 +94,7 @@ export function getAuthToken(): string | null {
 export function setAuthToken(token: string): void {
   try {
     localStorage.setItem(TOKEN_KEY, token);
+    resetAuthBackoff();
   } catch {
     // localStorage unavailable (private browsing, full storage, etc.)
     console.warn('[Auth] Could not persist auth token');
@@ -76,8 +105,46 @@ export function setAuthToken(token: string): void {
 export function clearAuthToken(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
+    resetAuthBackoff();
   } catch {
     // ignore
+  }
+}
+
+/** True when authenticated polling should pause due to recent auth failures. */
+export function shouldBackoffAuthRequests(): boolean {
+  return Date.now() < _authBackoffUntil;
+}
+
+/** Remaining auth backoff time in milliseconds. */
+export function getAuthBackoffRemainingMs(): number {
+  return Math.max(0, _authBackoffUntil - Date.now());
+}
+
+/** Clears accumulated auth failure backoff after a successful authenticated call. */
+export function resetAuthBackoff(): void {
+  _authFailureCount = 0;
+  _authBackoffUntil = 0;
+}
+
+/**
+ * Records an auth failure (401/403) and increases cooldown to reduce request spam.
+ * Cooldown escalates up to 5 minutes when failures continue.
+ * 
+ * For 401 errors, also triggers a logout event to force re-authentication.
+ */
+export function recordAuthFailure(status: number): void {
+  if (status !== 401 && status !== 403) return;
+
+  _authFailureCount = Math.min(_authFailureCount + 1, AUTH_BACKOFF_STEPS_MS.length);
+  const cooldownMs = AUTH_BACKOFF_STEPS_MS[_authFailureCount - 1];
+  _authBackoffUntil = Date.now() + cooldownMs;
+  
+  // On 401, clear the token and trigger logout
+  if (status === 401) {
+    clearAuthToken();
+    // Dispatch a custom event that App.tsx can listen to
+    window.dispatchEvent(new CustomEvent('auth:expired'));
   }
 }
 

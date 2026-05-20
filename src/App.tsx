@@ -21,6 +21,7 @@ import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
   const { loginWithRedirect, getAccessTokenSilently, isAuthenticated, isLoading: auth0Loading } = useAuth0();
+  const bypassTurnstileForE2E = import.meta.env.VITE_E2E_BYPASS_TURNSTILE === 'true';
   const auth0SyncInFlightRef = useRef(false);
 
   const [gateToken, setGateToken] = useState<string | null>(null);
@@ -89,6 +90,24 @@ const App: React.FC = () => {
     // Prevents uploads and writes from failing mid-session with "Token has expired".
     const csrfRefreshInterval = setInterval(() => { initCsrfToken(); }, 90 * 60 * 1000);
     return () => clearInterval(csrfRefreshInterval);
+  }, []);
+
+  // Handle JWT token expiry — force logout when token expires
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+      setModalConfig({
+        isOpen: true,
+        title: 'Session Expired',
+        message: 'Your session has expired. Please log in again.',
+        type: 'warning',
+        onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+      });
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => window.removeEventListener('auth:expired', handleAuthExpired);
   }, []);
 
   // Handle toast notifications
@@ -974,7 +993,7 @@ const App: React.FC = () => {
   }
 
   // Show full-page Turnstile gate before anything else
-  if (!gateToken) {
+  if (!gateToken && !bypassTurnstileForE2E) {
     return <TurnstileGate onVerified={(token) => setGateToken(token)} />;
   }
 
