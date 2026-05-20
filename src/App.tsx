@@ -16,7 +16,7 @@ import { MessagingService } from "./services/messagingService";
 import { ActivityLogService } from "./services/activityLogService";
 import { NotificationService } from "./services/notificationService";
 import calendarService from "./services/calendarService";
-import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken, getCsrfToken } from "./utils/authToken";
+import { getAuthToken, setAuthToken, clearAuthToken, authHeaders, initCsrfToken, getCsrfToken, shouldRefreshToken, refreshAuthToken } from "./utils/authToken";
 import { realtimeSync } from './services/realtimeSyncService';
 
 const App: React.FC = () => {
@@ -109,6 +109,32 @@ const App: React.FC = () => {
     window.addEventListener('auth:expired', handleAuthExpired);
     return () => window.removeEventListener('auth:expired', handleAuthExpired);
   }, []);
+
+  // Automatic token refresh — check every 5 minutes and refresh if needed
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkAndRefreshToken = async () => {
+      const token = getAuthToken();
+      if (shouldRefreshToken(token)) {
+        console.log('[Auth] Token expiring soon, refreshing...');
+        const newToken = await refreshAuthToken();
+        if (newToken) {
+          console.log('[Auth] Token refreshed successfully');
+        } else {
+          console.warn('[Auth] Token refresh failed');
+        }
+      }
+    };
+
+    // Check immediately on mount
+    checkAndRefreshToken();
+
+    // Then check every 5 minutes
+    const refreshInterval = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
+  }, [isLoggedIn]);
 
   // Handle toast notifications
   useEffect(() => {

@@ -90,6 +90,67 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
+/** 
+ * Checks if a JWT token should be refreshed (expires in <10 minutes).
+ * Returns true if token is valid but approaching expiry.
+ */
+export function shouldRefreshToken(token: string | null): boolean {
+  if (!token) return false;
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (!payload.exp) return false;
+    
+    const expiresAt = payload.exp * 1000;
+    const now = Date.now();
+    const tenMinutes = 10 * 60 * 1000;
+    
+    // Refresh if token expires in less than 10 minutes but is still valid
+    return (expiresAt - now) < tenMinutes && (expiresAt - now) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Attempts to refresh the current JWT token.
+ * Returns the new token on success, null on failure.
+ */
+export async function refreshAuthToken(): Promise<string | null> {
+  const currentToken = getAuthToken();
+  if (!currentToken) return null;
+  
+  try {
+    const response = await fetch('/.netlify/functions/refresh-token', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      // If refresh fails, clear the token
+      if (response.status === 401 || response.status === 403) {
+        clearAuthToken();
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+      }
+      return null;
+    }
+    
+    const data = await response.json();
+    if (data.success && data.token) {
+      setAuthToken(data.token);
+      return data.token;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[Auth] Token refresh failed:', error);
+    return null;
+  }
+}
+
 /** Persists the JWT token returned by the login endpoint. */
 export function setAuthToken(token: string): void {
   try {
@@ -151,11 +212,37 @@ export function recordAuthFailure(status: number): void {
 /**
  * Returns headers suitable for authenticated fetch calls.
  * Automatically includes X-CSRF-Token if a token has been initialised.
+ * 
+ * If the token is about to expire, this will attempt to refresh it first.
+ * 
  * Example:
  *   fetch(url, { headers: { ...authHeaders(), 'Content-Type': 'application/json' } })
  */
 export function authHeaders(): Record<string, string> {
   const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (_csrfToken) headers['X-CSRF-Token'] = _csrfToken;
+  return headers;
+}
+
+/**
+ * Returns headers suitable for authenticated fetch calls, with automatic token refresh.
+ * Use this for critical operations where you want to ensure the token is fresh.
+ * 
+ * Example:
+ *   const headers = await authHeadersWithRefresh();
+ *   fetch(url, { headers: { ...headers, 'Content-Type': 'application/json' } })
+ */
+export async function authHeadersWithRefresh(): Promise<Record<string, string>> {
+  let token = getAuthToken();
+  
+  // If token is about to expire, refresh it first
+  if (token && shouldRefreshToken(token)) {
+    const newToken = await refreshAuthToken();
+    token = newToken || token; // Use new token if refresh succeeded, otherwise use old one
+  }
+  
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (_csrfToken) headers['X-CSRF-Token'] = _csrfToken;
