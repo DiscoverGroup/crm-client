@@ -1208,23 +1208,22 @@ const ClientRecords: React.FC<{
             try { return JSON.parse(localStorage.getItem('crm_current_user') || '{}'); } catch { return {}; }
           })();
           const currentUserEmail = (currentUserData.email || '').trim().toLowerCase();
+          const currentUserId = currentUserData.id || '';
           const limit: number = quotaConfig.perUser?.[currentUserData.email] ?? quotaConfig.defaultLimit ?? 100;
-
-          // Build identifiers for the current user (same logic as AdminPanel)
-          const ids = new Set<string>();
-          if (currentUserData.fullName) ids.add(currentUserData.fullName.trim().toLowerCase());
-          if (currentUserData.username) ids.add(currentUserData.username.trim().toLowerCase());
-          if (currentUserEmail) { ids.add(currentUserEmail); ids.add(currentUserEmail.split('@')[0]); }
-          if (agent) ids.add(agent.trim().toLowerCase());
 
           const allClients: import('../services/clientService').ClientData[] = (() => {
             try { return JSON.parse(localStorage.getItem('crm_clients_data') || '[]'); } catch { return []; }
           })();
-          const usedCount = allClients.filter(c => {
+
+          // Count clients CREATED BY this user (not by sales agent)
+          const usedCount = allClients.filter((c: any) => {
             if (c.isDeleted || c.isTestRecord) return false;
-            const a = (c.agent || '').trim().toLowerCase();
-            return a && ids.has(a);
+            // Match on createdBy (user ID), createdByEmail, or fallback to agent for legacy data
+            if (c.createdBy && c.createdBy === currentUserId) return true;
+            if (c.createdByEmail && c.createdByEmail.toLowerCase() === currentUserEmail) return true;
+            return false;
           }).length;
+
           if (usedCount >= limit) {
             if (!silent) showWarningToast(`Client quota reached (${usedCount}/${limit}). Contact admin to increase your limit.`);
             setIsSavingClient(false);
@@ -1281,6 +1280,8 @@ const ClientRecords: React.FC<{
         travelFundReleasedAmount: travelFundReleasedAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundTotalAmount: travelFundTotalAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundPayments: travelFundPayments.map(p => ({ date: p.date, amount: p.amount.replace(/[^0-9.,]/g, '').slice(0, 50) })),
+        // Track the user who created this client (separate from `agent` which is the sales agent)
+        ...(propsCurrentUser ? { createdBy: propsCurrentUser.id, createdByEmail: propsCurrentUser.email, createdByName: propsCurrentUser.fullName } : {}),
         ...(isTestRecord ? { isTestRecord: true } : {}),
       };
 

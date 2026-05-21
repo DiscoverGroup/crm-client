@@ -21,6 +21,7 @@ import ProgressBar from './ui/ProgressBar';
 import AddUserModal from './AddUserModal';
 
 interface User {
+  id?: string;
   fullName: string;
   username: string;
   email: string;
@@ -132,14 +133,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
   };
 
   // Count active (non-deleted, non-test) clients per user.
-  // The `agent` field is free-text entered by employees so we try multiple
-  // identifiers: fullName, username, email local-part, and first name.
-  const [serverClientCounts, setServerClientCounts] = useState<Record<string, number>>({});
+  // Server-side client counts (fetched from MongoDB so they're accurate
+  // regardless of which browser the admin uses).
+  const [serverCountsByUserId, setServerCountsByUserId] = useState<Record<string, number>>({});
+  const [serverCountsByEmail, setServerCountsByEmail] = useState<Record<string, number>>({});
+  const [serverCountsByAgent, setServerCountsByAgent] = useState<Record<string, number>>({});
   const [serverUnassignedCount, setServerUnassignedCount] = useState<number>(0);
+  const [serverCountsLoaded, setServerCountsLoaded] = useState<boolean>(false);
 
   const getClientCountForUser = (user: User): number => {
-    // Use server-side counts if available (accurate across all browsers)
-    if (Object.keys(serverClientCounts).length > 0) {
+    // Prefer server counts when available
+    if (serverCountsLoaded) {
+      let total = 0;
+
+      // 1. Match by user ID (most accurate)
+      if (user.id && serverCountsByUserId[user.id]) {
+        total += serverCountsByUserId[user.id];
+      }
+
+      // 2. Match by email
+      if (user.email) {
+        const emailLc = user.email.trim().toLowerCase();
+        if (serverCountsByEmail[emailLc]) {
+          total += serverCountsByEmail[emailLc];
+        }
+      }
+
+      // 3. Legacy fallback: match by agent text (for clients created before
+      //    the createdBy field was added). Build a set of identifiers.
       const ids: string[] = [];
       if (user.fullName) ids.push(user.fullName.trim().toLowerCase());
       if (user.username) ids.push(user.username.trim().toLowerCase());
@@ -153,61 +174,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
         if (firstName.length > 2) ids.push(firstName);
       }
 
-      let total = 0;
-      for (const [agent, count] of Object.entries(serverClientCounts)) {
-        // exact match on any identifier
+      for (const [agent, count] of Object.entries(serverCountsByAgent)) {
         if (ids.includes(agent)) {
           total += count;
-          continue;
-        }
-        // partial: agent field contains fullName or vice-versa
-        if (user.fullName) {
-          const fn = user.fullName.trim().toLowerCase();
-          if (agent.includes(fn) || fn.includes(agent)) {
-            total += count;
-          }
         }
       }
+
       return total;
     }
 
-    // Fallback to localStorage (only works if admin has synced client data)
+    // Fallback: count from localStorage (only includes admin's own browser data)
     try {
       const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
-
-      const ids = new Set<string>();
-      if (user.fullName) ids.add(user.fullName.trim().toLowerCase());
-      if (user.username) ids.add(user.username.trim().toLowerCase());
-      if (user.email) {
-        ids.add(user.email.trim().toLowerCase());
-        const localPart = user.email.split('@')[0].trim().toLowerCase();
-        if (localPart) ids.add(localPart);
-      }
-      if (user.fullName) {
-        const firstName = user.fullName.trim().split(/\s+/)[0].toLowerCase();
-        if (firstName.length > 2) ids.add(firstName);
-      }
-
-      return all.filter(c => {
+      return all.filter((c: any) => {
         if (c.isDeleted || c.isTestRecord) return false;
-        const agentVal = (c.agent || '').trim().toLowerCase();
-        if (!agentVal) return false;
-        if (ids.has(agentVal)) return true;
-        if (user.fullName && agentVal.includes(user.fullName.trim().toLowerCase())) return true;
-        if (user.fullName && user.fullName.trim().toLowerCase().includes(agentVal)) return true;
+        if (c.createdBy && c.createdBy === user.id) return true;
+        if (c.createdByEmail && user.email && c.createdByEmail.toLowerCase() === user.email.toLowerCase()) return true;
         return false;
       }).length;
     } catch { return 0; }
   };
 
-  // Count clients with no agent assigned (unassigned)
+  // Count clients with no creator/agent assigned (unassigned)
   const getUnassignedClientCount = (): number => {
-    // Use server-side count if available
-    if (serverUnassignedCount > 0 || Object.keys(serverClientCounts).length > 0) {
+    if (serverCountsLoaded) {
       return serverUnassignedCount;
     }
-    
+
     // Fallback to localStorage
     try {
       const raw = localStorage.getItem('crm_clients_data');
@@ -246,8 +240,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setServerClientCounts(data.agentCounts || {});
+          setServerCountsByUserId(data.byUserId || {});
+          setServerCountsByEmail(data.byEmail || {});
+          setServerCountsByAgent(data.byAgent || data.agentCounts || {});
           setServerUnassignedCount(data.unassigned || 0);
+          setServerCountsLoaded(true);
         }
       }
     } catch {

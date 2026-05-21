@@ -37,18 +37,23 @@ export const handler: Handler = async (event) => {
     const db = await getMongoDb();
     const clientsCol = db.collection('clients');
 
-    // Aggregate: count active clients grouped by agent
+    // Aggregate: count active clients grouped by the user who CREATED them.
+    // Falls back to legacy `agent` field for older records that don't have createdBy.
     const pipeline = [
       {
         $match: {
           isDeleted: { $ne: true },
-          isTestRecord: { $ne: true },
-          agent: { $exists: true, $ne: '' }
+          isTestRecord: { $ne: true }
         }
       },
       {
         $group: {
-          _id: { $toLower: { $trim: { input: '$agent' } } },
+          _id: {
+            createdBy: '$createdBy',
+            createdByEmail: { $toLower: { $ifNull: ['$createdByEmail', ''] } },
+            // Lowercase agent as legacy fallback identifier
+            agent: { $toLower: { $trim: { input: { $ifNull: ['$agent', ''] } } } }
+          },
           count: { $sum: 1 }
         }
       }
@@ -56,15 +61,23 @@ export const handler: Handler = async (event) => {
 
     const results = await clientsCol.aggregate(pipeline).toArray();
 
-    // Build a map: agent (lowercase) → count
-    const agentCounts: Record<string, number> = {};
+    // Build maps so the client-side can match by user ID, email, or legacy agent text
+    const byUserId: Record<string, number> = {};
+    const byEmail: Record<string, number> = {};
+    const byAgent: Record<string, number> = {};
+
     for (const r of results) {
-      if (r._id) {
-        agentCounts[r._id] = r.count;
+      const { createdBy, createdByEmail, agent } = r._id || {};
+      if (createdBy) {
+        byUserId[createdBy] = (byUserId[createdBy] || 0) + r.count;
+      } else if (createdByEmail) {
+        byEmail[createdByEmail] = (byEmail[createdByEmail] || 0) + r.count;
+      } else if (agent) {
+        // Legacy fallback for clients without createdBy
+        byAgent[agent] = (byAgent[agent] || 0) + r.count;
       }
     }
 
-    // Also get total active clients and unassigned count
     const totalActive = await clientsCol.countDocuments({
       isDeleted: { $ne: true },
       isTestRecord: { $ne: true }
@@ -73,10 +86,10 @@ export const handler: Handler = async (event) => {
     const unassigned = await clientsCol.countDocuments({
       isDeleted: { $ne: true },
       isTestRecord: { $ne: true },
-      $or: [
-        { agent: { $exists: false } },
-        { agent: '' },
-        { agent: null }
+      $and: [
+        { $or: [{ createdBy: { $exists: false } }, { createdBy: '' }, { createdBy: null }] },
+        { $or: [{ createdByEmail: { $exists: false } }, { createdByEmail: '' }, { createdByEmail: null }] },
+        { $or: [{ agent: { $exists: false } }, { agent: '' }, { agent: null }] }
       ]
     });
 
@@ -85,7 +98,12 @@ export const handler: Handler = async (event) => {
       headers,
       body: JSON.stringify({
         success: true,
-        agentCounts,
+        // New shape: counts grouped by user identifier
+        byUserId,
+        byEmail,
+        byAgent,
+        // Backward-compatible alias for older clients (matches by agent only)
+        agentCounts: byAgent,
         totalActive,
         unassigned
       })
