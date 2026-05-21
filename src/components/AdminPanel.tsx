@@ -136,7 +136,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
   // identifiers: fullName, username, email local-part, and first name.
   const getClientCountForUser = (user: User): number => {
     try {
-      const raw = sessionStorage.getItem('crm_clients_data');
+      const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
 
       // Build a set of lower-case identifiers for this user
@@ -172,7 +172,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
   // Count clients with no agent assigned (unassigned)
   const getUnassignedClientCount = (): number => {
     try {
-      const raw = sessionStorage.getItem('crm_clients_data');
+      const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
       return all.filter(c => !c.isDeleted && !c.isTestRecord && !(c.agent || '').trim()).length;
     } catch { return 0; }
