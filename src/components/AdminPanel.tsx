@@ -134,22 +134,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
   // Count active (non-deleted, non-test) clients per user.
   // The `agent` field is free-text entered by employees so we try multiple
   // identifiers: fullName, username, email local-part, and first name.
+  const [serverClientCounts, setServerClientCounts] = useState<Record<string, number>>({});
+  const [serverUnassignedCount, setServerUnassignedCount] = useState<number>(0);
+
   const getClientCountForUser = (user: User): number => {
+    // Use server-side counts if available (accurate across all browsers)
+    if (Object.keys(serverClientCounts).length > 0) {
+      const ids: string[] = [];
+      if (user.fullName) ids.push(user.fullName.trim().toLowerCase());
+      if (user.username) ids.push(user.username.trim().toLowerCase());
+      if (user.email) {
+        ids.push(user.email.trim().toLowerCase());
+        const localPart = user.email.split('@')[0].trim().toLowerCase();
+        if (localPart) ids.push(localPart);
+      }
+      if (user.fullName) {
+        const firstName = user.fullName.trim().split(/\s+/)[0].toLowerCase();
+        if (firstName.length > 2) ids.push(firstName);
+      }
+
+      let total = 0;
+      for (const [agent, count] of Object.entries(serverClientCounts)) {
+        // exact match on any identifier
+        if (ids.includes(agent)) {
+          total += count;
+          continue;
+        }
+        // partial: agent field contains fullName or vice-versa
+        if (user.fullName) {
+          const fn = user.fullName.trim().toLowerCase();
+          if (agent.includes(fn) || fn.includes(agent)) {
+            total += count;
+          }
+        }
+      }
+      return total;
+    }
+
+    // Fallback to localStorage (only works if admin has synced client data)
     try {
       const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
 
-      // Build a set of lower-case identifiers for this user
       const ids = new Set<string>();
       if (user.fullName) ids.add(user.fullName.trim().toLowerCase());
       if (user.username) ids.add(user.username.trim().toLowerCase());
       if (user.email) {
         ids.add(user.email.trim().toLowerCase());
-        // email local-part (before @)
         const localPart = user.email.split('@')[0].trim().toLowerCase();
         if (localPart) ids.add(localPart);
       }
-      // first name only (first word of fullName)
       if (user.fullName) {
         const firstName = user.fullName.trim().split(/\s+/)[0].toLowerCase();
         if (firstName.length > 2) ids.add(firstName);
@@ -159,9 +193,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
         if (c.isDeleted || c.isTestRecord) return false;
         const agentVal = (c.agent || '').trim().toLowerCase();
         if (!agentVal) return false;
-        // exact match on any identifier
         if (ids.has(agentVal)) return true;
-        // partial: agent field contains fullName or vice-versa
         if (user.fullName && agentVal.includes(user.fullName.trim().toLowerCase())) return true;
         if (user.fullName && user.fullName.trim().toLowerCase().includes(agentVal)) return true;
         return false;
@@ -171,6 +203,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
 
   // Count clients with no agent assigned (unassigned)
   const getUnassignedClientCount = (): number => {
+    // Use server-side count if available
+    if (serverUnassignedCount > 0 || Object.keys(serverClientCounts).length > 0) {
+      return serverUnassignedCount;
+    }
+    
+    // Fallback to localStorage
     try {
       const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
@@ -196,7 +234,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
     loadUsers();
     loadRecoveryRequests();
     loadClientRecoveryRequests();
+    loadClientCounts();
   }, []);
+
+  // Fetch client counts from MongoDB (accurate regardless of browser)
+  const loadClientCounts = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/get-client-counts', {
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setServerClientCounts(data.agentCounts || {});
+          setServerUnassignedCount(data.unassigned || 0);
+        }
+      }
+    } catch {
+      // Fallback to localStorage counts silently
+    }
+  };
 
   const loadUsers = async () => {
     // First load from sessionStorage immediately (offline fallback)
