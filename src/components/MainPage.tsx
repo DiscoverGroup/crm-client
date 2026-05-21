@@ -23,6 +23,7 @@ import { NotificationService } from '../services/notificationService';
 import R2DownloadButton from './R2DownloadButton';
 import Loader from './Loader';
 import { showSuccessToast, showErrorToast, showWarningToast, showConfirmDialog } from '../utils/toast';
+import { authHeaders } from '../utils/authToken';
 import { useWindowWidth } from '../hooks/useWindowWidth';
 import { backupFilesToDrive } from '../services/googleDriveService';
 import DriveBackupModal, { type DriveBackupModalProgress } from './DriveBackupModal';
@@ -1198,7 +1199,9 @@ const ClientRecords: React.FC<{
         }
       }
 
-      // Quota check: enforce per-employee client limit on NEW records only
+      // Quota check: enforce per-employee client limit on NEW records only.
+      // Counts DISTINCT active clients the user has touched (created or edited)
+      // by querying activity logs through a server endpoint.
       const ownIdForQuota = resolvedClientId || clientId;
       if (!ownIdForQuota && !isTestRecord) {
         try {
@@ -1207,22 +1210,41 @@ const ClientRecords: React.FC<{
           const currentUserData = (() => {
             try { return JSON.parse(localStorage.getItem('crm_current_user') || '{}'); } catch { return {}; }
           })();
-          const currentUserEmail = (currentUserData.email || '').trim().toLowerCase();
-          const currentUserId = currentUserData.id || '';
           const limit: number = quotaConfig.perUser?.[currentUserData.email] ?? quotaConfig.defaultLimit ?? 100;
+          const userName = (currentUserData.fullName || '').trim().toLowerCase();
+          const userKey = (currentUserData.username || '').trim().toLowerCase();
 
-          const allClients: import('../services/clientService').ClientData[] = (() => {
-            try { return JSON.parse(localStorage.getItem('crm_clients_data') || '[]'); } catch { return []; }
-          })();
+          // Fetch live count from server (counts distinct clients in activity_logs)
+          let usedCount = 0;
+          try {
+            const res = await fetch('/.netlify/functions/get-my-client-count', {
+              headers: authHeaders(),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && typeof data.count === 'number') {
+                usedCount = data.count;
+              }
+            }
+          } catch { /* network error — fall through to local count */ }
 
-          // Count clients CREATED BY this user (not by sales agent)
-          const usedCount = allClients.filter((c: any) => {
-            if (c.isDeleted || c.isTestRecord) return false;
-            // Match on createdBy (user ID), createdByEmail, or fallback to agent for legacy data
-            if (c.createdBy && c.createdBy === currentUserId) return true;
-            if (c.createdByEmail && c.createdByEmail.toLowerCase() === currentUserEmail) return true;
-            return false;
-          }).length;
+          // Local fallback: scan activity logs cached in localStorage
+          if (usedCount === 0) {
+            try {
+              const logsRaw = localStorage.getItem('crm_activity_logs');
+              const logs: any[] = logsRaw ? JSON.parse(logsRaw) : [];
+              const distinctClients = new Set<string>();
+              for (const log of logs) {
+                if (!log.clientId) continue;
+                if (!['created', 'edited', 'file_uploaded', 'file_deleted'].includes(log.action)) continue;
+                const performer = (log.performedByUser || log.performedBy || '').trim().toLowerCase();
+                if (performer === userName || performer === userKey) {
+                  distinctClients.add(log.clientId);
+                }
+              }
+              usedCount = distinctClients.size;
+            } catch { /* ignore */ }
+          }
 
           if (usedCount >= limit) {
             if (!silent) showWarningToast(`Client quota reached (${usedCount}/${limit}). Contact admin to increase your limit.`);
@@ -1280,8 +1302,6 @@ const ClientRecords: React.FC<{
         travelFundReleasedAmount: travelFundReleasedAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundTotalAmount: travelFundTotalAmount.replace(/[^0-9.,]/g, '').slice(0, 50),
         travelFundPayments: travelFundPayments.map(p => ({ date: p.date, amount: p.amount.replace(/[^0-9.,]/g, '').slice(0, 50) })),
-        // Track the user who created this client (separate from `agent` which is the sales agent)
-        ...(propsCurrentUser ? { createdBy: propsCurrentUser.id, createdByEmail: propsCurrentUser.email, createdByName: propsCurrentUser.fullName } : {}),
         ...(isTestRecord ? { isTestRecord: true } : {}),
       };
 

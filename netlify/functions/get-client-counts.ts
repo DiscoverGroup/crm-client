@@ -1,9 +1,12 @@
 /**
  * GET /.netlify/functions/get-client-counts
  *
- * Returns the number of active (non-deleted, non-test) clients per agent.
- * Used by the Admin Panel to display accurate quota usage from MongoDB,
- * regardless of which browser the admin is using.
+ * Returns the number of DISTINCT active clients each user has created
+ * or edited, derived from the activity_logs collection.
+ *
+ * "Clients Used" = count of unique clientIds the user has touched
+ * (created or edited) — not just the ones where their name appears
+ * in the free-text Sales Agent field.
  *
  * Requires admin JWT.
  */
@@ -12,6 +15,10 @@ import type { Handler } from '@netlify/functions';
 import { verifyAuthToken, unauthorizedResponse, forbiddenResponse, isAdmin } from './middleware/authMiddleware';
 import { getSecurityHeaders, getCORSHeaders } from './utils/securityUtils';
 import { getMongoDb } from './utils/mongoClient';
+
+// Actions that count toward "clients used" — anything that represents
+// the user actively working on a client record.
+const COUNTED_ACTIONS = ['created', 'edited', 'file_uploaded', 'file_deleted'];
 
 export const handler: Handler = async (event) => {
   const headers = {
@@ -35,77 +42,71 @@ export const handler: Handler = async (event) => {
 
   try {
     const db = await getMongoDb();
+    const logsCol = db.collection('activity_logs');
     const clientsCol = db.collection('clients');
 
-    // Aggregate: count active clients grouped by the user who CREATED them.
-    // Falls back to legacy `agent` field for older records that don't have createdBy.
+    // Get the set of currently-active client IDs so we don't count clients
+    // that have been deleted.
+    const activeClients = await clientsCol
+      .find({ isDeleted: { $ne: true }, isTestRecord: { $ne: true } })
+      .project({ id: 1, _id: 0 })
+      .toArray();
+    const activeClientIds = new Set<string>(
+      activeClients.map((c: any) => c.id).filter(Boolean)
+    );
+
+    // Aggregate distinct (performedBy → clientId) pairs from activity logs.
+    // Only count actions that represent active work on a client.
     const pipeline = [
       {
         $match: {
-          isDeleted: { $ne: true },
-          isTestRecord: { $ne: true }
+          action: { $in: COUNTED_ACTIONS },
+          clientId: { $exists: true, $ne: '' },
+          performedByUser: { $exists: true, $ne: '' }
         }
       },
       {
         $group: {
+          // Group by (user, clientId) so each unique client per user is one row
           _id: {
-            createdBy: '$createdBy',
-            createdByEmail: { $toLower: { $ifNull: ['$createdByEmail', ''] } },
-            // Lowercase agent as legacy fallback identifier
-            agent: { $toLower: { $trim: { input: { $ifNull: ['$agent', ''] } } } }
-          },
-          count: { $sum: 1 }
+            user: '$performedByUser',
+            clientId: '$clientId'
+          }
+        }
+      },
+      {
+        $group: {
+          // Now count how many distinct clients each user touched
+          _id: '$_id.user',
+          clientIds: { $addToSet: '$_id.clientId' }
         }
       }
     ];
 
-    const results = await clientsCol.aggregate(pipeline).toArray();
+    const results = await logsCol.aggregate(pipeline).toArray();
 
-    // Build maps so the client-side can match by user ID, email, or legacy agent text
-    const byUserId: Record<string, number> = {};
-    const byEmail: Record<string, number> = {};
-    const byAgent: Record<string, number> = {};
-
+    // Build a map: lower-cased user name → distinct active client count
+    const byUserName: Record<string, number> = {};
     for (const r of results) {
-      const { createdBy, createdByEmail, agent } = r._id || {};
-      if (createdBy) {
-        byUserId[createdBy] = (byUserId[createdBy] || 0) + r.count;
-      } else if (createdByEmail) {
-        byEmail[createdByEmail] = (byEmail[createdByEmail] || 0) + r.count;
-      } else if (agent) {
-        // Legacy fallback for clients without createdBy
-        byAgent[agent] = (byAgent[agent] || 0) + r.count;
+      const userKey = (r._id || '').trim().toLowerCase();
+      if (!userKey) continue;
+      // Filter to only active (non-deleted) clients
+      const activeCount = (r.clientIds as string[]).filter(id => activeClientIds.has(id)).length;
+      if (activeCount > 0) {
+        byUserName[userKey] = activeCount;
       }
     }
 
-    const totalActive = await clientsCol.countDocuments({
-      isDeleted: { $ne: true },
-      isTestRecord: { $ne: true }
-    });
-
-    const unassigned = await clientsCol.countDocuments({
-      isDeleted: { $ne: true },
-      isTestRecord: { $ne: true },
-      $and: [
-        { $or: [{ createdBy: { $exists: false } }, { createdBy: '' }, { createdBy: null }] },
-        { $or: [{ createdByEmail: { $exists: false } }, { createdByEmail: '' }, { createdByEmail: null }] },
-        { $or: [{ agent: { $exists: false } }, { agent: '' }, { agent: null }] }
-      ]
-    });
+    // Total active clients in the system
+    const totalActive = activeClientIds.size;
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        // New shape: counts grouped by user identifier
-        byUserId,
-        byEmail,
-        byAgent,
-        // Backward-compatible alias for older clients (matches by agent only)
-        agentCounts: byAgent,
-        totalActive,
-        unassigned
+        byUserName,
+        totalActive
       })
     };
   } catch (error: any) {

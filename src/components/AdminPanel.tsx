@@ -134,57 +134,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
 
   // Count active (non-deleted, non-test) clients per user.
   // Server-side client counts (fetched from MongoDB so they're accurate
-  // Server-side client counts (fetched from MongoDB so they're accurate
-  // regardless of which browser the admin uses).
-  const [serverCountsByUserId, setServerCountsByUserId] = useState<Record<string, number>>({});
-  const [serverCountsByEmail, setServerCountsByEmail] = useState<Record<string, number>>({});
-  const [serverUnassignedCount, setServerUnassignedCount] = useState<number>(0);
+  // Server-side client counts (fetched from MongoDB activity logs so they're
+  // accurate regardless of which browser the admin uses).
+  // Counts DISTINCT active clients each user has created or edited.
+  const [serverCountsByUserName, setServerCountsByUserName] = useState<Record<string, number>>({});
   const [serverCountsLoaded, setServerCountsLoaded] = useState<boolean>(false);
 
   const getClientCountForUser = (user: User): number => {
-    // Prefer server counts when available — count only clients the user
-    // actually created in the CRM. The legacy `agent` text field is a
-    // free-text Sales Agent label and does NOT mean the user created
-    // the record, so we don't count by it anymore.
-    if (serverCountsLoaded) {
-      let total = 0;
+    if (!serverCountsLoaded) return 0;
 
-      // 1. Match by user ID (most accurate)
-      if (user.id && serverCountsByUserId[user.id]) {
-        total += serverCountsByUserId[user.id];
-      }
-
-      // 2. Match by email (covers users without ID match)
-      if (user.email) {
-        const emailLc = user.email.trim().toLowerCase();
-        if (serverCountsByEmail[emailLc]) {
-          total += serverCountsByEmail[emailLc];
-        }
-      }
-
-      return total;
+    // Activity logs record performedByUser as the user's full name.
+    // Match by full name, falling back to username.
+    if (user.fullName) {
+      const key = user.fullName.trim().toLowerCase();
+      if (serverCountsByUserName[key] !== undefined) return serverCountsByUserName[key];
     }
-
-    // Fallback: count from localStorage (only includes admin's own browser data)
-    try {
-      const raw = localStorage.getItem('crm_clients_data');
-      const all: any[] = raw ? JSON.parse(raw) : [];
-      return all.filter((c: any) => {
-        if (c.isDeleted || c.isTestRecord) return false;
-        if (c.createdBy && c.createdBy === user.id) return true;
-        if (c.createdByEmail && user.email && c.createdByEmail.toLowerCase() === user.email.toLowerCase()) return true;
-        return false;
-      }).length;
-    } catch { return 0; }
+    if (user.username) {
+      const key = user.username.trim().toLowerCase();
+      if (serverCountsByUserName[key] !== undefined) return serverCountsByUserName[key];
+    }
+    return 0;
   };
 
-  // Count clients with no creator/agent assigned (unassigned)
+  // Count clients in localStorage with no agent assigned (informational warning).
+  // Note: this is a UI hint only and uses the admin's locally synced data.
   const getUnassignedClientCount = (): number => {
-    if (serverCountsLoaded) {
-      return serverUnassignedCount;
-    }
-
-    // Fallback to localStorage
     try {
       const raw = localStorage.getItem('crm_clients_data');
       const all: any[] = raw ? JSON.parse(raw) : [];
@@ -213,7 +187,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
     loadClientCounts();
   }, []);
 
-  // Fetch client counts from MongoDB (accurate regardless of browser)
+  // Fetch client counts from MongoDB activity logs (accurate across browsers)
   const loadClientCounts = async () => {
     try {
       const res = await fetch('/.netlify/functions/get-client-counts', {
@@ -222,14 +196,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setServerCountsByUserId(data.byUserId || {});
-          setServerCountsByEmail(data.byEmail || {});
-          setServerUnassignedCount(data.unassigned || 0);
+          setServerCountsByUserName(data.byUserName || {});
           setServerCountsLoaded(true);
         }
       }
     } catch {
-      // Fallback to localStorage counts silently
+      // Silent fail — counts will show 0 until next fetch succeeds
     }
   };
 
