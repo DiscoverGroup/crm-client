@@ -134,15 +134,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
 
   // Count active (non-deleted, non-test) clients per user.
   // Server-side client counts (fetched from MongoDB so they're accurate
+  // Server-side client counts (fetched from MongoDB so they're accurate
   // regardless of which browser the admin uses).
   const [serverCountsByUserId, setServerCountsByUserId] = useState<Record<string, number>>({});
   const [serverCountsByEmail, setServerCountsByEmail] = useState<Record<string, number>>({});
-  const [serverCountsByAgent, setServerCountsByAgent] = useState<Record<string, number>>({});
   const [serverUnassignedCount, setServerUnassignedCount] = useState<number>(0);
   const [serverCountsLoaded, setServerCountsLoaded] = useState<boolean>(false);
 
   const getClientCountForUser = (user: User): number => {
-    // Prefer server counts when available
+    // Prefer server counts when available — count only clients the user
+    // actually created in the CRM. The legacy `agent` text field is a
+    // free-text Sales Agent label and does NOT mean the user created
+    // the record, so we don't count by it anymore.
     if (serverCountsLoaded) {
       let total = 0;
 
@@ -151,32 +154,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
         total += serverCountsByUserId[user.id];
       }
 
-      // 2. Match by email
+      // 2. Match by email (covers users without ID match)
       if (user.email) {
         const emailLc = user.email.trim().toLowerCase();
         if (serverCountsByEmail[emailLc]) {
           total += serverCountsByEmail[emailLc];
-        }
-      }
-
-      // 3. Legacy fallback: match by agent text (for clients created before
-      //    the createdBy field was added). Build a set of identifiers.
-      const ids: string[] = [];
-      if (user.fullName) ids.push(user.fullName.trim().toLowerCase());
-      if (user.username) ids.push(user.username.trim().toLowerCase());
-      if (user.email) {
-        ids.push(user.email.trim().toLowerCase());
-        const localPart = user.email.split('@')[0].trim().toLowerCase();
-        if (localPart) ids.push(localPart);
-      }
-      if (user.fullName) {
-        const firstName = user.fullName.trim().split(/\s+/)[0].toLowerCase();
-        if (firstName.length > 2) ids.push(firstName);
-      }
-
-      for (const [agent, count] of Object.entries(serverCountsByAgent)) {
-        if (ids.includes(agent)) {
-          total += count;
         }
       }
 
@@ -242,7 +224,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack, onMessageUser }) => {
         if (data.success) {
           setServerCountsByUserId(data.byUserId || {});
           setServerCountsByEmail(data.byEmail || {});
-          setServerCountsByAgent(data.byAgent || data.agentCounts || {});
           setServerUnassignedCount(data.unassigned || 0);
           setServerCountsLoaded(true);
         }
